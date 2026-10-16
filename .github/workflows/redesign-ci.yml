@@ -61,12 +61,12 @@ jobs:
           df -h /build "$GITHUB_WORKSPACE"
 
       # The prebuilt contribs tarball is ~650 MB; `make prebuilt` (run by
-      # build.sh -p in /build/contrib/contrib-x86_64-w64-mingw32) skips the
+      # build.sh -p in /build/contrib/contrib-win64) skips the
       # download when the file is already there.
       - name: Cache prebuilt contribs
         uses: actions/cache@v4
         with:
-          path: /build/contrib/contrib-x86_64-w64-mingw32/vlc-contrib-x86_64-w64-mingw32-latest.tar.zst
+          path: /build/contrib/contrib-win64/vlc-contrib-x86_64-w64-mingw32-latest.tar.zst
           key: contrib-win64-${{ hashFiles('contrib/src/**') }}
 
       - name: Build (extras/redesign/container-build.sh)
