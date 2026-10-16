@@ -1,0 +1,203 @@
+# CI for VLC Reborn (Windows-only fork of VLC 4.0-dev).
+#
+# Required status checks (branch protection on redesign/main):
+#   redesign-ci / win64
+#   redesign-ci / linux-tests
+#   redesign-ci / windows-tests
+#
+# win64          cross-builds Windows x86_64 in VideoLAN's official container using
+#                the same script as local dev builds (extras/redesign/container-build.sh)
+#                and uploads the result as the "build-win64" artifact.
+# linux-tests    builds VLC natively on Debian and runs the Qt/QML tests (meson "qt"
+#                suite, incl. the QML Quick tests), plus the QML module check.
+# windows-tests  runs the cross-built Qt test executables natively on Windows with
+#                extras/redesign/run-tests.sh.
+#
+# See docs/redesign/building.md for the local equivalent.
+
+name: redesign-ci
+
+on:
+  pull_request:
+  push:
+    branches: [redesign/main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: redesign-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  win64:
+    name: win64
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    container:
+      # Same image as VLC_WIN64_IMAGE in extras/ci/gitlab-ci.yml and dev-build.sh.
+      image: registry.videolan.org/vlc-debian-win64-posix:20260611225331
+      # The image's default user ("videolan") cannot write to the runner-owned
+      # workspace, so checkout and the build would fail with permission errors.
+      options: --user root
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # extras/redesign/container-build.sh expects the source tree at /vlc and the
+      # build tree at /build (dev-build.sh bind-mounts them). Reproduce that here:
+      # /vlc points at the workspace, /build is the image's own build directory.
+      - name: Prepare container paths
+        run: |
+          git config --global --add safe.directory '*'
+          if [ -d /vlc ] && [ ! -L /vlc ]; then rmdir /vlc; fi
+          ln -sfn "$GITHUB_WORKSPACE" /vlc
+          mkdir -p /build
+          nproc
+          df -h /build "$GITHUB_WORKSPACE"
+
+      # The prebuilt contribs tarball is ~650 MB; `make prebuilt` (run by
+      # build.sh -p in /build/contrib/contrib-x86_64-w64-mingw32) skips the
+      # download when the file is already there.
+      - name: Cache prebuilt contribs
+        uses: actions/cache@v4
+        with:
+          path: /build/contrib/contrib-x86_64-w64-mingw32/vlc-contrib-x86_64-w64-mingw32-latest.tar.zst
+          key: contrib-win64-${{ hashFiles('contrib/src/**') }}
+
+      - name: Build (extras/redesign/container-build.sh)
+        working-directory: /build
+        run: |
+          # Same values as extras/redesign/dev-build.sh (the pinned SHA is read
+          # from there so the two cannot drift apart).
+          PINNED_CONTRIB_SHA=$(sed -n 's/^PINNED_CONTRIB_SHA="\([0-9a-f]*\)".*/\1/p' /vlc/extras/redesign/dev-build.sh)
+          [ -n "$PINNED_CONTRIB_SHA" ] || { echo "PINNED_CONTRIB_SHA not found in dev-build.sh" >&2; exit 1; }
+          export PINNED_CONTRIB_SHA
+          export BUILD_FLAGS="-m -p -a x86_64"
+          export WANT_TESTS=1
+          bash /vlc/extras/redesign/container-build.sh
+
+      # Same layout dev-build.sh produces on the host:
+      #   build-win64/win64-meson/vlc-win64/vlc.exe
+      #   build-win64/win64-meson/tests/*.exe
+      - name: Collect build output
+        run: |
+          OUT="$GITHUB_WORKSPACE/build-win64/win64-meson"
+          rm -rf "$GITHUB_WORKSPACE/build-win64"
+          mkdir -p "$OUT"
+          cp -a /build/win64-meson/vlc-win64 "$OUT/vlc-win64"
+          cp -a /build/win64-meson/tests-out "$OUT/tests"
+          test -f "$OUT/vlc-win64/vlc.exe" || { echo "vlc.exe missing from output" >&2; exit 1; }
+          du -sh "$OUT"/*
+
+      - name: Upload build-win64
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-win64
+          path: build-win64
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload meson logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: win64-meson-logs
+          path: /build/win64-meson/meson-logs
+          if-no-files-found: ignore
+          retention-days: 7
+
+  linux-tests:
+    name: linux-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    container:
+      # VLC_DEBIAN_IMAGE in extras/ci/gitlab-ci.yml.
+      image: registry.videolan.org/vlc-debian-unstable:20260611225331
+      options: --user root
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory '*'
+
+      # Same invocation as configure.ac (the only caller; extras/ci/gitlab-ci.yml
+      # does not run this script): check that the Qt QML modules VLC needs at
+      # run time are installed.
+      - name: Check QML modules
+        run: |
+          QMAKE6=$(command -v qmake6 || command -v qmake-qt6 || true)
+          [ -n "$QMAKE6" ] || { echo "qmake6 not found" >&2; exit 1; }
+          python3 buildsystem/check_qml_module.py \
+            --qmake "$QMAKE6" \
+            --modules \
+            QtQml.Models="" \
+            QtQml.WorkerScript="" \
+            QtQuick.Layouts="" \
+            QtQuick.Window="" \
+            QtQuick.Controls=""
+
+      # As in the debian-meson job of extras/ci/gitlab-ci.yml.
+      - name: Build tools
+        run: |
+          cd extras/tools
+          ./bootstrap
+          make -j"$(getconf _NPROCESSORS_ONLN)" --output-sync=recurse
+          echo "$GITHUB_WORKSPACE/extras/tools/build/bin" >> "$GITHUB_PATH"
+
+      # Same options as debian-meson upstream, minus coverage.
+      - name: Meson setup
+        run: |
+          meson setup -Dextra_checks=true build-meson --errorlogs \
+            || { echo "ERROR: Meson setup failed!" >&2; cat build-meson/meson-logs/meson-log.txt >&2; exit 1; }
+
+      - name: Meson compile
+        run: meson compile -C build-meson
+
+      - name: Qt and QML tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: meson test -C build-meson --suite qt --print-errorlogs --max-lines 1000
+
+      - name: Upload meson logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-tests-meson-logs
+          path: build-meson/meson-logs
+          if-no-files-found: ignore
+          retention-days: 7
+
+  windows-tests:
+    name: windows-tests
+    needs: win64
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      # extras/redesign/*.sh must stay LF (Git Bash cannot run CRLF scripts).
+      - name: Disable autocrlf
+        run: git config --global core.autocrlf false
+
+      # Only the test runner is needed; the binaries come from the win64 job.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            /.gitattributes
+            /extras/redesign/
+            /modules/gui/qt/meson.build
+          sparse-checkout-cone-mode: false
+
+      - name: Download build-win64
+        uses: actions/download-artifact@v4
+        with:
+          name: build-win64
+          path: build-win64
+
+      - name: Run Qt tests
+        run: bash extras/redesign/run-tests.sh
