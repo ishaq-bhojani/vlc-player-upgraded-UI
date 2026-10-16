@@ -199,6 +199,8 @@ endif
 qt_plugin_sources = files(
     'qt.cpp',
     'qt.hpp',
+    'redesign/cpp/redesign.cpp',
+    'redesign/cpp/redesign.hpp',
     'plugins.hpp',
     'dialogs/bookmarks/bookmarks.cpp',
     'dialogs/bookmarks/bookmarks.hpp',
@@ -953,6 +955,13 @@ qml_modules += {
     ),
 }
 
+qml_modules += {
+    'name' : 'VLC.Redesign',
+    'target' : 'redesign',
+    'outdir' : 'VLC/Redesign',
+    'singletons': files('redesign/theme/RedesignStyle.qml'),
+}
+
 qml_tests = {
     'tst_FSM': files('tests/tst_FSM.qml'),
 }
@@ -1416,6 +1425,24 @@ if qt6_dep.found()
             ),
             'moc_headers': files(
                 'dialogs/dialogs/dialogmodel.hpp'
+            ),
+            'suite': ['qt'],
+            'include_directories' : qt_include_dir,
+            'link_with': [libvlccore, libvlc],
+            'link_args': qt_link_args,
+            'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+        }
+
+        vlc_tests += {
+            'name': 'test_qt_redesign_option',
+            'sources': files(
+                'tests/vlc_stub_modules.cpp',
+                'tests/test_redesign_option.cpp',
+                'redesign/cpp/redesign.hpp',
+                'redesign/cpp/redesign.cpp'
+            ),
+            'moc_sources': files(
+                'tests/test_redesign_option.cpp'
             ),
             'suite': ['qt'],
             'include_directories' : qt_include_dir,

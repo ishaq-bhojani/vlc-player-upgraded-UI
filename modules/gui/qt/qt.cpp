@@ -297,6 +297,9 @@ static void ShowDialog   ( intf_thread_t *, int, int, intf_dialog_args_t * );
 #define ACCENT_COLOR_TEXT N_( "Accent color" )
 #define ACCENT_COLOR_LONGTEXT N_( "Adjusts the accent color, special values are 'default' and 'system' (requires Qt 6.6) ." )
 
+#define REDESIGN_TEXT N_( "Use the VLC Reborn redesigned interface" )
+#define REDESIGN_LONGTEXT N_( "Enables the VLC Reborn redesign of the interface. Disable it to get the original look and behaviour." )
+
 static const int initial_prefs_view_list[] = { 0, 1, 2 };
 static const char *const initial_prefs_view_list_texts[] =
     { N_("Simple"), N_("Advanced"), N_("Expert") };
@@ -478,6 +481,8 @@ vlc_module_begin ()
     add_float_with_range( "qt-safe-area", 0, 0, 100.0, SAFE_AREA_TEXT, SAFE_AREA_LONGTEXT )
 
     add_string( "qt-accent-color", "default", ACCENT_COLOR_TEXT, ACCENT_COLOR_LONGTEXT )
+
+    add_bool( "qt-redesign", true, REDESIGN_TEXT, REDESIGN_LONGTEXT )
 
     cannot_unload_broken_library()
 
