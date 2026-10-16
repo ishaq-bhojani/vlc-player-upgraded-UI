@@ -1,7 +1,8 @@
 # VLC Redesign — Design Spec
 
 - **Date:** 2026-10-16
-- **Status:** Draft, awaiting review
+- **Status:** Approved 2026-10-16; **revision 2 (designer intent, §11) awaiting review**
+- **Product name:** VLC Reborn
 - **Design source:** Figma "VLC Redesign (Community)" — https://www.figma.com/design/eC0K7svcmp8c5LAM0PJiQo/VLC-Redesign--Community-?node-id=0-1
 - **Codebase:** VLC `4.0.0-dev` fork (`origin` = ishaq-bhojani/vlc-player-upgraded-UI, `upstream` = videolan/vlc)
 
@@ -18,7 +19,7 @@ Ship a Windows build of VLC 4 whose Qt interface implements the Figma redesign, 
 
 ### Success criteria
 1. v0.1 public beta (about month 4): the existing layout re-skinned with the new palette, accent, font, icons, control bar and mini player; distributed as a signed installer with working updates.
-2. v1.0 (about month 13): the Figma window layout, Home, library, player, settings, effects, onboarding and dialogs implemented.
+2. v1.0 (about month 19): the Figma window layout, Home, library, player, settings, effects, onboarding and dialogs, **plus the designer-intent features in §11** (watch sidebar, track popups, queue, subtitle tools) and the light/accessibility/performance pass.
 3. A monthly upstream merge takes **≤ 1 working session** and never requires reworking redesign code beyond the files listed in `docs/redesign/upstream-touchpoints.md`.
 4. No regression in keyboard navigation, High Contrast mode, or 100–200% display scaling compared with upstream.
 
@@ -218,13 +219,17 @@ Config-derived labels are already translated. New strings use `qtr()` and fall b
 
 ## 9. Timeline (part-time, about 15–20 h/week, includes about 20% buffer)
 
+Revision 2 adds the designer-intent scope from §11, which brings the full design to about **21 months**.
+
 | When | Milestone | Deliverables | Ships |
 |---|---|---|---|
-| Month 1 | **M0 Setup** | Docker/WSL build, GitHub Actions CI, product name/icon, Figma asset export (icons, font confirmation, colour values), `tokens.md`, `settings-map.md`, `upstream-touchpoints.md` | — |
-| Months 1–4 | **R1 Re-skin** | Palettes + accent + Inter + icons; control bar + Customize Player + new control items; MiniPlayer re-skin; QWidgets palette; branding; signed installer; fork updater | **v0.1 beta**, about month 4 |
-| Months 4–8 | **R2 Window layout** | `VLC.Redesign` shell, Rail, LibraryPanel, Stage, states and fallback; Home sections; grid/list views; music view | **v0.2**, about month 8 |
-| Months 8–13 | **R3 Settings & dialogs** | SettingsModel, EffectsController, ShortcutsModel; settings modal (13 pages); onboarding; 4 dialogs | **v1.0**, about month 13 |
-| Months 13–15 | **R4 Polish** | Waveform seek bar; light theme polish; accessibility pass; performance | v1.1 |
+| Month 1 | **M0 Setup** | Docker build, CI, design inputs (`tokens.md`, `settings-map.md`, `upstream-touchpoints.md`, `branding.md`) | — |
+| Months 1–4 | **R1 Re-skin** | Palette, accent, Inter, icons, control-bar items, Customize Player, MiniPlayer, themed QWidgets, branding, signed installer, fork updater | **v0.1 beta** |
+| Months 4–9 | **R2 Window & control bar** | Shell, Rail with pins, clickable show title + ☰ menu, LibraryPanel, Stage, hover bars, new control-bar layout (left play, thick seek bar, cone volume, subtitle/audio track popups, queue), Queue panel, Home + Recent, address bar + view modes + watched/unwatched sort, music view, cleaned right-click menu with Hide UI, shortcut feedback toast | **v0.2** |
+| Months 9–13 | **R3 Settings & dialogs** | Settings model (basic + advanced on the same page, plain-word choice labels), effects, shortcuts, settings modal, onboarding with shortcuts intro, New playlist, Network stream, Add subtitles (saved per media), Keyboard shortcuts | **v0.3** |
+| Months 13–17 | **R4 Watch sidebar** | Right sidebar (Subtitles / Audio / Video / Playback / Bookmarks tabs), per-show presets, sleep timer, Ctrl+B bookmarks, subtitle timeline, seek thumbnails, waveform | **v0.4** |
+| Months 17–19 | **R5 Polish** | Light theme, accessibility, performance | **v1.0** |
+| Months 19–21 | **R6 Extensions** | OpenSubtitles search, settings profiles, two-tone menu icon set | v1.1 |
 
 ## 10. Risks
 
@@ -236,3 +241,88 @@ Config-derived labels are already translated. New strings use `qtr()` and fall b
 | Side-by-side video unavailable on some machines | Degraded layout | Overlay fallback defined in §4 and covered by tests |
 | Waveform requires audio analysis that VLC lacks | R4 slip | Isolated in R4; the music view works without it |
 | Part-time capacity varies | Dates slip | Each release is independently shippable; scope is cut from the end of a release rather than delaying it |
+| OpenSubtitles needs an API key and has terms of use | R6 feature blocked | Feature stays hidden until the user enters their own API key; the owner reviews the ToS before release |
+| Subtitle timeline: VLC exposes no cue timing | Timeline limited | Supported only for external text subtitles (SRT, VTT, ASS) that we parse; embedded tracks show a notice |
+
+## 11. Designer intent (revision 2)
+
+Source: the designer's walkthrough of the Figma file (shared 2026-10-16). It explains *why* the screens look as they do. **Principle: keep VLC's identity (orange cone, grey/black neutrals, rectangular but slightly rounded), and put each feature where people look for it, so they never have to leave the video.** This section overrides §4–§6 where they conflict.
+
+### 11.1 Control bar and window chrome (R2)
+- **One thin row** over the bottom of the video, left to right:
+  - ⏮ ▶ ⏭ — play is slightly larger than the others and **not centred**;
+  - elapsed time;
+  - a **thick seek bar** filling the middle;
+  - total time;
+  - a **cone-shaped volume slider** (triangle filling with the accent colour);
+  - Subtitles, Audio, Settings (opens the watch sidebar, §11.3) and Queue buttons.
+- **Track popups:**
+  - **Subtitles:** subtitle tracks + "Add subtitles…".
+  - **Audio:** audio tracks **and the audio output device list** (`AudioDeviceModel`).
+  - **Video:** a third tab inside the same popup, with no separate button.
+  - They reuse the upstream `TracksPage*` logic, restyled.
+- **Resume prompt** ("Continue from 12:34?") appears just above the play controls, not in a far corner.
+- **Title bar:**
+  - the ☰ menu button, the current **show/folder name** (clickable: opens the LibraryPanel on that folder), a library sidebar toggle, then fullscreen and the window buttons;
+  - the classic menu bar is removed. Its unique items move into the ☰ menu: Open file, Open folder, Network stream, Capture device, Open from clipboard, Recent media, Convert, Stream, Keyboard shortcuts, Settings, Help.
+- **Immersive / fullscreen:** the top bar (with the title) and the bottom bar each appear only while the pointer is within 80 px of that edge (or on keyboard activity), and hide immediately when it leaves.
+- **Right-click menu:** the upstream popup menu, restyled (R1 palette), with duplicates removed and a new **Hide UI** item (also on a shortcut). Hide UI hides both bars until toggled off or Esc.
+- **Shortcut feedback:** when a hotkey fires, a toast shows the key combination together with the action name (e.g. "Ctrl+→ — Jump forward 1 min").
+
+### 11.2 Queue and library (R2)
+- The **Queue** (the play queue: plays automatically) is separate from **Playlists** (saved collections). The Queue button toggles a right-hand Queue panel (reusing upstream `PlaylistPane`). Items can be dragged from the library into it.
+- **Library header:**
+  - back/forward and a **clickable address bar** (each segment navigates up);
+  - a view-mode button cycling **Grid → List → Details**;
+  - a sort menu including **Unwatched first / Watched first** (ML `PLAYCOUNT` ascending/descending);
+  - search;
+  - an overflow menu (Add file, Add folder).
+- **Rail additions:** **pinned items** (playlists, folders, streams pinned by the user from context menus) and **Recent**.
+- **Network streams** page lists saved streams with an Add button. Pasting an `.m3u` URL opens it as a playlist (VLC already does this).
+
+### 11.3 Watch sidebar (R4)
+A right-hand sidebar (shares the right edge with the Queue panel; one is open at a time) with tabs:
+- **Subtitles:**
+  - subtitle delay, secondary delay and FPS as sliders with numeric fields;
+  - font (`freetype-font`);
+  - size as **Relative** (Smaller 50 / Small 75 / Normal 100 / Large 150 / Larger 200 % of `sub-text-scale`) or **Precise** (10–500 %);
+  - outline thickness (`freetype-outline-thickness`);
+  - position (`sub-margin`);
+  - default subtitle language (`sub-language`).
+- **Audio:**
+  - audio delay;
+  - default audio language (`audio-language`);
+  - output device;
+  - equalizer with friendly presets (icon per preset), compressor, spatializer, stereo widener (`EffectsController`).
+- **Video:**
+  - filter presets with preview thumbnails;
+  - flip/rotate (`transform`);
+  - zoom;
+  - aspect ratio and crop;
+  - colour adjust (brightness/contrast/saturation/hue/gamma);
+  - HDR tone-mapping option where the Windows video output exposes one.
+- **Playback:**
+  - speed;
+  - reverse;
+  - **sleep timer** (off / 15 / 30 / 60 / 90 min / end of current item);
+  - toggles: show subtitle timeline, show waveform on seek bar, show metadata overlay.
+- **Bookmarks & chapters:** the bookmark list for the current media (ML bookmarks) and the chapter list. **Ctrl+B** adds a bookmark at the current time without opening any dialog.
+- **Per-show presets:** the Subtitles and Audio tab settings (delays, size, font, outline, position, default tracks) can be saved as a named preset. A preset can be bound to a folder, and it is applied automatically when a file from that folder starts. Stored in `<user data>/vlc-reborn/presets.json`.
+- **Subtitle timeline:** a strip above the control bar showing upcoming and past cues for an **external** text subtitle (SRT, VTT, ASS parsed by us). Dragging the strip shifts the subtitle delay.
+- **Seek thumbnails:** hovering the seek bar shows a frame preview at that time (preparser thumbnail at a timestamp, cached).
+
+### 11.4 Settings, subtitles, onboarding (R3)
+- Each settings page shows the curated rows first, then an **Advanced** section listing every remaining option of the matching VLC subcategories on the same page, so the separate "All settings" tree is not needed for normal use. The "Advanced…" link to the QWidgets tree stays for plugin-level options.
+- Choice settings show **plain-word labels**. Integer settings that are really enumerations get label overrides, e.g. `sub-autodetect-fuzzy`: 0 "Don't auto-detect", 1 "Any subtitle file", 2 "Subtitles containing the video name", 3 "Video name plus extra characters", 4 "Exact video name".
+- **Add subtitles** (file / folder / playlist) **saves the association** in the media library (`vlc_ml_media_add_external_mrl`), so future playback of that episode loads it automatically.
+- **Onboarding** adds a **Shortcuts** step introducing the essential hotkeys (play/pause, seek, volume, fullscreen, subtitles, Hide UI, bookmark).
+- **Keyboard shortcuts** dialog is reachable directly from the ☰ menu.
+
+### 11.5 Extensions (R6)
+- **OpenSubtitles:** "Search online" in Add subtitles (search by file hash and name). It needs the user's own API key, entered in Settings → Subtitles; without a key the option is hidden.
+- **Settings profiles:** named profiles bundling settings and the control-bar layout. Switching profiles requires a restart.
+- **Two-tone icon set:** grey + accent two-tone icons for non-clickable menu icons (via `ColorizedSvgIcon` colour keys); the monochrome icon font stays everywhere else. Needs the designer's SVGs.
+
+### 11.6 Not adopted
+- A centred play button: the designer explicitly rejects it.
+- Full user customisation beyond the existing Customize Player editor and profiles.

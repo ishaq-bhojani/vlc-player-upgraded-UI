@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship a Windows build of VLC 4 whose Qt UI implements the Figma redesign, released as v0.1 (re-skin), v0.2 (new window layout), v1.0 (settings/onboarding/dialogs) and v1.1 (waveform/polish).
+**Goal:** Ship "VLC Reborn", a Windows build of VLC 4 whose Qt UI implements the Figma redesign and the designer's intent (spec §11), released as v0.1 (re-skin), v0.2 (window & control bar), v0.3 (settings & dialogs), v0.4 (watch sidebar), v1.0 (polish) and v1.1 (extensions).
 
 **Architecture:** All new UI lives in a new QML module `VLC.Redesign` (`modules/gui/qt/redesign/`). New C++ goes in `redesign/cpp/`. It reuses VLC's existing C++ models and controllers. Upstream files are touched only at the seams listed in `docs/redesign/upstream-touchpoints.md`. The `qt-redesign` option (default `true`) gates every behaviour change; `false` must give the stock upstream UI.
 
@@ -26,14 +26,17 @@
 - Colours, spacing and radii in new QML come from `ColorContext` / `RedesignStyle`. No literal colours in `redesign/**/*.qml`.
 - Fork releases are versioned `4.0.0.<N>` internally (`VERSION_EXTRA = N`, monotonic). The public label is `vMAJOR.MINOR.PATCH` (v0.1.0 = N 1).
 - Every commit ends with: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Product name: `VLC Reborn`. Spec §11 (designer intent) overrides spec §4–§6 where they conflict.
+- The play button is never centred; the control bar is one thin row (spec §11.1).
+- Values marked PROVISIONAL in `docs/redesign/tokens.md` are used as-is until the owner replaces them.
 
 ## Review Focus
 
 1. **Invalid `qt-accent-color` value** (e.g. `"#zzz"`, `"banana"`): the palette uses the Figma default accent, with no invisible or black accent. Pinned in Task 5.
 2. **No media library** (`MainCtx.hasMediaLibrary === false`, or ML disabled): the Rail hides Home/Videos/Music/Playlists/Recent, the shell opens on Network, and nothing throws. Pinned in Task 17.
 3. **Playing something that isn't in the media library** (network stream, file outside library folders): Favorite is disabled (not hidden); the name labels show the stream title or URL; the folder label is empty for non-`file://` URLs. Pinned in Tasks 10 and 11.
-4. **Setting key whose plugin isn't built or loaded:** `Settings.item(key)` returns `null`, the row is hidden, an error is logged, and the page still renders. Pinned in Task 23.
-5. **`qt-redesign=false`:** the stock root QML, palette and first-run wizard are used. Pinned in Tasks 5 and 18 (C++) and Task 28.
+4. **Setting key whose plugin isn't built or loaded:** `RedesignSettings.item(key)` returns `null`, the row is hidden, an error is logged, and the page still renders. Pinned in Task 30.
+5. **`qt-redesign=false`:** the stock root QML, palette and first-run wizard are used. Pinned in Tasks 5 and 19 (C++) and Task 35.
 
 ---
 
@@ -110,8 +113,6 @@
 - [ ] **Step 5:** Fill `settings-map.md` by checking each key with `vlc.exe -H --advanced | findstr <key>` on the Task 1 build.
 - [ ] **Step 6:** Decide the product name, icon and publisher in `branding.md`. Create a dedicated GPG key for update signing: `gpg --quick-gen-key "<Product> Updates <email>" dsa2048 sign never` (the updater supports DSA/RSA public-key packets). Store the private key only as the GitHub secret `UPDATE_GPG_KEY`.
 - [ ] **Step 7:** Commit: `docs: add redesign tokens, settings map, branding and touchpoint log`.
-
----
 
 ## Release R1 — Re-skin (Months 1–4, ships v0.1.0)
 
@@ -264,7 +265,7 @@
 - [ ] **Step 4:** Run it. Expected: PASS. In the dev build, Preferences, Media Information and the context menus use the dark palette and accent highlight.
 - [ ] **Step 5:** Log the touchpoint. Commit: `qt: theme QWidgets dialogs and menus with redesign palette`.
 
-### Task 8: Icon set replacement
+### Task 8: Icon set replacement (monochrome icon font)
 
 **Files:**
 - Create: `extras/redesign/check_icons.py`
@@ -275,7 +276,7 @@
 - Produces: `python3 extras/redesign/check_icons.py modules/gui/qt/pixmaps`.
   - Exits 0 only if every glyph in `VLCIcons.json` has an SVG and every SVG's `viewBox` width and height equal its `width` / `height` attributes.
   - Otherwise it prints each offending file and exits 1.
-- Produces: new glyph names `rd_<name>` used by Tasks 10, 17 and 19.
+- Produces: new glyph names `rd_<name>` used by Tasks 10, 17 and 21.
 
 - [ ] **Step 1:** Write `check_icons.py`. Run it against an untouched checkout. Expected: exit 0 (the upstream set is valid).
 - [ ] **Step 2:** Copy the Figma SVGs over the same-named files and add `rd_*` entries to `VLCIcons.json`. Run `check_icons.py`. Fix the SVGs (flatten to one path, remove overlaps in Inkscape: Path → Union; set the viewBox) until it exits 0.
@@ -441,12 +442,10 @@
   - Sign `vlc.exe`, `*.dll` and the installer with `azure/trusted-signing-action`.
   - Run `make-status.sh` and upload the release assets.
 - [ ] **Step 2:** Write `smoke-checklist.md` with the spec §8 manual matrix as checkboxes.
-- [ ] **Step 3:** Push tag `v0.1.0-rc1` on a fork test branch. Expected: a Release with all assets; installing on Windows 10 and 11 shows no SmartScreen "unknown publisher" warning (warnings based on download reputation may still appear).
+- [ ] **Step 3:** (Owner) Push tag `v0.1.0-rc1` on a fork test branch. Expected: a Release with all assets; installing on Windows 10 and 11 shows no SmartScreen "unknown publisher" warning (warnings based on download reputation may still appear).
 - [ ] **Step 4:** Run the smoke checklist on rc1, fix the issues, then tag `v0.1.0`. Commit: `ci: add signed release workflow and smoke checklist`.
 
----
-
-## Release R2 — Window layout (Months 4–8, ships v0.2.0)
+## Release R2 — Window & control bar (Months 4–9, ships v0.2.0)
 
 ### Task 16: Shell state machine
 
@@ -456,15 +455,17 @@
 
 **Interfaces:**
 - Produces a `ShellStates` component (uses `FSM` / `FSMState` from `VLC.Util`).
-  - Inputs (properties): `bool playerView`, `bool fullscreen`, `bool minimalView`, `bool canShowVideoPIP`, `bool panelRequested`.
+  - Inputs (properties): `bool playerView`, `bool fullscreen`, `bool minimalView`, `bool canShowVideoPIP`, `bool panelRequested`, `bool uiHidden`, `bool pointerNearTop`, `bool pointerNearBottom`, `bool recentKeyActivity`.
   - Outputs (readonly):
     - `string state` ∈ `"browse" | "watch" | "immersive"`;
     - `string panelMode` ∈ `"hidden" | "docked" | "overlay"`;
-    - `bool miniPlayerShowsVideo`.
+    - `bool miniPlayerShowsVideo`;
+    - `bool topBarVisible`, `bool bottomBarVisible`.
   - Rules:
     - `immersive` if `fullscreen || minimalView`, else `watch` if `playerView`, else `browse`.
     - `panelMode`: `hidden` in `immersive` or when `!panelRequested`. In `watch`, `docked` if `canShowVideoPIP`, else `overlay`. In `browse`, `docked`.
     - `miniPlayerShowsVideo = state === "browse" && canShowVideoPIP`.
+    - Bars: in `browse` both are visible (`uiHidden` is ignored). In `watch`, both equal `!uiHidden`. In `immersive`, `topBarVisible = !uiHidden && (pointerNearTop || recentKeyActivity)` and `bottomBarVisible = !uiHidden && (pointerNearBottom || recentKeyActivity)`.
 
 - [ ] **Step 1: Write the failing test,** data-driven over these rows:
 
@@ -479,6 +480,8 @@
   | false | false | true | true | true | immersive | hidden | false |
 
   Also test that toggling `fullscreen` from `watch` and back returns to `watch` with the same `panelMode`.
+  Bars, data-driven (state; uiHidden, near top, near bottom, key activity → top, bottom):
+  `browse; true,false,false,false → true,true` · `watch; false,… → true,true` · `watch; true,… → false,false` · `immersive; false,false,false,false → false,false` · `immersive; false,true,false,false → true,false` · `immersive; false,false,true,false → false,true` · `immersive; false,false,false,true → true,true` · `immersive; true,true,true,true → false,false`.
 - [ ] **Step 2:** Run `meson test tst_ShellStates`. Expected: FAIL.
 - [ ] **Step 3:** Implement with `FSM`. Inputs feed signals through property change handlers.
 - [ ] **Step 4:** Run it. Expected: PASS.
@@ -516,7 +519,30 @@
 - [ ] **Step 4:** Run it. Expected: PASS.
 - [ ] **Step 5:** Commit: `qt: add redesign rail`.
 
-### Task 18: Redesign root window and loader switch
+### Task 18: Pinned items in the Rail
+
+**Files:**
+- Create: `modules/gui/qt/redesign/shell/PinStore.qml` (singleton)
+- Modify: `modules/gui/qt/redesign/shell/Rail.qml`
+- Test: `modules/gui/qt/tests/tst_PinStore.qml`
+
+**Interfaces:**
+- Consumes: `RailModel` (Task 17).
+- Produces (singleton `PinStore`, persisted as a JSON string in `Settings { category: "redesign"; property string pins }`):
+  - `function pins(): var` → `[{id, kind, label, target}]`, `kind` ∈ `"folder" | "playlist" | "stream"`, `target` = a URL for folder/stream or an ML id string for playlists; order is insertion order.
+  - `function pin(kind: string, label: string, target: string): string` → the new id; pinning an existing `kind`+`target` returns the existing id without duplicating.
+  - `function unpin(id: string)`, `function move(id: string, toIndex: int)`.
+  - `function isPinned(kind: string, target: string): bool`.
+- The Rail shows pins under a divider after the fixed items; activating a pin pushes `["network", "browse"]` with `{tree: target}` for folders/streams (log the exact upstream view props used) or `["video","playlists","list"]` with `{parentId}` for playlists. Right-click on a pin → Unpin.
+- Upstream context menus are not edited: pin actions are added by Task 27 and by our own views.
+
+- [ ] **Step 1: Write the failing test:** pin two items → `pins().length === 2`; pinning the same target again returns the same id; `unpin` removes it; `move(id, 0)` reorders; a corrupt stored string (`"{"`) yields `pins() === []` without throwing.
+- [ ] **Step 2:** Run `tst_PinStore`. Expected: FAIL.
+- [ ] **Step 3:** Implement `PinStore` and the Rail section.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: pins survive a restart.
+- [ ] **Step 5:** Commit: `qt: add pinned items to the rail`.
+
+### Task 19: Redesign root window and loader switch
 
 **Files:**
 - Create: `modules/gui/qt/redesign/shell/RedesignInterface.qml`, `TitleBar.qml`
@@ -529,7 +555,14 @@
   - `true` → `qrc:/qt/qml/VLC/Redesign/RedesignInterface.qml`
   - `false` → `qrc:/qt/qml/VLC/MainInterface/MainInterface.qml`
 - `RedesignInterface.qml`:
-  - Layout per spec §4: `TitleBar` (wraps `Widgets.CSDWindowButtonSet` and `CSDTitlebarTapNDrapHandler`; shows the product name and the current page title), `Rail`, slots for `LibraryPanel`, `Stage`, `ControlBar`, and `ShellStates` bound to `MainCtx.playerView`, `Player.fullscreen`, `MainCtx.minimalView` and `MainCtx.canShowVideoPIP`.
+  - Layout per spec §4 and §11.1: `TitleBar`, `Rail`, slots for `LibraryPanel`, `Stage`, `ControlBar`, right panel, and `ShellStates` bound to `MainCtx.playerView`, `Player.fullscreen`, `MainCtx.minimalView` and `MainCtx.canShowVideoPIP`.
+  - `TitleBar` (wraps `Widgets.CSDWindowButtonSet` and `CSDTitlebarTapNDrapHandler`), left to right:
+    - ☰ button emitting `menuRequested(point)`;
+    - the title: `MediaText.folderName(Player.url)` while something plays (else the current page title), rendered as a clickable label emitting `libraryRequested(folderUrl)`;
+    - a library-panel toggle;
+    - a fullscreen button (`MainCtx.toggleInterfaceFullScreen()`), then the window buttons.
+  - A `HoverHandler` on the root sets `ShellStates.pointerNearTop/Bottom` (within `MainCtx.dp(80)` of the edge); any key press sets `recentKeyActivity` for 2 s.
+  - The title bar binds `visible` to `ShellStates.topBarVisible`.
   - It keeps the global pieces `MainInterface.qml` provides: the `GlobalShortcuts` loader, drop area (`MainPlaylistController.append(urls, true)`) and dialogs. Each is reused by instantiating the same upstream component, not by copying it.
 
 - [ ] **Step 1: Write the failing test.**
@@ -540,14 +573,41 @@
   }
   ```
 - [ ] **Step 2:** Run it. Expected: FAIL.
-- [ ] **Step 3:** Implement `rootQmlUrl`. In `mainui.cpp`, use `redesign::rootQmlUrl(redesign::isEnabled(VLC_OBJECT(m_intf)))`. Build `RedesignInterface.qml` and `TitleBar.qml`; at this point the Stage simply hosts the upstream `MainDisplay`/`Player` pages, which Task 19 replaces.
-- [ ] **Step 4:** Run it. Expected: PASS. Dev build: the new title bar and Rail appear; dragging and maximising work, including Windows 11 snap layouts on hovering maximise; dropping a file plays it; global shortcuts work. `--no-qt-redesign` gives the stock UI.
+- [ ] **Step 3:** Implement `rootQmlUrl`. In `mainui.cpp`, use `redesign::rootQmlUrl(redesign::isEnabled(VLC_OBJECT(m_intf)))`. Build `RedesignInterface.qml` and `TitleBar.qml`; at this point the Stage simply hosts the upstream `MainDisplay`/`Player` pages, which Task 21 replaces.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: the new title bar (☰, show title, library toggle, fullscreen) and Rail appear; clicking the title while a file plays opens the LibraryPanel on its folder; dragging and maximising work, including Windows 11 snap layouts on hovering maximise; dropping a file plays it; global shortcuts work. `--no-qt-redesign` gives the stock UI.
 - [ ] **Step 5:** Log the touchpoint. Commit: `qt: load redesign root window behind qt-redesign`.
 
-### Task 19: LibraryPanel, Stage, MiniPlayer card and fallback
+### Task 20: ☰ menu and open-media routing
 
 **Files:**
-- Create: `modules/gui/qt/redesign/shell/LibraryPanel.qml`, `Stage.qml`, `modules/gui/qt/redesign/player/MiniPlayerCard.qml`, `modules/gui/qt/redesign/player/ControlBar.qml`
+- Create: `modules/gui/qt/redesign/shell/MainMenu.qml`
+- Modify: `modules/gui/qt/redesign/shell/RedesignInterface.qml`
+
+**Interfaces:**
+- Consumes: `TitleBar.menuRequested(point)` (Task 19).
+- `MainMenu` is a QtQuick.Controls `Menu` styled by `ColorContext { colorSet: ColorContext.MenuBar }`, opened at the ☰ button, with exactly these entries and targets (spec §11.1):
+  - Open file → `DialogsProvider.simpleOpenDialog()`
+  - Open folder → `DialogsProvider.PLOpenDir()`
+  - Network stream → `OpenNetworkStreamDialog` (Task 36; until it exists, `DialogsProvider.openNetDialog()`)
+  - Capture device → `DialogsProvider.openCaptureDialog()`
+  - Open from clipboard → `DialogsProvider.openUrlDialog()` (prefilled from the clipboard by upstream)
+  - Recent media → submenu bound to `MLRecentMediaModel` (first 10) + "Clear"
+  - Convert / Save → `DialogsProvider.openAndTranscodingDialogs()`
+  - Stream → `DialogsProvider.openAndStreamingDialogs()`
+  - separator, Keyboard shortcuts → `KeyboardShortcutsDialog` (Task 37; until then `DialogsProvider.prefsDialog()`)
+  - Settings → `SettingsModal` (Task 34; until then `DialogsProvider.prefsDialog()`)
+  - Help → submenu: Help (`DialogsProvider.helpDialog()`), About (`DialogsProvider.aboutDialog()`), Messages (`DialogsProvider.messagesDialog()`).
+- Each `DialogsProvider` slot name above must be verified in `dialogs/dialogs_provider.hpp`; if one differs, use the existing slot with the same behaviour and record the substitution in the commit body.
+- The classic `Menubar` is not instantiated in the redesign shell.
+
+- [ ] **Step 1:** Implement the menu.
+- [ ] **Step 2:** Dev build: every entry opens its dialog; Recent shows the last played items; no QML warnings with `--verbose=2`.
+- [ ] **Step 3:** Commit: `qt: add redesign main menu`.
+
+### Task 21: LibraryPanel, Stage, MiniPlayer card and fallback
+
+**Files:**
+- Create: `modules/gui/qt/redesign/shell/LibraryPanel.qml`, `Stage.qml`, `modules/gui/qt/redesign/player/MiniPlayerCard.qml`
 - Modify: `modules/gui/qt/redesign/shell/RedesignInterface.qml`
 
 **Interfaces:**
@@ -556,9 +616,9 @@
   - width persisted with `Settings { category: "redesign"; property int panelWidth }`;
   - resized with `Widgets.HorizontalResizeHandle`, clamped to `RedesignStyle.panelWidthMin..Max`;
   - in `watch` it shows the current page in list mode; in `browse` it is a header strip only and the page renders in the Stage.
-- `Stage`: `browse` → the page; `watch` → `VideoSurface { videoSurfaceProvider: MainCtx.videoSurfaceProvider }` or the music view (Task 22); `immersive` → video only.
+- `Stage`: `browse` → the page; `watch` → `VideoSurface { videoSurfaceProvider: MainCtx.videoSurfaceProvider }` or the music view (Task 29); `immersive` → video only.
 - `MiniPlayerCard`: visible in `browse` while `Player.playingState !== Player.PLAYING_STATE_STOPPED`. It is draggable and snaps to the 4 corners (corner persisted). It shows the `VideoSurface` when `miniPlayerShowsVideo`, otherwise the artwork. Clicking it sets `MainCtx.playerView = true`.
-- `ControlBar`: wraps the upstream `PlayerControlLayout` (the customisable bar from R1), styled per the Figma Player frame.
+- `LibraryPanel.openAt(folderUrl)` navigates to the Browse page for that folder (connected to `TitleBar.libraryRequested`).
 - `panelMode === "overlay"`: the panel is drawn above the Stage with a scrim, and closes on outside click or Esc.
 
 - [ ] **Step 1:** Implement. Keep `Stage` free of state logic; it only reads `ShellStates` outputs.
@@ -568,9 +628,69 @@
   - drag the card to each corner and restart → the corner persists;
   - fullscreen → immersive, controls hide automatically.
 - [ ] **Step 3:** Repeat with `--qt-compositor=win7` and with `--no-qt-pip-mode`. Expected: watch shows the panel as an overlay, the card shows artwork, nothing renders black, and there are no QML errors in `--verbose=2` output.
-- [ ] **Step 4:** Commit: `qt: add redesign library panel, stage, mini player card and control bar`.
+- [ ] **Step 4:** Commit: `qt: add redesign library panel, stage and mini player card`.
 
-### Task 20: Home page with three sections
+### Task 22: Control bar layout, cone volume, thick seek bar, resume prompt
+
+**Files:**
+- Modify: `modules/gui/qt/player/control_list_model.hpp` (rename reserved slots: `RESERVED_0X35 → REDESIGN_SIDEBAR_BUTTON`, `0X36 → REDESIGN_AUDIO_POPUP`, `0X37 → REDESIGN_SUBTITLE_POPUP`, `0X38 → REDESIGN_SEEKBAR`; keep the numeric values; logged)
+- Modify: `modules/gui/qt/player/qml/PlayerControlbarControls.qml` (4 entries; with redesign enabled, `VOLUME` resolves to `ConeVolumeSlider.qml` through the per-entry `source` override from Task 10; `PLAYLIST_BUTTON` text becomes "Queue")
+- Modify: `modules/gui/qt/dialogs/toolbar/controlbar_profile_model.cpp` (add a default profile "VLC Reborn" next to "Minimalist Style" ~line 174, selected on first run when redesign is enabled; logged)
+- Create: `modules/gui/qt/redesign/player/ControlBar.qml`, `modules/gui/qt/redesign/player/controls/SeekBarWidget.qml`, `ConeVolumeSlider.qml`, `SubtitlePopupButton.qml`, `AudioPopupButton.qml`, `SidebarButton.qml`, `modules/gui/qt/redesign/player/ResumePrompt.qml`
+- Create: `modules/gui/qt/redesign/shell/ShellActions.qml` (singleton), `modules/gui/qt/redesign/util/ConeMath.qml` (singleton)
+- Test: `modules/gui/qt/tests/tst_ConeMath.qml`
+
+**Interfaces:**
+- Consumes: `ShellStates.bottomBarVisible` (Task 16), the upstream `PlayerControlLayout` and control-bar profile models, `Player.*`, `RedesignStyle`.
+- Produces:
+  - `ShellActions` signals: `queueRequested()`, `sidebarRequested()`, `trackPopupRequested(string tab, Item anchor)` (`tab` ∈ `"subtitles" | "audio" | "video"`). Control items emit them; the shell connects them in Tasks 23, 24 and 38. `PLAYLIST_BUTTON` emits `queueRequested()` when redesign is enabled.
+  - "VLC Reborn" profile (spec §11.1), one row: left `PREVIOUS_BUTTON, PLAY_BUTTON, NEXT_BUTTON`; centre `REDESIGN_SEEKBAR`; right `VOLUME, REDESIGN_SUBTITLE_POPUP, REDESIGN_AUDIO_POPUP, REDESIGN_SIDEBAR_BUTTON, PLAYLIST_BUTTON, FULLSCREEN_BUTTON`. Customize Player edits it like any other profile.
+  - `ControlBar.qml` hosts the upstream `PlayerControlLayout` for the active profile as a single row of height `RedesignStyle.controlBarHeight`, visible bound to `ShellStates.bottomBarVisible`. With redesign enabled, the Play button renders at 1.25× the other buttons and is never centred.
+  - `SeekBarWidget`: elapsed time, a thick track (height `RedesignStyle.spacingS`), total time; accent-filled progress, chapter ticks from `Player.chapters`, click/drag → `Player.jumpToPos`; fills the free width the same way `WIDGET_SPACER_EXTEND` does (`Layout.fillWidth`); exposes `signal hoveredAt(real position, real x)` for Task 45.
+  - `ConeVolumeSlider`: a right-pointing triangle whose filled part is the volume; above 100 % (up to 125 %) the overflow band uses `theme.fg.negative`; wheel ±5 %; clicking the speaker glyph toggles mute.
+  - `ConeMath.volumeAt(x: real, width: real, maxVolume: real): real` → `clamp(x / width, 0, 1) * maxVolume` rounded to 0.01; `ConeMath.fillHeightAt(x: real, width: real, height: real): real` → `height * clamp(x / width, 0, 1)`.
+  - `ResumePrompt`: replaces the upstream `ResumeDialog` placement with a compact bar anchored just above Play: "Continue from <time>?", **Continue** and **Start over** (same `Player` calls as `ResumeDialog.qml`), auto-hiding after the upstream timeout.
+
+- [ ] **Step 1: Write the failing test:** `volumeAt(0,200,1.25) === 0`, `volumeAt(200,200,1.25) === 1.25`, `volumeAt(100,200,1.25) === 0.63`, `volumeAt(-5,200,1) === 0`, `volumeAt(500,200,1) === 1`; `fillHeightAt(50,200,40) === 10`.
+- [ ] **Step 2:** Run `tst_ConeMath`. Expected: FAIL.
+- [ ] **Step 3:** Implement the items, profile and `ControlBar`; place it in `RedesignInterface`.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build vs the Figma Player frame: order and proportions match; dragging the cone sets the volume; reopening a partly watched file shows the prompt above Play; Customize Player can move the new items and the change persists.
+- [ ] **Step 5:** Commit: `qt: add redesign control bar on a VLC Reborn profile`.
+
+### Task 23: Subtitle and audio track popups
+
+**Files:**
+- Create: `modules/gui/qt/redesign/player/TrackPopup.qml`, `modules/gui/qt/redesign/player/TrackList.qml`
+
+**Interfaces:**
+- Consumes: `ShellActions.trackPopupRequested(tab, anchor)` (Task 22), `Player.subtitleTracks`, `Player.audioTracks`, `Player.videoTracks` (`TrackListModel`), `Player.audioDevices` (`AudioDeviceModel`, `select(index)`), Add subtitles dialog (Task 37; until then `DialogsProvider.loadSubtitlesFile()`).
+- `TrackPopup { property string initialTab }` opens above the clicked button with tabs **Subtitles | Audio | Video**:
+  - Subtitles: `TrackList` over `subtitleTracks` (checkable; selection uses the same model calls as upstream `TracksListPage.qml`) + "Add subtitles…".
+  - Audio: `TrackList` over `audioTracks`, then a heading "Output" and a radio list over `audioDevices`.
+  - Video: `TrackList` over `videoTracks`.
+- Closes on outside click or Esc; does not close when a track is chosen (spec: "menus keep closing" is the problem being solved).
+
+- [ ] **Step 1:** Implement.
+- [ ] **Step 2:** Dev build with an MKV that has 2 audio + 2 subtitle tracks: switching tracks keeps the popup open and takes effect; switching output device moves audio to that device.
+- [ ] **Step 3:** Commit: `qt: add track popups`.
+
+### Task 24: Queue panel and drag-to-queue
+
+**Files:**
+- Create: `modules/gui/qt/redesign/shell/RightPanel.qml`, `modules/gui/qt/redesign/player/QueuePanel.qml`
+- Modify: `modules/gui/qt/redesign/shell/RedesignInterface.qml`
+
+**Interfaces:**
+- Consumes: `ShellActions.queueRequested()` (Task 22); the upstream `PlaylistPane` (reused inside `QueuePanel`, not copied).
+- Produces: `RightPanel { property string mode }` with `mode` ∈ `"" | "queue" | "sidebar"`; `function toggle(m)` sets `mode = (mode === m ? "" : m)`. Task 38 adds the sidebar content. Width persisted like LibraryPanel.
+- `QueuePanel` header reads "Queue" with Clear and Save as playlist (`MLPlaylistListModel.create(name, ids)` via the New playlist dialog when it exists).
+- Dragging items from `LibraryPanel`/`Stage` library views onto the panel appends them (upstream `DragItem` mime data is accepted by `PlaylistPane` already — verify, and log any adapter needed).
+
+- [ ] **Step 1:** Implement.
+- [ ] **Step 2:** Dev build: Queue button toggles the panel; dragging 3 episodes from the library appends them in order; the next one plays automatically at the end of the current one.
+- [ ] **Step 3:** Commit: `qt: add queue panel`.
+
+### Task 25: Home page with three sections
 
 **Files:**
 - Create: `modules/gui/qt/redesign/cpp/mlrecentaudiomodel.hpp/.cpp`
@@ -584,7 +704,8 @@
   - "Continue Watching" → `MLRecentVideoModel` (progress bar from the `progress` role); link → `History.push(["video"])`.
   - "Listen Again" → `MLRecentAudioModel`; link → `["music"]`.
   - "Frequently Visited Folders" → `MLFoldersModel` (ML entry points); link → `["network"]`.
-  - A section with 0 items is hidden. If all three are empty, show `Widgets.EmptyLabelButton` → "Add folders" (opens the ML folders settings).
+  - A section with 0 items is hidden.
+  - When `History.viewPath[1] === "recent"` (Rail → Recent), the page shows the full `MLRecentMediaModel` list instead of the sections. If all three are empty, show `Widgets.EmptyLabelButton` → "Add folders" (opens the ML folders settings).
 
 - [ ] **Step 1: Write the failing test** following `tests/test_ml_model.cpp`'s ML fixture: add 2 audio and 1 video media to history. Expected: `rowCount() == 2`, and both rows' media IDs belong to the two audio items. Clearing history (`vlc_ml_clear_history`) gives `rowCount() == 0` after the history-changed event.
 - [ ] **Step 2:** Run it. Expected: FAIL.
@@ -592,11 +713,11 @@
 - [ ] **Step 4:** Run it. Expected: PASS. Dev build: the sections match the Figma Home frame; a fresh profile with no history shows the empty state.
 - [ ] **Step 5:** Commit: `qt: add redesign home page`.
 
-### Task 21: Breadcrumbs, grid/list view header
+### Task 26: Address bar, view modes, sort menu
 
 **Files:**
 - Create: `modules/gui/qt/redesign/library/Breadcrumbs.qml`, `ViewHeader.qml`
-- Create: `modules/gui/qt/redesign/util/PathText.qml` (singleton)
+- Create: `modules/gui/qt/redesign/util/PathText.qml` (singleton), `modules/gui/qt/redesign/library/CompactListView.qml`, `modules/gui/qt/redesign/util/LibraryOptions.qml` (singleton)
 - Test: `modules/gui/qt/tests/tst_PathText.qml`
 
 **Interfaces:**
@@ -604,9 +725,17 @@
   - Returns `[{label, path}]`, one per prefix of `viewPath`.
   - `labels` maps a path segment to a display name (`{"video": qsTr("Videos"), "music": qsTr("Music"), …}`).
   - Unknown segments are shown as-is.
-- `ViewHeader`: back/forward (`History.previous()` / next), `Breadcrumbs`, an item count, the sort control (reuses `Widgets.SortControl`), a grid/list toggle bound to `MainCtx.gridView`, and search (reuses `Widgets.SearchBox`).
+- Produces: `LibraryOptions.nextViewMode(mode: string): string` cycling `"grid" → "list" → "details" → "grid"` (unknown → `"grid"`), and `LibraryOptions.sortOptions(): var` returning, in order:
+  `[{label:"Name", criteria:"title", order:Qt.AscendingOrder}, {label:"Duration", criteria:"duration", order:Qt.AscendingOrder}, {label:"Date added", criteria:"insertion", order:Qt.DescendingOrder}, {label:"Unwatched first", criteria:"playcount", order:Qt.AscendingOrder}, {label:"Watched first", criteria:"playcount", order:Qt.DescendingOrder}]`.
+- `ViewHeader`:
+  - back/forward (`History.previous()` / next) and `Breadcrumbs` as a clickable address bar;
+  - an item count;
+  - a view-mode button (persisted `Settings { category: "redesign"; property string viewMode }`): `grid` → `MainCtx.gridView = true`; `list` → our `CompactListView` (thumbnail, title, duration rows over the page's model); `details` → `MainCtx.gridView = false` (upstream table);
+  - a sort menu built from `sortOptions()`, calling the page model's `sortByColumn(criteria, order)`;
+  - search (reuses `Widgets.SearchBox`);
+  - an overflow menu: Add file (`DialogsProvider.simpleMLAppendDialog` if present, else `simpleOpenDialog(false)`) and Add folder (`DialogsProvider.PLAppendDir()` or the ML folder picker — log the one used).
 
-- [ ] **Step 1: Write the failing test.**
+- [ ] **Step 1: Write the failing test** (`tst_PathText.qml`, plus `test_viewModes` and `test_sortOptions` covering the cycle, an unknown mode, and the exact sort list above).
   ```qml
   compare(PathText.crumbs(["video","all"], {video:"Videos", all:"All"}),
           [{label:"Videos", path:["video"]}, {label:"All", path:["video","all"]}])
@@ -615,9 +744,44 @@
 - [ ] **Step 2:** Run it. Expected: FAIL.
 - [ ] **Step 3:** Implement. Install `ViewHeader` above the pages in `Stage` / `LibraryPanel`. Upstream pages' own headers are hidden with their existing `header`-visibility properties where available; otherwise leave them and log it as a follow-up in `upstream-touchpoints.md` (no upstream edits in this task).
 - [ ] **Step 4:** Run it. Expected: PASS. Dev build: navigating Videos → a group → back shows correct crumbs, and clicking a crumb navigates.
-- [ ] **Step 5:** Commit: `qt: add redesign breadcrumbs and view header`.
+- [ ] **Step 5:** Commit: `qt: add redesign address bar, view modes and sort menu`.
 
-### Task 22: Music now-playing view and v0.2.0
+### Task 27: Cleaned right-click menu with Hide UI
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/uivisibility.hpp/.cpp`
+- Modify: `modules/gui/qt/menus/menus.cpp` (`VLCMenuBar::PopupMenu`: when redesign is enabled, append "Hide UI" and skip the "Interface"/"Tools" duplicates of the ☰ menu; ≤ 30 lines, logged)
+- Modify: `modules/gui/qt/redesign/shell/RedesignInterface.qml`
+- Test: `modules/gui/qt/tests/test_ui_visibility.cpp`
+
+**Interfaces:**
+- Produces: singleton `UiVisibility : QObject` with `Q_PROPERTY(bool hidden READ hidden WRITE setHidden NOTIFY hiddenChanged)` and `Q_INVOKABLE void toggle()`; `static UiVisibility* instance()` used by `menus.cpp`. `ShellStates.uiHidden` binds to it. Esc sets `hidden = false`.
+- Shortcut: `Ctrl+H` toggles (QML `Shortcut` in the shell; also listed in the onboarding shortcuts card).
+
+- [ ] **Step 1: Write the failing test:** default `hidden == false`; `toggle()` twice returns to false and emits `hiddenChanged` twice; `setHidden(true)` twice emits once.
+- [ ] **Step 2:** Run `test_qt_ui_visibility`. Expected: FAIL.
+- [ ] **Step 3:** Implement and wire the menu item.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: right-click → Hide UI hides both bars while video plays; Esc or Ctrl+H restores them; the menu has no entries duplicated from ☰.
+- [ ] **Step 5:** Commit: `qt: add hide UI and clean right-click menu`.
+
+### Task 28: Shortcut feedback toast
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/hotkeyfeedback.hpp/.cpp`
+- Modify: `modules/gui/qt/maininterface/mainctx.cpp` (`MainCtx::sendHotkey`: emit a new signal `hotkeySent(int key, int modifiers)` before forwarding; ≤ 5 lines, logged) and `mainctx.hpp`
+- Create: `modules/gui/qt/redesign/shell/ShortcutToast.qml`
+- Test: `modules/gui/qt/tests/test_hotkey_feedback.cpp`
+
+**Interfaces:**
+- Produces: `class HotkeyFeedback : public QObject` with `Q_INVOKABLE QString describe(int qtKey, int qtModifiers) const` → `"<combo> — <action label>"` (combo in VLC hotkey syntax, e.g. `"Ctrl+Right"`; label = translated `psz_text` of the `key-*` config item whose value equals the combo), or `""` when no action is bound. `ShortcutToast` shows non-empty descriptions for 1.5 s (top-centre, `Widgets.FloatingNotification` style).
+
+- [ ] **Step 1: Write the failing test** (libvlc instance): `describe(Qt::Key_Space, 0)` contains `"Space — "` and the play/pause label; `describe(Qt::Key_F13, 0) == ""`; a combo with Ctrl uses `"Ctrl+"`.
+- [ ] **Step 2:** Run `test_qt_hotkey_feedback`. Expected: FAIL.
+- [ ] **Step 3:** Implement; connect `MainCtx.hotkeySent` to the toast.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: pressing Space shows "Space — Play/Pause".
+- [ ] **Step 5:** Commit: `qt: show shortcut feedback toast`.
+
+### Task 29: Music now-playing view and v0.2.0
 
 **Files:**
 - Create: `modules/gui/qt/redesign/player/MusicView.qml`
@@ -632,17 +796,15 @@
 
 - [ ] **Step 1:** Implement.
 - [ ] **Step 2:** Dev build: play an MP3 with and without embedded art; it matches the Figma "Player – Music" frame apart from the waveform.
-- [ ] **Step 3:** Run `smoke-checklist.md` on a `v0.2.0-rc1` tag and fix the issues. Tag `v0.2.0`. Commit: `qt: add redesign music view`.
+- [ ] **Step 3:** Commit: `qt: add redesign music view`. Run `smoke-checklist.md` on a local build and fix the issues. **Release tagging (`v0.2.0`) is done by the owner.**
 
----
+## Release R3 — Settings, onboarding, dialogs (Months 9–13, ships v0.3.0)
 
-## Release R3 — Settings, onboarding, dialogs (Months 8–13, ships v1.0.0)
-
-### Task 23: SettingsModel / SettingItem
+### Task 30: SettingsModel / SettingItem
 
 **Files:**
 - Create: `modules/gui/qt/redesign/cpp/settingsmodel.hpp/.cpp`
-- Modify: `modules/gui/qt/maininterface/mainui.cpp` (register the singleton `Settings` in `VLC.Redesign`)
+- Modify: `modules/gui/qt/maininterface/mainui.cpp` (register the singleton `RedesignSettings` in `VLC.Redesign`; not `Settings`, which would clash with `QtCore.Settings`)
 - Test: `modules/gui/qt/tests/test_settings_model.cpp`
 
 **Interfaces:**
@@ -670,10 +832,12 @@
   public:
       explicit SettingsModel(vlc_object_t* obj, QObject* parent = nullptr);
       Q_INVOKABLE SettingItem* item(const QString& key);        // nullptr + msg_Err if config_FindConfig fails; cached per key
+      Q_INVOKABLE QStringList keysInSubcategory(int subcategory) const; // every non-obsolete, non-private config key whose module_config_t sits under that VLC subcategory (CONFIG_SUBCATEGORY markers), in declaration order
   };
   ```
   - Type mapping: `CONFIG_ITEM_BOOL→Bool`, `INTEGER→Choice` if `list_count>0` else `Integer`, `FLOAT→Float`, `STRING`/`PASSWORD→Choice` if a list exists else `String`, `LOADFILE`/`SAVEFILE`/`DIRECTORY→Path`, `KEY→Hotkey`.
   - `setValue` writes with `config_PutInt` / `config_PutFloat` / `config_PutPsz`, calls `config_SaveConfigFile(obj)`, emits `valueChanged`, and sets `restartPending` if the item `requiresRestart`.
+  - Choice labels: `choices` uses `ppsz_list_text` when present. Integer keys listed in `modules/gui/qt/redesign/settings/choice-labels.json` (resource, `{"key": [[value, "label"], …]}`) become `Choice` with those labels. It must include `sub-autodetect-fuzzy`: `[[0,"Don't auto-detect"],[1,"Any subtitle file"],[2,"Subtitles containing the video name"],[3,"Video name plus extra characters"],[4,"Exact video name"]]`.
   - A key needs a restart when its config item is in a module listed as restart-only in `settings-map.md` (column `notes` contains `restart`).
 
 - [ ] **Step 0:** Check every row of `docs/redesign/settings-map.md` against `vlc.exe -H --advanced` from the latest dev build. Move missing keys to "Dropped (no backend)" and commit: `docs: verify settings map against build`.
@@ -684,12 +848,14 @@
   - `resetRestoresDefault`.
   - `restartFlag`: setting a restart-marked key sets `restartPending`.
   - `sameObjectPerKey`: `item("qt-pip-mode") == item("qt-pip-mode")`.
+  - `fuzzyHasWords`: `item("sub-autodetect-fuzzy")->type() == Choice`; `choices[4].label == "Exact video name"`.
+  - `subcategoryKeys`: `keysInSubcategory(SUBCAT_INPUT_SCODEC)` contains `"sub-autodetect-fuzzy"` and no obsolete keys.
 - [ ] **Step 2:** Run `meson test test_qt_settings_model`. Expected: FAIL.
 - [ ] **Step 3:** Implement.
 - [ ] **Step 4:** Rerun. Expected: PASS.
 - [ ] **Step 5:** Commit: `qt: add redesign settings model`.
 
-### Task 24: EffectsController
+### Task 31: EffectsController
 
 **Files:**
 - Create: `modules/gui/qt/redesign/cpp/effectscontroller.hpp/.cpp`
@@ -724,7 +890,7 @@
 - [ ] **Step 4:** Rerun. Expected: PASS. Dev build: while audio plays, changing the EQ band slider through a temporary QML test page changes the sound immediately.
 - [ ] **Step 5:** Commit: `qt: add redesign effects controller`.
 
-### Task 25: ShortcutsModel
+### Task 32: ShortcutsModel
 
 **Files:**
 - Create: `modules/gui/qt/redesign/cpp/shortcutsmodel.hpp/.cpp`
@@ -747,7 +913,7 @@
 - [ ] **Step 4:** Run it. Expected: PASS.
 - [ ] **Step 5:** Commit: `qt: add redesign shortcuts model`.
 
-### Task 26: SettingRow and generic controls
+### Task 33: SettingRow and generic controls
 
 **Files:**
 - Create: `modules/gui/qt/redesign/settings/SettingRow.qml`, `controls/ToggleControl.qml`, `controls/DropdownControl.qml`, `controls/SliderControl.qml`, `controls/NumberControl.qml`, `controls/PathControl.qml`, `controls/TextControl.qml`
@@ -755,7 +921,7 @@
 - Test: `modules/gui/qt/tests/tst_ControlChooser.qml`
 
 **Interfaces:**
-- Consumes: `SettingItem.Type` (Task 23).
+- Consumes: `SettingItem.Type` (Task 30).
 - Produces:
   - `ControlChooser.controlFor(type: int, hasRange: bool, hint: string): string` returns a control file name:
     - Bool → `ToggleControl.qml`
@@ -765,7 +931,7 @@
     - Path → `PathControl.qml`
     - String → `TextControl.qml`
     - Hotkey → `""` (handled by the shortcuts page)
-  - `SettingRow { key: string; hint: string }` looks up `Settings.item(key)`. It is `visible: item !== null`, shows `item.text`, puts `item.longText` in an info tooltip (Figma "ⓘ"), and loads the control. The control's `value` is bound to `item.value`; on edit it calls `item.value = v`.
+  - `SettingRow { key: string; hint: string }` looks up `RedesignSettings.item(key)`. It is `visible: item !== null`, shows `item.text`, puts `item.longText` in an info tooltip (Figma "ⓘ"), and loads the control. The control's `value` is bound to `item.value`; on edit it calls `item.value = v`.
 
 - [ ] **Step 1: Write the failing test** covering each mapping above, including `controlFor(SettingItem.Integer, false, "slider") === "NumberControl.qml"`.
 - [ ] **Step 2:** Run it. Expected: FAIL.
@@ -773,7 +939,7 @@
 - [ ] **Step 4:** Run it. Expected: PASS.
 - [ ] **Step 5:** Commit: `qt: add redesign setting row and controls`.
 
-### Task 27: Settings modal with 13 pages and search
+### Task 34: Settings modal with 13 pages and search
 
 **Files:**
 - Create: `modules/gui/qt/redesign/settings/SettingsModal.qml`, `SettingsSidebar.qml`, `SettingsSearch.qml` (singleton)
@@ -782,7 +948,7 @@
 - Test: `modules/gui/qt/tests/tst_SettingsSearch.qml`
 
 **Interfaces:**
-- Consumes: `SettingRow` (Task 26), `Effects` (Task 24), `ShortcutsModel` (Task 25), `MLFoldersModel`, the upstream extensions model, and `docs/redesign/settings-map.md` (one `SettingRow` per mapped row, in Figma order).
+- Consumes: `SettingRow` (Task 33), `Effects` (Task 31), `ShortcutsModel` (Task 32), `MLFoldersModel`, the upstream extensions model, and `docs/redesign/settings-map.md` (one `SettingRow` per mapped row, in Figma order).
 - Produces:
   - `SettingsSearch.filter(index: var, query: string): var`.
     - `index` is `[{page, label, description}]`; the result is the matching entries.
@@ -791,9 +957,10 @@
   - `SettingsModal`: opened from the Rail ("⚙" in the title bar menu) and from `MainCtx`'s preferences action when redesign is on.
     - The sidebar has groups App (General, Interface, Privacy, Controls), Media (Playback, Video, Audio, Subtitles, Library) and System (Network, Performance, Recording, Extensions).
     - Each page has a header and a "Reset to defaults" button that calls `reset()` on each row.
-    - A restart banner shows while `Settings.restartPending`.
+    - Below the curated rows, a collapsible **Advanced** section lists `SettingRow`s for every key from `RedesignSettings.keysInSubcategory(sc)` (for the page's VLC subcategories, listed per page in `settings-map.md`) that is not already a curated row on any page.
+    - A restart banner shows while `RedesignSettings.restartPending`.
     - An "Advanced…" link calls `DialogsProvider.prefsDialog()` (QWidgets advanced view).
-  - The Interface page shows the 9 accent swatches from `Settings.accentSwatches` and writes `qt-accent-color` as `#rrggbb`. Theme Light/Dark/System sets `MainCtx.colorScheme.currentIndex` (the existing `ColorSchemeModel`).
+  - The Interface page shows the 9 accent swatches from `RedesignSettings.accentSwatches` and writes `qt-accent-color` as `#rrggbb`. Theme Light/Dark/System sets `MainCtx.colorScheme.currentIndex` (the existing `ColorSchemeModel`).
 
 - [ ] **Step 1: Write the failing test.**
   ```qml
@@ -812,7 +979,7 @@
   - searching "subtitle" lists Subtitles rows.
 - [ ] **Step 5:** Commit: `qt: add redesign settings modal`.
 
-### Task 28: Onboarding
+### Task 35: Onboarding
 
 **Files:**
 - Create: `modules/gui/qt/redesign/settings/Onboarding.qml`, `OnboardingSteps.qml`
@@ -823,15 +990,16 @@
 **Interfaces:**
 - Produces `OnboardingSteps`, a pure model:
   - `property bool hasMediaLibrary`
-  - `readonly property var steps`: `["theme", "privacy", "folders", "done"]`, without `"folders"` when `!hasMediaLibrary`
+  - `readonly property var steps`: `["theme", "shortcuts", "privacy", "folders", "done"]`, without `"folders"` when `!hasMediaLibrary`
   - `property int current`
   - `function next()` and `function back()`, clamped to range
   - `readonly property bool canFinish` (`current === steps.length - 1`)
 - `Onboarding.qml`: a modal over the shell.
   - **theme** step: Light/Dark/System + 9 swatches, applied live.
+  - **shortcuts** step: a read-only card of the essentials (play/pause, seek ±10 s, volume, fullscreen, subtitles track, Hide UI, quick bookmark), with each key read live from `ShortcutsModel`.
   - **privacy** step: `metadata-network-access` and `qt-updates-notif` rows.
   - **folders** step: the `MLFoldersModel` list with add/remove.
-  - **Finish:** `Settings.item("qt-privacy-ask").value = false`, then `MediaLib.reload()`, matching what `firstrunwizard.cpp` does at ~line 139.
+  - **Finish:** `RedesignSettings.item("qt-privacy-ask").value = false`, then `MediaLib.reload()`, matching what `firstrunwizard.cpp` does at ~line 139.
 
 - [ ] **Step 1: Write the failing test:**
   - `steps` with and without ML;
@@ -842,7 +1010,7 @@
 - [ ] **Step 4:** Run it. Expected: PASS. Dev build with a fresh profile (`--config=<tmp>`): onboarding shows, Finish persists (no onboarding on the next launch), and the ML scan starts. With `--no-qt-redesign` and a fresh profile, the old QWidgets wizard shows.
 - [ ] **Step 5:** Log the touchpoints. Commit: `qt: add redesign onboarding`.
 
-### Task 29: New playlist and Open network stream dialogs
+### Task 36: New playlist and Open network stream dialogs
 
 **Files:**
 - Create: `modules/gui/qt/redesign/dialogs/NewPlaylistDialog.qml`, `OpenNetworkStreamDialog.qml`
@@ -865,7 +1033,7 @@
 - [ ] **Step 4:** Run it. Expected: PASS. Dev build: create a playlist (it appears under Playlists); play an `https` HLS URL.
 - [ ] **Step 5:** Commit: `qt: add redesign new playlist and network stream dialogs`.
 
-### Task 30: Add subtitles and Keyboard shortcuts dialogs
+### Task 37: Add subtitles and Keyboard shortcuts dialogs
 
 **Files:**
 - Create: `modules/gui/qt/redesign/dialogs/AddSubtitlesDialog.qml`, `KeyboardShortcutsDialog.qml`
@@ -880,6 +1048,7 @@
   - The order follows `videoNames`.
 - `SubtitleAttacher`:
   - `Q_INVOKABLE bool attachToCurrent(const QUrl& sub)` calls `PlayerController::AddAssociatedMedia(SPU_ES, sub.toString(), true, true, false)` and returns `== VLC_SUCCESS`.
+  - `Q_INVOKABLE bool persist(const QUrl& media, const QUrl& sub)`: looks up the ML media by MRL and calls `vlc_ml_media_add_external_mrl(ml, id, sub, VLC_ML_FILE_TYPE_SUBTITLE)`; false when the media is not in the library. `attachToCurrent` and `attachToPlaylist` call it for every pair, so the association survives future playback.
   - `Q_INVOKABLE int attachToPlaylist(const QVariantList& pairs)` takes `pairs` as `[{index: int, subtitle: QUrl}]` over the main playlist. For each pair it calls `input_item_AddSlave(item, input_item_slave_New(url, SLAVE_TYPE_SPU, SLAVE_PRIORITY_USER))` on that playlist item's `input_item_t`, and returns the number attached.
 - `AddSubtitlesDialog` has three modes from the Figma frames:
   - **current file:** `attachToCurrent`;
@@ -894,14 +1063,159 @@
   ```
 - [ ] **Step 2:** Run it. Expected: FAIL.
 - [ ] **Step 3:** Implement both dialogs.
-- [ ] **Step 4:** Run it. Expected: PASS. Dev build: add an `.srt` to the playing video (subtitles show); remap Play/Pause to `Ctrl+P` (it works after closing, and the old binding is cleared).
-- [ ] **Step 5:** Run the smoke checklist on `v1.0.0-rc1` and fix the issues. Tag `v1.0.0`. Commit: `qt: add redesign subtitles and shortcuts dialogs`.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: add an `.srt` to the playing video (subtitles show); stop and replay the same library video — the subtitle loads automatically; remap Play/Pause to `Ctrl+P` (it works after closing, and the old binding is cleared).
+- [ ] **Step 5:** Commit: `qt: add redesign subtitles and shortcuts dialogs`. Run the smoke checklist on a local build and fix the issues; the owner tags `v0.3.0`.
 
----
+## Release R4 — Watch sidebar (Months 13–17, ships v0.4.0)
 
-## Release R4 — Polish (Months 13–15, ships v1.1.0)
+### Task 38: Watch sidebar shell, Playback tab, sleep timer
 
-### Task 31: Waveform peaks provider
+**Files:**
+- Create: `modules/gui/qt/redesign/sidebar/WatchSidebar.qml`, `PlaybackTab.qml`
+- Create: `modules/gui/qt/redesign/cpp/sleeptimer.hpp/.cpp`
+- Modify: `modules/gui/qt/redesign/shell/RightPanel.qml`
+- Test: `modules/gui/qt/tests/test_sleep_timer.cpp`
+
+**Interfaces:**
+- Consumes: `RightPanel` (Task 24), `ShellActions.sidebarRequested()` (Task 22).
+- `WatchSidebar { property string tab }` — tabs `"subtitles" | "audio" | "video" | "playback" | "bookmarks"`, shown when `RightPanel.mode === "sidebar"`; the last tab is persisted. Tasks 39, 40, 41 and 43 fill their tabs.
+- `PlaybackTab`: speed (`Player.rate`, 0.25–4.0, presets 0.5/0.75/1/1.25/1.5/2), Reverse (same call as upstream `ReverseButton.qml`), sleep timer, and three toggles persisted in `Settings { category: "redesign" }`: `showSubtitleTimeline` (default false), `showWaveform` (default true), `showMetadata` (default false; overlay of title/artist/codec at top-left in watch state).
+- `SleepTimer : QObject` (singleton): `Q_PROPERTY(int minutesLeft NOTIFY changed)`, `Q_PROPERTY(bool endOfItem NOTIFY changed)`, `Q_INVOKABLE void start(int minutes)` (0 cancels), `Q_INVOKABLE void stopAtEndOfItem(bool)`; on expiry calls `PlayerController::pause()`. Uses an injectable clock (`std::function<qint64()>`) and a 1 s tick for tests.
+
+- [ ] **Step 1: Write the failing test** (fake clock, fake pause callback): `start(15)` → `minutesLeft == 15`; advance 14 min 59 s → no pause; advance 1 s → pause called once and `minutesLeft == 0`; `start(0)` cancels; `stopAtEndOfItem(true)` + item-ended signal → pause once.
+- [ ] **Step 2:** Run `test_qt_sleep_timer`. Expected: FAIL.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: the sidebar button on the control bar opens the sidebar; speed and toggles work.
+- [ ] **Step 5:** Commit: `qt: add watch sidebar with playback tab`.
+
+### Task 39: Subtitles tab
+
+**Files:**
+- Create: `modules/gui/qt/redesign/sidebar/SubtitlesTab.qml`, `modules/gui/qt/redesign/util/SubtitleSize.qml` (singleton)
+- Test: `modules/gui/qt/tests/tst_SubtitleSize.qml`
+
+**Interfaces:**
+- Consumes: `Player.subtitleDelayMS`, `Player.secondarySubtitleDelayMS`, `Player.subtitleFPS`, `SettingRow` / `RedesignSettings` (Tasks 30, 33).
+- Rows (spec §11.3): delay slider ±10 000 ms step 50 with numeric field; secondary delay (same); FPS; font `freetype-font`; size mode Relative/Precise; outline `freetype-outline-thickness`; position `sub-margin`; default language `sub-language`; current track list (reuses `TrackList`).
+- `SubtitleSize`: `relativeOptions` = `[{label:"Smaller",scale:50},{label:"Small",scale:75},{label:"Normal",scale:100},{label:"Large",scale:150},{label:"Larger",scale:200}]`; `function nearestRelative(scale: int): int` → index of the closest option; `function clampPrecise(v: int): int` → `clamp(v, 10, 500)`. Both modes write `sub-text-scale` through `RedesignSettings.item("sub-text-scale")`; the mode itself is persisted in `Settings { category: "redesign"; property string subSizeMode: "relative" }`.
+
+- [ ] **Step 1: Write the failing test:** `nearestRelative(100) === 2`, `nearestRelative(130) === 3`, `nearestRelative(10) === 0`; `clampPrecise(5) === 10`, `clampPrecise(900) === 500`.
+- [ ] **Step 2:** Run `tst_SubtitleSize`. Expected: FAIL.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: dragging the delay slider shifts subtitles live; size changes apply to the next subtitle line (or after the vout restarts — note which in the commit).
+- [ ] **Step 5:** Commit: `qt: add subtitles sidebar tab`.
+
+### Task 40: Audio tab
+
+**Files:**
+- Create: `modules/gui/qt/redesign/sidebar/AudioTab.qml`, `modules/gui/qt/redesign/sidebar/PresetTiles.qml`
+
+**Interfaces:**
+- Consumes: `Player.audioDelayMS`, `Player.audioDevices`, `Effects` (Task 31), `EqualizerPanel` (Task 34), `RedesignSettings` (`audio-language`).
+- Rows: audio delay slider ±10 000 ms; default language; output device list; **equalizer presets as tiles** (`PresetTiles` over `Effects.equalizerPresets`, each with a glyph per preset family: flat, bass, treble, vocal, party, classical — mapping table in `PresetTiles.qml`; unknown → generic glyph), expandable full `EqualizerPanel`; compressor, spatializer, stereo widener as collapsible groups with enable switches (the `Property 1=expanded*` PNGs show their look).
+
+- [ ] **Step 1:** Implement.
+- [ ] **Step 2:** Dev build while music plays: choosing "Rock" changes sound immediately; the delay slider shifts audio; the expanded compressor matches `Property 1=expanded.png`.
+- [ ] **Step 3:** Commit: `qt: add audio sidebar tab`.
+
+### Task 41: Video tab
+
+**Files:**
+- Create: `modules/gui/qt/redesign/sidebar/VideoTab.qml`
+- Modify: `modules/gui/qt/redesign/cpp/effectscontroller.hpp/.cpp` (transform)
+- Test: extend `modules/gui/qt/tests/test_effects_controller.cpp`
+
+**Interfaces:**
+- Consumes: `Effects.videoAdjust*` (Task 31), `Player.zoom`, `Player.aspectRatio`, `Player.crop` (`VLCVarChoiceModel`).
+- Produces on `Effects`: `Q_PROPERTY(QString transform READ transform WRITE setTransform NOTIFY transformChanged)` with values `"" | "90" | "180" | "270" | "hflip" | "vflip"`. `""` removes `transform` from the `video-filter` list; any other value ensures `transform` is in the list and sets `transform-type`. Applied to the live vout when present, always written to config.
+- Rows: filter presets (None, Vivid, Warm, Cool, Black & white → fixed `videoAdjust` maps defined in `VideoTab.qml`; each tile shows the media's library thumbnail, or a neutral swatch, previewed through a QtQuick.Effects `MultiEffect` with the preset's brightness/contrast/saturation); flip/rotate buttons; zoom, aspect ratio, crop dropdowns over the `VLCVarChoiceModel`s; colour adjust sliders; HDR: if `RedesignSettings.item("d3d11-hdr-mode")` (or the equivalent key found in `modules/video_output/win32`) exists, show it as a dropdown, else hide the row.
+
+- [ ] **Step 1: Write the failing tests:** `setTransform("hflip")` → config `video-filter` contains `transform`, `transform-type == "hflip"`; `setTransform("")` → `transform` removed and other filters (pre-set `"adjust"`) kept.
+- [ ] **Step 2:** Run `test_qt_effects_controller`. Expected: FAIL on the new cases.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: rotate 90° and flip work on a playing video.
+- [ ] **Step 5:** Commit: `qt: add video sidebar tab`.
+
+### Task 42: Per-show presets
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/presetstore.hpp/.cpp`
+- Modify: `modules/gui/qt/redesign/sidebar/SubtitlesTab.qml`, `AudioTab.qml` (preset bar at the top of each)
+- Test: `modules/gui/qt/tests/test_preset_store.cpp`
+
+**Interfaces:**
+- Produces: singleton `PresetStore : QObject`:
+  - storage `<config_GetUserDir(VLC_USERDATA_DIR)>/vlc-reborn/presets.json`, schema `{"version":1,"presets":[{"name":str,"folders":[url…],"values":{key: value}}]}`; `values` keys are config keys (`sub-text-scale`, `freetype-font`, `freetype-outline-thickness`, `sub-margin`, `sub-language`, `audio-language`) plus the pseudo-keys `subtitleDelayMS`, `audioDelayMS`.
+  - `Q_INVOKABLE QStringList names() const`, `Q_INVOKABLE bool save(const QString& name, const QVariantMap& values)`, `Q_INVOKABLE bool remove(const QString& name)`, `Q_INVOKABLE void bindFolder(const QString& name, const QUrl& folder)`, `Q_INVOKABLE QString presetForMedia(const QUrl& media) const` (the preset whose bound folder is the longest prefix of the media's directory; `""` if none), `Q_INVOKABLE QVariantMap values(const QString& name) const`.
+  - A corrupt or unreadable file → empty store, original renamed to `presets.json.bak`, error logged.
+- Auto-apply: on `Player.inputChanged`, if `presetForMedia(Player.url)` is non-empty, apply its config keys via `RedesignSettings` and its delays via `Player` once the input is started; show a toast "Preset “<name>” applied".
+
+- [ ] **Step 1: Write the failing tests** (temp dir): save/reload round trip; `presetForMedia("file:///D:/Shows/Wand/S01/e1.mkv")` with folders `D:/Shows/Wand` and `D:/Shows` → the Wand preset; non-file URL → `""`; corrupt file → empty store + `.bak` exists; `remove` unknown → false.
+- [ ] **Step 2:** Run `test_qt_preset_store`. Expected: FAIL.
+- [ ] **Step 3:** Implement and add the preset bar (select, Save as…, Bind to this folder, Delete).
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: save a preset with delay +300 ms bound to a show folder; the next episode starts with +300 ms.
+- [ ] **Step 5:** Commit: `qt: add per-show presets`.
+
+### Task 43: Bookmarks & chapters tab, Ctrl+B
+
+**Files:**
+- Create: `modules/gui/qt/redesign/sidebar/BookmarksTab.qml`
+
+**Interfaces:**
+- Consumes: `MLBookmarkModel` (`player`, `ml` properties; `add()`, `remove()`, `select()` — if `add`/`remove` are not invokable from QML, add `Q_INVOKABLE` to their declarations in `mlbookmarkmodel.hpp`, logged), `Player.chapters` (`ChapterListModel`).
+- Tab: "Bookmarks" list (time + name, click = seek via `select`, delete button, inline rename via the model's edit role) and "Chapters" list (click = seek). `Ctrl+B` (QML `Shortcut` in the shell, active while a media item is playing and it is in the library) calls `add()` and shows the toast "Bookmark added at <time>"; when the media is not in the library the toast says "Bookmarks need the file to be in your library".
+
+- [ ] **Step 1:** Implement.
+- [ ] **Step 2:** Dev build: Ctrl+B three times at different times → three entries; clicking one seeks; restart → they persist.
+- [ ] **Step 3:** Commit: `qt: add bookmarks tab and quick bookmark`.
+
+### Task 44: Subtitle timeline
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/subtitlecues.hpp/.cpp`, `modules/gui/qt/redesign/player/SubtitleTimeline.qml`
+- Test: `modules/gui/qt/tests/test_subtitle_cues.cpp`
+
+**Interfaces:**
+- Produces:
+  ```cpp
+  struct SubtitleCue { qint64 startMs; qint64 endMs; QString text; };
+  namespace redesign {
+  QVector<SubtitleCue> parseSrt(const QString&);   // tolerant of BOM, CRLF, missing final blank line; skips malformed blocks
+  QVector<SubtitleCue> parseVtt(const QString&);   // "WEBVTT" header, optional hours, cue settings ignored
+  QVector<SubtitleCue> parseAss(const QString&);   // [Events] Dialogue lines, Format-driven Start/End/Text, override tags {\...} stripped, \N -> newline
+  QVector<SubtitleCue> parseByExtension(const QString& path, const QString& content);  // .srt/.vtt/.ass/.ssa, else empty
+  }
+  class SubtitleCueModel : public QAbstractListModel { // roles startMs, endMs, text; Q_PROPERTY(QUrl source ...) loads/decodes UTF-8 (fallback Latin-1)
+      Q_INVOKABLE int indexAt(qint64 ms) const;          // cue containing ms, else -1
+  };
+  ```
+- `SubtitleTimeline`: shown above the control bar when the Playback toggle `showSubtitleTimeline` is on **and** the selected subtitle track is an external file (its URL from the player's track/slave info; otherwise it shows "Timeline works with external subtitle files"). Cue blocks are drawn on a ±30 s window around `Player.time + subtitleDelay`; dragging the strip horizontally changes `Player.subtitleDelayMS` live.
+
+- [ ] **Step 1: Write the failing tests:** an SRT with 3 cues (one with CRLF and BOM) → 3 cues with exact ms; VTT with `00:01.500 --> 00:02.000` → start 1500; ASS Dialogue with `{\i1}Hi\Nthere` → text "Hi\nthere"; malformed block skipped; `indexAt` inside / between cues.
+- [ ] **Step 2:** Run `test_qt_subtitle_cues`. Expected: FAIL.
+- [ ] **Step 3:** Implement parser, model and strip.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: with an external SRT, dragging the strip by 1 s changes the delay by 1 000 ms and the cue lines up with speech.
+- [ ] **Step 5:** Commit: `qt: add subtitle timeline`.
+
+### Task 45: Seek thumbnail preview
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/seekpreview.hpp/.cpp`, `modules/gui/qt/redesign/player/SeekPreview.qml`
+- Test: `modules/gui/qt/tests/test_seek_preview.cpp`
+
+**Interfaces:**
+- Consumes: `SeekBarWidget.hoveredAt(position, x)` (Task 22).
+- Produces: `class SeekPreviewProvider : public QObject` with `Q_PROPERTY(QUrl media …)`, `Q_INVOKABLE void request(double position)`, `signal ready(double position, QImage image)` exposed to QML through a `QQuickImageProvider` id `seekpreview` (URL `image://seekpreview/<bucket>`). Requests use `vlc_preparser` thumbnail generation with a seek to the position (the `seek` struct in `vlc_preparser.h`), width 240 px, are debounced 120 ms, keep only the latest in flight, and cache by 1 %-buckets (LRU, 100 entries) per media.
+- Pure helper: `static int bucketFor(double position)` → `qBound(0, int(position * 100), 99)`.
+- Non-`file://` media → no requests; the preview shows only the time label.
+
+- [ ] **Step 1: Write the failing tests:** `bucketFor(0) == 0`, `bucketFor(0.999) == 99`, `bucketFor(1.0) == 99`, `bucketFor(-1) == 0`; LRU evicts the oldest after 100 inserts (cache class tested directly); `request` on an `https://` media emits nothing within 300 ms.
+- [ ] **Step 2:** Run `test_qt_seek_preview`. Expected: FAIL.
+- [ ] **Step 3:** Implement provider and the hover bubble (thumbnail + time) above the seek bar.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: hovering the seek bar of a local video shows frames within ~300 ms; repeat hovers are instant.
+- [ ] **Step 5:** Commit: `qt: add seek thumbnail preview`.
+
+### Task 46: Waveform peaks provider
 
 **Files:**
 - Create: `modules/gui/qt/redesign/cpp/waveform.hpp/.cpp`
@@ -939,15 +1253,15 @@
 - [ ] **Step 4:** Run it. Expected: PASS. Dev build: a 4-minute MP3 yields peaks in under 10 s on a typical machine, and replaying uses the cache (instant).
 - [ ] **Step 5:** Commit: `qt: add waveform peaks provider`.
 
-### Task 32: Waveform seek bar
+### Task 47: Waveform seek bar
 
 **Files:**
 - Create: `modules/gui/qt/redesign/player/WaveformSeekBar.qml`
 - Modify: `modules/gui/qt/redesign/player/ControlBar.qml`
 
 **Interfaces:**
-- Consumes: `WaveformProvider` (Task 31), `Player.position`, `Player.jumpToPos(double)`.
-- When `!Player.hasVideoOutput && provider.ready`, the control bar shows `WaveformSeekBar`:
+- Consumes: `WaveformProvider` (Task 46), `Player.position`, `Player.jumpToPos(double)`.
+- When `!Player.hasVideoOutput && provider.ready` **and the Playback tab toggle "Show waveform on seek bar" (`Settings { category: "redesign"; property bool showWaveform: true }`) is on**, the control bar shows `WaveformSeekBar`:
   - drawn with QtQuick `Shape` bars (one per peak, decimated to the available width);
   - played part in the accent colour, rest in `theme.fg.secondary`;
   - click/drag seeks.
@@ -955,9 +1269,11 @@
 
 - [ ] **Step 1:** Implement.
 - [ ] **Step 2:** Dev build: an MP3 shows the waveform after the scan, and seeking by click and drag works. A network audio stream keeps the normal bar. Video files keep the normal bar.
-- [ ] **Step 3:** Commit: `qt: add waveform seek bar`.
+- [ ] **Step 3:** Commit: `qt: add waveform seek bar`. Run the smoke checklist on a local build; the owner tags `v0.4.0`.
 
-### Task 33: Light theme, accessibility and performance pass; v1.1.0
+## Release R5 — Polish (Months 17–19, ships v1.0.0)
+
+### Task 48: Light theme, accessibility and performance pass; v1.0.0
 
 **Files:**
 - Modify: `modules/gui/qt/style/redesignpalette.cpp` (light values per the "Player – Light" frame)
@@ -971,7 +1287,68 @@
 - [ ] **Step 2:** Add `Accessible.name` / `Accessible.role` and `Navigation.*` up/down/left/right wiring for each listed item. Rerun. Expected: exit 0. Add it to CI.
 - [ ] **Step 3:** Tune the light palette against the Figma "Player – Light" frame. Rerun `test_qt_redesign_palette`. Expected: PASS (AA still holds).
 - [ ] **Step 4:** Performance: run with `QSG_RENDER_TIMING=1` and scroll a 2,000-item video grid; record the frame times in `docs/redesign/perf.md`. Any view with sustained frames over 16 ms gets a follow-up task in that document.
-- [ ] **Step 5:** Run the smoke checklist on `v1.1.0-rc1` (including Windows Narrator reading Rail, control-bar and settings items) and fix the issues. Tag `v1.1.0`. Commit: `qt: redesign light theme, accessibility and perf pass`.
+- [ ] **Step 5:** Commit: `qt: redesign light theme, accessibility and perf pass`. Run the smoke checklist (including Windows Narrator reading Rail, control-bar, sidebar and settings items) and fix the issues; the owner tags `v1.0.0`.
+
+## Release R6 — Extensions (Months 19–21, ships v1.1.0)
+
+### Task 49: OpenSubtitles search (requires the user's API key)
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/opensubtitles.hpp/.cpp`, `modules/gui/qt/redesign/dialogs/SubtitleSearchPage.qml`
+- Modify: `modules/gui/qt/redesign/dialogs/AddSubtitlesDialog.qml` (source choice "This computer | Search online")
+- Modify: `modules/gui/qt/qt.cpp` (`add_password("qt-opensubtitles-api-key", "", …)`, logged)
+- Test: `modules/gui/qt/tests/test_opensubtitles.cpp`
+
+**Interfaces:**
+- Produces:
+  - `static QString OpenSubtitlesClient::movieHash(QIODevice&)` — the OpenSubtitles hash: file size + sum of the first and last 64 KiB as little-endian uint64 words, 16 lowercase hex digits; files under 128 KiB → `""`.
+  - `Q_INVOKABLE void search(const QUrl& media, const QString& language)` → `GET https://api.opensubtitles.com/api/v1/subtitles?moviehash=…&query=<file base name>&languages=…` with headers `Api-Key` (from config) and `User-Agent: VLC Reborn v<version>`; `signal results(QVariantList)` of `{fileId, release, language, downloads}`; `signal failed(QString)`.
+  - `Q_INVOKABLE void download(int fileId, const QUrl& saveDir)` → `POST /download`, then fetch the returned link into `saveDir`; `signal downloaded(QUrl file)`, which the dialog passes to `SubtitleAttacher.persist`.
+  - The network layer is a `QNetworkAccessManager*` injectable for tests.
+- The "Search online" source is hidden while `qt-opensubtitles-api-key` is empty; Settings → Subtitles shows the key field with a link to the OpenSubtitles API page. The owner reviews the OpenSubtitles terms before release.
+
+- [ ] **Step 1: Write the failing tests:** `movieHash` of a generated 200 KiB buffer equals a hash computed by an independent in-test reference implementation of the published algorithm; a < 128 KiB buffer → `""`; `search` sends the two headers and the three query items (fake QNAM capturing the request); a 401 reply emits `failed`.
+- [ ] **Step 2:** Run `test_qt_opensubtitles`. Expected: FAIL.
+- [ ] **Step 3:** Implement client and page.
+- [ ] **Step 4:** Run it. Expected: PASS. With a real key (owner): search an episode, download, it plays with the subtitle and the association persists.
+- [ ] **Step 5:** Commit: `qt: add OpenSubtitles search`.
+
+### Task 50: Settings profiles
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/profilemanager.hpp/.cpp`, `modules/gui/qt/redesign/settings/ProfilesPage.qml`
+- Test: `modules/gui/qt/tests/test_profile_manager.cpp`
+
+**Interfaces:**
+- Produces: singleton `ProfileManager : QObject`:
+  - profiles live in `<config_GetUserDir(VLC_CONFIG_DIR)>/vlc-reborn/profiles/<name>/` holding `vlcrc` and `controlbar.ini` (the control-bar profile export used by upstream `ControlbarProfileModel`); the active name is stored in `<…>/vlc-reborn/active-profile`.
+  - `Q_INVOKABLE QStringList profiles() const`, `Q_INVOKABLE bool saveCurrentAs(const QString& name)` (copies the live `vlcrc` after `config_SaveConfigFile` + exports the control-bar profiles), `Q_INVOKABLE bool remove(const QString& name)` (cannot remove the active one), `Q_INVOKABLE bool activate(const QString& name)` (writes `active-profile`; the swap happens at next start), `Q_PROPERTY(bool restartRequired …)`.
+  - At startup (`qt.cpp` open, before the config is read by the interface), if `active-profile` names a profile different from the last applied one, copy its files over the live ones. Names are validated `[A-Za-z0-9 _-]{1,40}`.
+- `ProfilesPage` (Settings → General): list, Save current as…, Activate (shows the restart banner), Delete.
+
+- [ ] **Step 1: Write the failing tests** (temp config dir): save → files exist; invalid name `"../x"` → false; remove active → false; `activate` sets `restartRequired`; startup swap copies the profile's `vlcrc` over the live one exactly once.
+- [ ] **Step 2:** Run `test_qt_profile_manager`. Expected: FAIL.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: two profiles with different accent colours; activating and restarting switches the accent and the control-bar layout.
+- [ ] **Step 5:** Commit: `qt: add settings profiles`.
+
+### Task 51: Two-tone menu icon set (needs the designer's SVGs)
+
+**Files:**
+- Create: `modules/gui/qt/redesign/assets/icons/twotone/*.svg` (from the designer; colour keys as used by `ColorizedSvgIcon`: primary grey = `COLOR1_KEY`, accent = `COLOR_ACCENT_KEY`)
+- Create: `modules/gui/qt/redesign/cpp/menuicons.hpp/.cpp`
+- Modify: `modules/gui/qt/menus/menus.cpp` (where menu actions get icons: when redesign is enabled, use `redesign::menuIcon(name)`; ≤ 30 lines, logged)
+- Test: `modules/gui/qt/tests/test_menu_icons.cpp`
+
+**Interfaces:**
+- Produces: `QIcon redesign::menuIcon(const QString& name)` → a `ColorizedSvgIcon` from `:/redesign/icons/twotone/<name>.svg` coloured with the palette's `Window/Fg/Secondary` and accent; unknown name → null icon (menu falls back to upstream). A `QHash` maps upstream menu icon resource paths → two-tone names.
+- `extras/redesign/check_icons.py` gains a `--twotone` mode verifying every two-tone SVG contains both colour keys.
+
+- [ ] **Step 1: Write the failing test:** `menuIcon("open")` is non-null and its 16 px pixmap contains at least one accent-coloured pixel and one grey pixel; `menuIcon("nope")` is null.
+- [ ] **Step 2:** Run `test_qt_menu_icons`. Expected: FAIL.
+- [ ] **Step 3:** Implement; replace menu icons.
+- [ ] **Step 4:** Run it. Expected: PASS. Dev build: the right-click and ☰ menus show grey/orange icons that follow the accent colour.
+- [ ] **Step 5:** Commit: `qt: add two-tone menu icons`. The owner tags `v1.1.0` after the smoke checklist.
 
 ---
 
