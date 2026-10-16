@@ -76,9 +76,9 @@ Every edit is listed in `docs/redesign/upstream-touchpoints.md` with its purpose
 | `qt.cpp` | Register the `qt-redesign` bool (default true) and change the `qt-accent-color` default |
 | `style/systempalette.cpp` (~line 390) | When `qt-redesign` is on, call `makeRedesignDark/Light/SystemPalette()` from the new `style/redesignpalette.cpp` |
 | `style/VLCStyle.qml` | R1 only: a handful of radius/height values |
-| `meson.build`, `Makefile.am` | One appended block each registering `VLC.Redesign` and the new C++ files |
+| `meson.build` | One appended block registering `VLC.Redesign` and the new C++ files. The fork builds with Meson only (`build.sh -m`), so `Makefile.am` is not edited |
 | `pixmaps/icons/*.svg`, `VLCIcons.json`, generated `VLCIcons.ttf` / `vlcicons.*` | Icon replacement through the generator only |
-| `src/misc/update.c`, `update.h` | Fork status URL and public key (§7) |
+| `src/misc/update.c`, `include/vlc_pgpkey.h` | Fork status URL and public key (§7) |
 | `extras/package/win32/NSIS/*` | Product name, icons and branding (§7) |
 
 **Rule:** a change to an upstream file of more than about 30 lines becomes a new file in `VLC.Redesign` instead. `qt-redesign=false` must always fall back to the stock upstream UI. This is the escape hatch and the regression baseline.
@@ -187,7 +187,7 @@ Config-derived labels are already translated. New strings use `qtr()` and fall b
   - On tag: signed NSIS installer plus portable zip, published to GitHub Releases.
 - **Branding (blocks first public release):** "VLC" and the cone are VideoLAN trademarks. The fork ships under its own product name and icon ("*Name* — built on VLC"), applied to the NSIS installer, window title, About dialog and executable metadata. The name is chosen in Month 0.
 - **Updates:**
-  - `src/misc/update.c` points at the fork's status file hosted on GitHub Releases; `update.h` embeds the fork's own public key.
+  - `src/misc/update.c` points at the fork's status file hosted on GitHub Releases; `include/vlc_pgpkey.h` embeds the fork's own public key.
   - Status files are signed in the release workflow; the private key lives only in CI secrets.
   - Users are never offered official VLC builds.
 - **Code signing:** Azure Trusted Signing, or an OV certificate if identity validation for Trusted Signing isn't possible. Applied to `vlc.exe`, the DLLs and the installer.
