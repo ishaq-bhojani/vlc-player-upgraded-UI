@@ -63,3 +63,6 @@ static-lib/
 !buildsystem/
 !build.rs
 !extras/package/apple/build.sh
+
+# Windows dev build output (extras/redesign/dev-build.sh)
+build-win64/
