@@ -96,8 +96,10 @@ qml_modules += {
         'player/controls/SubtitlePopupButton.qml',
         'player/controls/AudioPopupButton.qml',
         'player/controls/SidebarButton.qml',
+        'library/HomeContent.qml',
         'library/HomePage.qml',
         'library/HomeSection.qml',
+        'util/OnceLatch.qml',
         'player/RedesignControlBar.qml',
         'player/ResumePrompt.qml',
         'shell/Rail.qml',
@@ -123,4 +125,5 @@ qml_tests += {
     'tst_ShellStates': files('../tests/tst_ShellStates.qml'),
     'tst_PinStore': files('../tests/tst_PinStore.qml'),
     'tst_ConeMath': files('../tests/tst_ConeMath.qml'),
+    'tst_OnceLatch': files('../tests/tst_OnceLatch.qml'),
 }
