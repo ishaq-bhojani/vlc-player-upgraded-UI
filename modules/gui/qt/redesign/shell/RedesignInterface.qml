@@ -380,14 +380,29 @@ Item {
                 }
             }
 
-            // slot of the control bar
+            // the control bar: a row below the panels; in the immersive state it takes no room
+            // and floats over the stage instead
             Item {
                 id: controlBarSlot
 
                 Layout.fillWidth: true
-                Layout.preferredHeight: 0
+                Layout.preferredHeight: (shellStates.bottomBarVisible && (shellStates.state !== "immersive")) ? controlBar.implicitHeight
+                                                                                                              : 0
 
-                visible: shellStates.bottomBarVisible
+                RedesignControlBar {
+                    id: controlBar
+
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        bottom: parent.bottom
+                    }
+
+                    visible: shellStates.bottomBarVisible
+
+                    // ShellActions.queueRequested, sidebarRequested and trackPopupRequested are
+                    // connected where their panels are (queue, watch sidebar, track popups)
+                }
             }
         }
 

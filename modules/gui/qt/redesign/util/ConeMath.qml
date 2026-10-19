@@ -63,15 +63,77 @@ QtObject {
     readonly property real _sourceWidth: 89
     readonly property real _sourceHeight: 27.3322
 
+    // the outline scaled to `width` x `height`: [["M", x, y], ["C", x1, y1, x2, y2, x, y], ["L", x, y], ...]
+    // (what a Canvas path needs: moveTo, bezierCurveTo, lineTo)
+    function silhouetteSegments(width: real, height: real): var {
+        const segments = []
+        for (const segment of _outline) {
+            const scaled = [segment[0]]
+            for (let i = 1; i < segment.length; i += 2) {
+                scaled.push((segment[i] - _originX) / _sourceWidth * width)
+                scaled.push((segment[i + 1] - _originY) / _sourceHeight * height)
+            }
+            segments.push(scaled)
+        }
+        return segments
+    }
+
+    // The outline as a closed polyline (curves flattened), for columns().
+    function _polyline(width: real, height: real): var {
+        const steps = 12
+        const points = []
+        let x = 0
+        let y = 0
+        for (const s of silhouetteSegments(width, height)) {
+            if (s[0] === "C") {
+                for (let k = 1; k <= steps; ++k) {
+                    const t = k / steps
+                    const u = 1 - t
+                    points.push([u * u * u * x + 3 * u * u * t * s[1] + 3 * u * t * t * s[3] + t * t * t * s[5],
+                                 u * u * u * y + 3 * u * u * t * s[2] + 3 * u * t * t * s[4] + t * t * t * s[6]])
+                }
+                x = s[5]
+                y = s[6]
+            } else {
+                x = s[1]
+                y = s[2]
+                points.push([x, y])
+            }
+        }
+        return points
+    }
+
+    // The cone as `count` vertical columns of equal width, [[top, bottom], ...] (y from the top of
+    // a box `width` x `height`): QtQuick.Shapes, Path and Canvas are not part of the static Windows
+    // build of Qt, so the cone is made of rectangles.
+    function silhouetteColumns(width: real, height: real, count: int): var {
+        const points = _polyline(width, height)
+        const columns = []
+        for (let i = 0; i < count; ++i) {
+            const x = (i + 0.5) * width / count
+            let top = Infinity
+            let bottom = -Infinity
+            for (let j = 0; j < points.length; ++j) {
+                const a = points[j]
+                const b = points[(j + 1) % points.length]
+                if ((a[0] <= x && b[0] > x) || (b[0] <= x && a[0] > x)) {
+                    const y = a[1] + (x - a[0]) / (b[0] - a[0]) * (b[1] - a[1])
+                    top = Math.min(top, y)
+                    bottom = Math.max(bottom, y)
+                }
+            }
+            columns.push(top <= bottom ? [top, bottom] : [0, 0])
+        }
+        return columns
+    }
+
+    // the same as an SVG path string
     function silhouettePath(width: real, height: real): string {
         let path = ""
-        for (const segment of _outline) {
+        for (const segment of silhouetteSegments(width, height)) {
             path += segment[0]
-            for (let i = 1; i < segment.length; i += 2) {
-                const px = (segment[i] - _originX) / _sourceWidth * width
-                const py = (segment[i + 1] - _originY) / _sourceHeight * height
-                path += " " + Number(px.toFixed(3)) + " " + Number(py.toFixed(3))
-            }
+            for (let i = 1; i < segment.length; ++i)
+                path += " " + Number(segment[i].toFixed(3))
             path += " "
         }
         return path + "Z"

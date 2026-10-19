@@ -92,9 +92,11 @@ QtObject {
     function control(id) {
         const entry = controlList.find( function(e) { return ( e.id === id ) } )
 
-        // the items of the redesign are not available in the stock interface
+        // the items of the redesign are not available in the stock interface (silently: a saved
+        // profile may still contain them)
         if (entry === undefined || (entry.redesign && !MainCtx.redesign)) {
-            console.warn("control delegate id " + id +  " doesn't exist")
+            if (entry === undefined)
+                console.warn("control delegate id " + id +  " doesn't exist")
             return { source: controlPath + "Fallback.qml" }
         }
 

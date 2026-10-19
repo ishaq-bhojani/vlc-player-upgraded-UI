@@ -17,7 +17,6 @@
  *****************************************************************************/
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import QtQuick.Templates as T
 
 import VLC.MainInterface
@@ -32,7 +31,7 @@ import VLC.Redesign
  * right pointing triangle whose filled part is the volume.
  *
  * The silhouette is the one of the owner's Figma export (docs/redesign/figma-svg/volume.svg,
- * 89 x 28, see ConeMath.silhouettePath): a dark track, filled up to the volume with the
+ * 89 x 28, see ConeMath.silhouetteColumns): a dark track, filled up to the volume with the
  * gradient of the export (green, yellow, accent). Above 100 % (up to MainCtx.maxVolume) the
  * overflow band is filled with the negative colour. Wheel changes the volume by 5 %.
  * Registered for VOLUME in redesign mode only (PlayerControlbarControls.qml).
@@ -180,75 +179,69 @@ T.Pane {
             T.ToolTip.visible: mouseArea.containsMouse || mouseArea.pressed
             T.ToolTip.text: Math.round(root._volume * 100) + "%"
 
-            // the track
-            Shape {
+            // The cone: rectangles, one per pixel column, sized by the silhouette of volume.svg
+            // (QtQuick.Shapes, Path and Canvas are not in the static Windows build of Qt).
+            // A column is the track colour, the gradient of volume.svg (green, yellow, accent) up to
+            // 100 %, or the negative colour above 100 %, depending on the volume.
+            Item {
+                id: coneBody
+
                 anchors.fill: parent
 
-                preferredRendererType: Shape.CurveRenderer
+                // anti-aliases the sloped edges of the columns
+                layer.enabled: true
+                layer.samples: 4
 
-                ShapePath {
-                    fillColor: theme.bg.primary
-                    strokeWidth: -1
+                readonly property int columnCount: Math.max(1, Math.round(width))
+                readonly property real columnWidth: width / columnCount
+                readonly property var columns: ConeMath.silhouetteColumns(width, height, columnCount)
 
-                    PathSvg { path: ConeMath.silhouettePath(cone.width, cone.height) }
+                readonly property real volumeX: width * Math.min(root._volume / root._maxVolume, 1)
+                readonly property real fullX: width * root._fullPosition
+
+                function _mix(from, to, t) {
+                    return Qt.rgba(from.r + (to.r - from.r) * t, from.g + (to.g - from.g) * t,
+                                   from.b + (to.b - from.b) * t, from.a + (to.a - from.a) * t)
                 }
-            }
 
-            // the volume up to 100 %: the cone clipped to the volume, filled with the gradient
-            Item {
-                width: cone.width * root._fullPosition * Math.min(root._volume, 1)
-                height: cone.height
-                clip: true
+                // the stops of volume.svg at `t`, 0 to 1 over the first 100 %
+                function _gradient(t) {
+                    return (t < 0.73) ? _mix(theme.fg.positive, theme.fg.neutral, t / 0.73)
+                                      : _mix(theme.fg.neutral, theme.fg.primary, (t - 0.73) / 0.27)
+                }
 
-                Shape {
-                    width: cone.width
-                    height: cone.height
+                function _columnColor(index) {
+                    const x = (index + 0.5) * columnWidth
+                    if (x > volumeX)
+                        return theme.bg.primary
+                    return (x <= fullX) ? _gradient(x / fullX) : theme.fg.negative
+                }
 
-                    preferredRendererType: Shape.CurveRenderer
+                Repeater {
+                    model: coneBody.columnCount
 
-                    ShapePath {
-                        strokeWidth: -1
+                    delegate: Rectangle {
+                        required property int index
 
-                        fillGradient: LinearGradient {
-                            x1: 0
-                            y1: 0
-                            x2: Math.max(1, cone.width * root._fullPosition)
-                            y2: 0
+                        x: index * coneBody.columnWidth
+                        y: coneBody.columns[index][0]
+                        width: coneBody.columnWidth
+                        height: coneBody.columns[index][1] - coneBody.columns[index][0]
 
-                            // the stops of volume.svg: green, yellow, accent
-                            GradientStop { position: 0.0; color: theme.fg.positive }
-                            GradientStop { position: 0.73; color: theme.fg.neutral }
-                            GradientStop { position: 1.0; color: theme.fg.primary }
-                        }
-
-                        PathSvg { path: ConeMath.silhouettePath(cone.width, cone.height) }
+                        color: coneBody._columnColor(index)
                     }
                 }
             }
 
-            // the overflow, above 100 %
-            Item {
-                x: cone.width * root._fullPosition
-                width: Math.max(0, cone.width * Math.min(root._volume / root._maxVolume, 1) - x)
-                height: cone.height
-                clip: true
+            // keyboard focus
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: VLCStyle.dp(2, VLCStyle.scale)
 
-                visible: width > 0
-
-                Shape {
-                    x: -parent.x
-                    width: cone.width
-                    height: cone.height
-
-                    preferredRendererType: Shape.CurveRenderer
-
-                    ShapePath {
-                        fillColor: theme.fg.negative
-                        strokeWidth: -1
-
-                        PathSvg { path: ConeMath.silhouettePath(cone.width, cone.height) }
-                    }
-                }
+                visible: cone.visualFocus
+                radius: height / 2
+                color: theme.visualFocus
             }
 
             // 100 %, when the volume can go above
@@ -262,22 +255,6 @@ T.Pane {
                 height: ConeMath.fillHeightAt(x, cone.width, cone.height)
 
                 color: theme.fg.neutral
-            }
-
-            // keyboard focus
-            Shape {
-                anchors.fill: parent
-
-                visible: cone.visualFocus
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    fillColor: "transparent"
-                    strokeColor: theme.visualFocus
-                    strokeWidth: VLCStyle.dp(1, VLCStyle.scale)
-
-                    PathSvg { path: ConeMath.silhouettePath(cone.width, cone.height) }
-                }
             }
 
             MouseArea {

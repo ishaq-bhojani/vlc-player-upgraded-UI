@@ -42,6 +42,41 @@ TestCase {
         compare(ConeMath.fillHeightAt(300, 200, 40), 40)
     }
 
+    function test_silhouetteSegments() {
+        const segments = ConeMath.silhouetteSegments(89, 27.3322)
+        compare(segments.length, 9)
+        compare(segments[0][0], "M")
+        compare(segments[1][0], "C")
+        compare(segments[1].length, 7)
+        // everything is inside the box, the wide end touches its right edge and spans the height
+        let maxX = 0, minY = 1e9, maxY = 0
+        for (const segment of segments)
+            for (let i = 1; i < segment.length; i += 2) {
+                maxX = Math.max(maxX, segment[i])
+                minY = Math.min(minY, segment[i + 1])
+                maxY = Math.max(maxY, segment[i + 1])
+            }
+        compare(maxX, 89)
+        fuzzyCompare(minY, 0, 0.5) // the curves' control points reach a little further
+        fuzzyCompare(maxY, 27.3322, 0.5)
+        // the tip is on the left edge, in the middle
+        fuzzyCompare(segments[2][1], 0, 0.001)
+    }
+
+    function test_silhouetteColumns() {
+        const columns = ConeMath.silhouetteColumns(89, 28, 89)
+        compare(columns.length, 89)
+        // narrow at the tip, wide at the other end, centred on the middle line
+        const tip = columns[0][1] - columns[0][0]
+        const wide = columns[88][1] - columns[88][0]
+        verify(tip > 0 && tip < 14)
+        verify(wide > 24 && wide <= 28.5)
+        for (const column of columns)
+            fuzzyCompare((column[0] + column[1]) / 2, 14, 0.5)
+        // the cone grows from the tip to the wide end
+        verify(columns[60][1] - columns[60][0] > columns[30][1] - columns[30][0])
+    }
+
     function test_silhouettePath() {
         // the path of volume.svg scaled to the box: starts at the lower left corner of the
         // narrow end and ends closed

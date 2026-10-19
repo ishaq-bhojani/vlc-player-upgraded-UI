@@ -23,8 +23,7 @@ import VLC.Player
 import VLC.PlayerControls
 import VLC.Style
 import VLC.Util
-// aliased: VLC.Redesign has a ControlBar of its own that must not hide the one of VLC.Player
-import VLC.Redesign as Redesign
+import VLC.Redesign
 
 ControlBar {
     id: root
@@ -58,7 +57,7 @@ ControlBar {
 
     // redesign: slightly thicker (4) unpinned progress bar, the pinned one is unchanged
     sliderHeight: (MainCtx.pinVideoControls) ? VLCStyle.heightBar_xxsmall
-                                             : (MainCtx.redesign ? Redesign.RedesignStyle.spacingXS
+                                             : (MainCtx.redesign ? RedesignStyle.spacingXS
                                                                  : VLCStyle.dp(3, VLCStyle.scale))
 
     bookmarksHeight: (MainCtx.pinVideoControls) ? VLCStyle.controlBarBookmarksHeight

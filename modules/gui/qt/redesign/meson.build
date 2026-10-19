@@ -87,7 +87,7 @@ qml_modules += {
         'player/controls/SubtitlePopupButton.qml',
         'player/controls/AudioPopupButton.qml',
         'player/controls/SidebarButton.qml',
-        'player/ControlBar.qml',
+        'player/RedesignControlBar.qml',
         'player/ResumePrompt.qml',
         'shell/Rail.qml',
         'shell/RedesignInterface.qml',
