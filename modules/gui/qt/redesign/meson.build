@@ -101,6 +101,13 @@ qml_modules += {
         'player/controls/SubtitlePopupButton.qml',
         'player/controls/AudioPopupButton.qml',
         'player/controls/SidebarButton.qml',
+        'settings/SettingRow.qml',
+        'settings/controls/ToggleControl.qml',
+        'settings/controls/DropdownControl.qml',
+        'settings/controls/SliderControl.qml',
+        'settings/controls/NumberControl.qml',
+        'settings/controls/PathControl.qml',
+        'settings/controls/TextControl.qml',
         'library/HomeContent.qml',
         'library/HomePage.qml',
         'library/HomeSection.qml',
@@ -128,6 +135,7 @@ qml_modules += {
         'util/TrackPopupLogic.qml',
         'shell/PinStore.qml',
         'shell/ShellActions.qml',
+        'settings/ControlChooser.qml',
     ),
 }
 
@@ -140,5 +148,6 @@ qml_tests += {
     'tst_ConeMath': files('../tests/tst_ConeMath.qml'),
     'tst_TrackPopupLogic': files('../tests/tst_TrackPopupLogic.qml'),
     'tst_CardCorner': files('../tests/tst_CardCorner.qml'),
+    'tst_ControlChooser': files('../tests/tst_ControlChooser.qml'),
     'tst_OnceLatch': files('../tests/tst_OnceLatch.qml'),
 }

@@ -39,6 +39,12 @@
 namespace redesign
 {
 
+// ControlChooser.qml (redesign/settings) mirrors SettingItem::Type as numbers: keep them in step
+static_assert(SettingItem::Bool == 0 && SettingItem::Integer == 1 && SettingItem::Float == 2
+              && SettingItem::String == 3 && SettingItem::Choice == 4 && SettingItem::Path == 5
+              && SettingItem::Hotkey == 6,
+              "SettingItem::Type changed: update ControlChooser.type in redesign/settings/ControlChooser.qml");
+
 /*
  * Every C++ type of the "VLC.Redesign" module 1.0, in registration order:
  *   CurrentMediaFavorite   creatable type (Favorite control-bar item)
