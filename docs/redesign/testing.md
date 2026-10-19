@@ -118,7 +118,7 @@ the image, the per-tree build volume and the flock with `linux-tests.sh`
 (`extras/redesign/linux-common.sh` and `linux-container-common.sh` are the
 shared parts), builds all default targets (`bin/vlc`, the qt plugin), and then
 starts the Qt interface of the build tree twice for N seconds: once with the
-redesign (the default), once with `--no-qt-redesign`. Both runs use
+redesign (`--qt-redesign`, passed explicitly), once with `--no-qt-redesign`. Both runs use
 `QT_QPA_PLATFORM=offscreen`, a virtual X server (Xvfb, the qt module calls
 `vlc_xlib_init`), `--qt-compositor=dummy` (the x11 compositor crashes on the
 offscreen platform), dummy audio/video output and `--no-qt-privacy-ask`.
@@ -139,16 +139,25 @@ redesign: 2 errors, 1 warnings; stock: 0 errors, 5 warnings
 * **error** (exit status 1): a diagnostic that names our code
   (`qrc:/qt/qml/VLC/Redesign/...`), or a `ReferenceError`, `TypeError`, `is not a
   type`, `Cannot assign`, `Unable to assign`, `module ... is not installed`,
-  `Binding loop` or other Qt `generic error` line in the redesign run that the
+  `Binding loop`, `qml loading`, `no root item`, `unable to create main
+  interface`, `no suitable compositor` or other Qt `generic error` line in the redesign run that the
   stock run does not have. In the stock run, the patterns above are errors too.
 * **warning**: any other QML/Qt diagnostic, printed so you can see it. Upstream's
   own noise, identical in both runs, lands here. Currently known and harmless in
   this container: `propagateSizeHints()`, `unknown Qt platform: offscreen`, and
   `Error decoding ... .svg: Unsupported image format` (the image has no Qt SVG
   image plugin).
-* **a run did not start** (exit status 2 when there are no errors): the exit
-  status of `vlc` was not 0/timeout, or the log has no `using interface module
-  "qt"`. The last 25 log lines are printed.
+* **a run did not start** (exit status 2 when there are no errors): `vlc`
+  crashed, or quit by itself before the N seconds were up (status 0 is not
+  "ran until stopped"), or the log has no `using interface module "qt"`. The
+  last 25 log lines are printed.
+
+Exit status: 0 clean, 1 errors, 2 a run did not start, 64 usage error.
+
+The container compiles the live working tree, so an error in a file you did not
+touch may be another agent's work in progress: report it, do not fix it.
+A run takes about 45 s (nothing to compile, 2 x 15 s); raise `--seconds` on a
+slow machine.
 
 Compare the redesign line with the stock line: a new redesign error with a clean
 stock run is ours. The matching log lines are printed under each count.

@@ -9,7 +9,7 @@
 # build (same image, per-tree build volume and flock as linux-tests.sh) twice,
 # for N seconds each (default 15):
 #
-#   1. redesign on (the default),
+#   1. redesign on (--qt-redesign, passed explicitly),
 #   2. with --no-qt-redesign (the stock interface),
 #
 # and scans the captured logs for QML diagnostics. Nothing touches the host: the
@@ -23,12 +23,17 @@
 #   --media PATH  also open this file (a path inside the repository, e.g.
 #                 test/samples/meta.mp3 or test/samples/slaves/t.mp4)
 #
-# Verdict (exit status 1 on any "error", 2 when a run did not start properly):
+# Exit status: 0 clean, 1 errors, 2 a run did not start (or quit by itself
+# before the N seconds were up) and there are no errors, 64 usage.
+#
+# Verdict:
 #
 #   error    redesign run: any diagnostic naming our code
 #            (qrc:/qt/qml/VLC/Redesign/...), and any ReferenceError, TypeError,
 #            "is not a type", "Cannot assign", "Unable to assign", "module ...
-#            is not installed", "Binding loop" or qt "generic error" line that
+#            is not installed", "Binding loop", "qml loading", "no root item",
+#            "unable to create main interface", "no suitable compositor" or
+#            qt "generic error" line that
 #            the stock run does not also have (new in redesign).
 #            stock run: the patterns above.
 #   warning  any other QML/Qt diagnostic (upstream's own noise, or identical in
@@ -96,7 +101,8 @@ trap '[ -z "$XVFB_PID" ] || kill "$XVFB_PID" 2>/dev/null; rm -rf "$ROOT"' EXIT
 # The qt module initializes Xlib (vlc_xlib_init) before Qt starts, so it needs an
 # X server even though Qt itself runs on the offscreen platform. A virtual one,
 # inside the container (no access to any host display).
-Xvfb :77 -screen 0 1280x800x24 -nolisten tcp >"$ROOT/xvfb.log" 2>&1 &
+# (</dev/null: this script itself is read from stdin by bash -s.)
+Xvfb :77 -screen 0 1280x800x24 -nolisten tcp </dev/null >"$ROOT/xvfb.log" 2>&1 &
 XVFB_PID=$!
 export DISPLAY=:77
 for _ in $(seq 50); do [ -S /tmp/.X11-unix/X77 ] && break; sleep 0.1; done
@@ -105,7 +111,8 @@ for _ in $(seq 50); do [ -S /tmp/.X11-unix/X77 ] && break; sleep 0.1; done
 run_vlc() {
     local name="$1"; shift
     local home="$ROOT/$name.home"
-    mkdir -p "$home/config" "$home/data" "$home/cache"
+    mkdir -p "$home/config" "$home/data" "$home/cache" "$ROOT/$name.run"
+    chmod 700 "$ROOT/$name.run"   # XDG_RUNTIME_DIR must be private (Qt warns otherwise)
     local rc=0
     echo "==> run '$name': vlc $* (${SMOKE_SECONDS}s)"
     # Everything VLC and Qt could write goes below $home. VLC_*_PATH make the
@@ -114,7 +121,7 @@ run_vlc() {
     # platform (xcb_flush on a connection Qt does not own); the compositor only
     # matters for video embedding, not for the QML that is checked here.
     env HOME="$home" XDG_CONFIG_HOME="$home/config" XDG_DATA_HOME="$home/data" \
-        XDG_CACHE_HOME="$home/cache" XDG_RUNTIME_DIR="$home" LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+        XDG_CACHE_HOME="$home/cache" XDG_RUNTIME_DIR="$ROOT/$name.run" LANG=C.UTF-8 LC_ALL=C.UTF-8 \
         QT_QPA_PLATFORM=offscreen QT_FORCE_STDERR_LOGGING=1 \
         ${QML_SMOKE_QUICK_BACKEND:+QT_QUICK_BACKEND=$QML_SMOKE_QUICK_BACKEND} \
         VLC_PLUGIN_PATH="$B/modules" VLC_LIB_PATH="$B/modules" VLC_LIBEXEC_PATH="$B/modules" \
@@ -124,11 +131,11 @@ run_vlc() {
             --qt-compositor=dummy --aout=dummy --vout=dummy --no-video-title-show \
             --no-plugins-cache --no-metadata-network-access \
             "$@" ${SMOKE_MEDIA:+"/vlc/$SMOKE_MEDIA"} \
-        >"$ROOT/$name.log" 2>&1 || rc=$?
+        </dev/null >"$ROOT/$name.log" 2>&1 || rc=$?
     echo "$rc" >"$ROOT/$name.rc"
 }
 
-run_vlc redesign
+run_vlc redesign --qt-redesign
 run_vlc stock --no-qt-redesign
 
 # --- analysis -----------------------------------------------------------------
@@ -137,7 +144,7 @@ run_vlc stock --no-qt-redesign
 # plus any stray line naming a qrc/QML location. VLC debug lines never count.
 DIAG_RE='generic (warning|error):|qrc:|\.qml:[0-9]+|^qml:'
 # The failure patterns of the brief.
-FAIL_RE='ReferenceError|TypeError|is not a type|Cannot assign|Unable to assign|module ".*" is not installed|Binding loop'
+FAIL_RE='ReferenceError|TypeError|is not a type|Cannot assign|Unable to assign|module ".*" is not installed|Binding loop|unable to create main interface|no root item|unexpected type of qml root item|no suitable compositor|qml loading'
 OURS_RE='VLC/Redesign'
 
 # norm: strip what differs between runs (VLC object pointers).
@@ -148,16 +155,18 @@ count() { wc -l < "$1" | tr -d ' '; }
 for name in redesign stock; do
     log="$ROOT/$name.log"
     rc="$(cat "$ROOT/$name.rc")"
-    # 124/137 = stopped by timeout (the expected end), 0 = quit by itself.
+    # 124/137/143 = still running when timeout stopped it (the expected end).
+    # 0 = vlc quit by itself inside the window, i.e. it did not run N seconds.
     case "$rc" in
-        0|124|137|143) ;;
+        124|137|143) ;;
+        0) echo "!! run '$name': vlc quit by itself (status 0) before the ${SMOKE_SECONDS}s were up"; echo "$name" >> "$ROOT/notstarted" ;;
         *) echo "!! run '$name' exited with status $rc (crash or startup failure)"; echo "$name" >> "$ROOT/notstarted" ;;
     esac
-    if ! grep -q 'using interface module "qt"' "$log"; then
+    if ! grep -aq 'using interface module "qt"' "$log"; then
         echo "!! run '$name': the Qt interface did not start (no 'using interface module \"qt\"' in the log)"
         echo "$name" >> "$ROOT/notstarted"
     fi
-    { grep -vE ' debug: ' "$log" | grep -E "$DIAG_RE" | norm | sort -u; } > "$ROOT/$name.diag" || true
+    { grep -avE ' debug: ' "$log" | grep -aE "$DIAG_RE" | norm | sort -u; } > "$ROOT/$name.diag" || true
 done
 
 # Redesign run. Error: the line names our code (VLC/Redesign), or it is a
@@ -165,10 +174,10 @@ done
 # Warning: everything else (upstream noise present in both runs).
 : > "$ROOT/redesign.errors"; : > "$ROOT/redesign.warnings"
 while IFS= read -r line; do
-    if printf '%s\n' "$line" | grep -qE "$OURS_RE"; then
+    if printf '%s\n' "$line" | grep -aqE "$OURS_RE"; then
         echo "$line" >> "$ROOT/redesign.errors"
-    elif printf '%s\n' "$line" | grep -qE "$FAIL_RE| generic error:" \
-            && ! grep -qxF -- "$line" "$ROOT/stock.diag"; then
+    elif printf '%s\n' "$line" | grep -aqE "$FAIL_RE| generic error:" \
+            && ! grep -aqxF -- "$line" "$ROOT/stock.diag"; then
         echo "$line" >> "$ROOT/redesign.errors"
     else
         echo "$line" >> "$ROOT/redesign.warnings"
@@ -176,8 +185,8 @@ while IFS= read -r line; do
 done < "$ROOT/redesign.diag"
 
 # Stock run: failure patterns are errors, the rest is upstream noise (printed).
-{ grep -E "$FAIL_RE" "$ROOT/stock.diag" || true; } > "$ROOT/stock.errors"
-{ grep -vE "$FAIL_RE" "$ROOT/stock.diag" || true; } > "$ROOT/stock.warnings"
+{ grep -aE "$FAIL_RE" "$ROOT/stock.diag" || true; } > "$ROOT/stock.errors"
+{ grep -avE "$FAIL_RE" "$ROOT/stock.diag" || true; } > "$ROOT/stock.warnings"
 
 status=0
 for name in redesign stock; do
@@ -188,10 +197,10 @@ for name in redesign stock; do
     cat "$ROOT/$name.warnings"
     if [ -n "${QML_SMOKE_FULL_LOG:-}" ]; then
         echo "---- $name: full log ----"
-        cat "$ROOT/$name.log"
+        cat -v "$ROOT/$name.log"
     elif grep -qx "$name" "$ROOT/notstarted"; then
         echo "---- $name: last 25 log lines ----"
-        tail -n 25 "$ROOT/$name.log"
+        tail -n 25 "$ROOT/$name.log" | cat -v
     fi
     [ "$(count "$ROOT/$name.errors")" -eq 0 ] || status=1
 done
