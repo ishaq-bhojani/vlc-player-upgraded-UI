@@ -124,7 +124,6 @@ moc_headers = files(
     'player/player_controlbar_model.hpp',
     'player/control_list_model.hpp',
     'player/control_list_filter.hpp',
-    'redesign/cpp/currentmediafavorite.hpp',
     'playlist/playlist_controller.hpp',
     'playlist/playlist_item.hpp',
     'playlist/playlist_model.hpp',
@@ -200,14 +199,6 @@ endif
 qt_plugin_sources = files(
     'qt.cpp',
     'qt.hpp',
-    'redesign/cpp/redesign.cpp',
-    'redesign/cpp/redesign.hpp',
-    'redesign/cpp/currentmediafavorite.cpp',
-    'redesign/cpp/currentmediafavorite.hpp',
-    'redesign/cpp/mlfavoritebackend.cpp',
-    'redesign/cpp/mlfavoritebackend.hpp',
-    'redesign/cpp/widgetpalette.cpp',
-    'redesign/cpp/widgetpalette.hpp',
     'plugins.hpp',
     'dialogs/bookmarks/bookmarks.cpp',
     'dialogs/bookmarks/bookmarks.hpp',
@@ -416,8 +407,6 @@ qt_plugin_sources = files(
     'style/colorcontext.hpp',
     'style/systempalette.cpp',
     'style/systempalette.hpp',
-    'style/redesignpalette.cpp',
-    'style/redesignpalette.hpp',
     'style/vlcicons.cpp',
     'style/vlcicons.hpp',
     'style/defaultthemeproviders.hpp',
@@ -964,31 +953,8 @@ qml_modules += {
     ),
 }
 
-qml_modules += {
-    'name' : 'VLC.Redesign',
-    'target' : 'redesign',
-    'outdir' : 'VLC/Redesign',
-    'sources': files(
-        'redesign/player/controls/MediaLabelWidget.qml',
-        'redesign/player/controls/DividerWidget.qml',
-        'redesign/player/controls/TitleLabelWidget.qml',
-        'redesign/player/controls/ArtistLabelWidget.qml',
-        'redesign/player/controls/FolderLabelWidget.qml',
-        'redesign/player/controls/PlaylistLabelWidget.qml',
-        'redesign/player/controls/ReplayButton.qml',
-        'redesign/player/controls/FavoriteButton.qml',
-    ),
-    'singletons': files(
-        'redesign/theme/RedesignStyle.qml',
-        'redesign/util/MediaText.qml',
-        'redesign/util/ReplayLogic.qml',
-    ),
-}
-
 qml_tests = {
     'tst_FSM': files('tests/tst_FSM.qml'),
-    'tst_MediaText': files('tests/tst_MediaText.qml'),
-    'tst_ReplayLogic': files('tests/tst_ReplayLogic.qml'),
 }
 
 qmllibs = []
@@ -1010,6 +976,9 @@ if qt6_dep.found()
         qt_extra_deps += atomic_lib
         qt_extra_flags += '-DQT_HAS_LIBATOMIC'
     endif
+
+    # VLC Reborn: redesign build registrations, see redesign/meson.build
+    subdir('redesign')
 
     prog_python = find_program('python3')
     modules_qrc = []
@@ -1112,13 +1081,6 @@ if qt6_dep.found()
 
     qt6pre_qrc = qt6.preprocess(
         qresources: qrc_files,
-        include_directories: qt_include_dir,
-        dependencies: qt6_dep,
-        rcc_extra_arguments: qt_rcc_extra_arguments)
-
-    # fonts of the redesign (:/redesign/fonts), compiled into the plugin
-    redesign_qrc = qt6.preprocess(
-        qresources: files('redesign/assets/redesign_assets.qrc'),
         include_directories: qt_include_dir,
         dependencies: qt6_dep,
         rcc_extra_arguments: qt_rcc_extra_arguments)
@@ -1316,7 +1278,7 @@ if qt6_dep.found()
 
     vlc_modules += {
         'name' : 'qt',
-        'sources' : [qt6pre_files, qt6pre_qrc, redesign_qrc, shader_targets, shaders_processed, qt_sources, qt_plugin_sources],
+        'sources' : [qt6pre_files, qt6pre_qrc, shader_targets, shaders_processed, qt_sources, qt_plugin_sources],
         'extra_files' : [shader_files],
         'dependencies' : [qt_extra_deps, qt6_dep, corefoundation_dep],
         'include_directories' : qt_include_dir,
@@ -1346,6 +1308,7 @@ if qt6_dep.found()
 
     qtest_qt6_dep = dependency('qt6', version: '=' + qt6_dep.version(), modules: ['Test'], required: false)
     if qtest_qt6_dep.found()
+        subdir('redesign/tests') # VLC Reborn redesign unit tests
         vlc_tests += {
             'name': 'test_qt_ml_model',
             'sources': files(
@@ -1463,94 +1426,6 @@ if qt6_dep.found()
             'link_with': [libvlccore, libvlc],
             'link_args': qt_link_args,
             'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
-        }
-
-        vlc_tests += {
-            'name': 'test_qt_redesign_option',
-            'sources': files(
-                'tests/vlc_stub_modules.cpp',
-                'tests/test_redesign_option.cpp',
-                'redesign/cpp/redesign.hpp',
-                'redesign/cpp/redesign.cpp'
-            ),
-            'moc_sources': files(
-                'tests/test_redesign_option.cpp'
-            ),
-            'suite': ['qt'],
-            'include_directories' : qt_include_dir,
-            'link_with': [libvlccore, libvlc],
-            'link_args': qt_link_args,
-            'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
-        }
-
-        vlc_tests += {
-            'name': 'test_qt_redesign_palette',
-            'sources': files(
-                'tests/test_redesign_palette.cpp',
-                'style/redesignpalette.hpp',
-                'style/redesignpalette.cpp'
-            ),
-            'moc_sources': files(
-                'tests/test_redesign_palette.cpp'
-            ),
-            'suite': ['qt'],
-            'include_directories' : qt_include_dir,
-            'link_args': qt_link_args,
-            'dependencies': [qt6_dep, qtest_qt6_dep],
-        }
-
-        vlc_tests += {
-            'name': 'test_qt_current_media_favorite',
-            'sources': files(
-                'tests/test_current_media_favorite.cpp',
-                'redesign/cpp/currentmediafavorite.hpp',
-                'redesign/cpp/currentmediafavorite.cpp'
-            ),
-            'moc_sources': files(
-                'tests/test_current_media_favorite.cpp'
-            ),
-            'moc_headers': files(
-                'redesign/cpp/currentmediafavorite.hpp'
-            ),
-            'suite': ['qt'],
-            'include_directories' : qt_include_dir,
-            'link_args': qt_link_args,
-            'dependencies': [qt6_dep, qtest_qt6_dep],
-        }
-
-        vlc_tests += {
-            'name': 'test_qt_redesign_widget_palette',
-            'sources': files(
-                'tests/test_redesign_widget_palette.cpp',
-                'redesign/cpp/widgetpalette.hpp',
-                'redesign/cpp/widgetpalette.cpp',
-                'style/redesignpalette.hpp',
-                'style/redesignpalette.cpp'
-            ),
-            'moc_sources': files(
-                'tests/test_redesign_widget_palette.cpp'
-            ),
-            'suite': ['qt'],
-            'include_directories' : qt_include_dir,
-            'link_args': qt_link_args,
-            'dependencies': [qt6_dep, qtest_qt6_dep],
-        }
-
-        vlc_tests += {
-            'name': 'test_qt_redesign_font',
-            'sources': [files(
-                'tests/test_redesign_font.cpp',
-                'redesign/cpp/redesign.hpp',
-                'redesign/cpp/redesign.cpp'
-            ), redesign_qrc],
-            'moc_sources': files(
-                'tests/test_redesign_font.cpp'
-            ),
-            'suite': ['qt'],
-            'include_directories' : qt_include_dir,
-            'link_with': [libvlccore],
-            'link_args': qt_link_args,
-            'dependencies': [qt6_dep, qtest_qt6_dep],
         }
     endif
 

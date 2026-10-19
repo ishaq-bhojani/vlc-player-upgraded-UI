@@ -103,14 +103,19 @@ shell helper scripts (`env: 'python3\r': No such file or directory`).
 
 ## Adding a C++ test
 
-Add an entry to `vlc_tests` in `modules/gui/qt/meson.build` (next to the existing
-`test_qt_*` ones, inside the `if qt6_dep.found()` block):
+Add an entry to `vlc_tests` in `modules/gui/qt/redesign/tests/meson.build`
+(never in `modules/gui/qt/meson.build`; that file only carries the hook that
+enters this one, see the header of `modules/gui/qt/redesign/meson.build`).
+The file is entered from inside upstream's `if qtest_qt6_dep.found()` block.
+Paths are relative to `modules/gui/qt/redesign/tests/`, so the test sources in
+`modules/gui/qt/tests/` are `'../../tests/...'` and the redesign sources
+`'../cpp/...'`:
 
 ```meson
 vlc_tests += {
     'name': 'test_qt_my_thing',
-    'sources': files('tests/test_my_thing.cpp'),   # plus the sources under test
-    'moc_sources': files('tests/test_my_thing.cpp'),  # if it has Q_OBJECT; 'moc_headers' for headers
+    'sources': files('../../tests/test_my_thing.cpp'),   # plus the sources under test
+    'moc_sources': files('../../tests/test_my_thing.cpp'),  # if it has Q_OBJECT; 'moc_headers' for headers
     'suite': ['qt'],
     'link_with': [libvlccore],
     'link_args': qt_link_args,
@@ -118,7 +123,7 @@ vlc_tests += {
 }
 ```
 
-`qtest_qt6_dep` exists inside the `if qtest_qt6_dep.found()` block that holds the
+`qtest_qt6_dep` is defined by upstream just before the hook, which sits inside the block that holds the
 other QtTest-based entries. Tests that need a libvlc instance with fake modules
 use `tests/vlc_stub_modules.cpp` (see `test_qt_ml_model`). Valid keys are listed
 in `test/meson.build`. Without `'suite': ['qt']` the test does not run under
@@ -129,12 +134,13 @@ in `test/meson.build`. Without `'suite': ['qt']` the test does not run under
 
 1. Put the file in `modules/gui/qt/tests/` (`tst_*.qml`, a `TestCase` from
    `QtTest`).
-2. Add it to the `qml_tests` dictionary in `modules/gui/qt/meson.build`:
+2. Add it to `qml_tests` in `modules/gui/qt/redesign/meson.build` (paths are
+   relative to `modules/gui/qt/redesign/`; upstream's own entries stay in
+   `modules/gui/qt/meson.build`):
 
    ```meson
-   qml_tests = {
-       'tst_FSM': files('tests/tst_FSM.qml'),
-       'tst_MyThing': files('tests/tst_MyThing.qml'),
+   qml_tests += {
+       'tst_MyThing': files('../tests/tst_MyThing.qml'),
    }
    ```
 
