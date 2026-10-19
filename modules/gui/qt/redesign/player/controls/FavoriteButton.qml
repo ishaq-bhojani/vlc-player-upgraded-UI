@@ -28,9 +28,8 @@ import VLC.Redesign
 Widgets.IconToolButton {
     id: root
 
-    // rd_heart / rd_heart_filled both map to the bookmark glyph for now (tokens.md "Icon
-    // substitutions"): the state is shown by `checked`, which paints the glyph in the accent colour.
-    text: VLCIcons.bookmark
+    // outline heart, filled heart once marked (`checked` also paints the glyph in the accent colour)
+    text: fav.favorite ? VLCIcons.rd_heart_filled : VLCIcons.rd_heart
 
     checked: fav.favorite
     enabled: !paintOnly && fav.available

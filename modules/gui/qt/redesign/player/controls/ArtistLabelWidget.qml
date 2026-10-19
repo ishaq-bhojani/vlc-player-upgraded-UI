@@ -24,7 +24,7 @@ import VLC.Util
 // Artist of the current media, empty when the media has none.
 MediaLabelWidget {
     placeholder: qsTr("Artist")
-    glyph: VLCIcons.profile_new // stands in for rd_artist
+    glyph: VLCIcons.rd_artist
     secondary: true
 
     text: Player.artist

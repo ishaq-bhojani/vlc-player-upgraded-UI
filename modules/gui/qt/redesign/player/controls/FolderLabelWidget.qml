@@ -24,7 +24,7 @@ import VLC.Util
 // Folder of the current media; empty unless the media is a local file.
 MediaLabelWidget {
     placeholder: qsTr("Folder")
-    glyph: VLCIcons.ic_fluent_folder_open_24_regular // stands in for rd_folder
+    glyph: VLCIcons.rd_folder
     secondary: true
 
     text: MediaText.folderName(Player.url.toString())

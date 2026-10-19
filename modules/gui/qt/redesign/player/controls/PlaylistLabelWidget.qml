@@ -24,7 +24,7 @@ import VLC.Util
 // Position of the current media in the play queue, "<current>/<count>".
 MediaLabelWidget {
     placeholder: qsTr("%1/%2").arg(1).arg(12)
-    glyph: VLCIcons.playlist // stands in for rd_playlist_label
+    glyph: VLCIcons.rd_playlist_label
     secondary: true
 
     text: (MainPlaylistController.count > 0 && MainPlaylistController.currentIndex >= 0)

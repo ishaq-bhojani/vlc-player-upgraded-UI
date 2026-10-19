@@ -29,7 +29,7 @@ Widgets.IconToolButton {
     // still has a current item
     enabled: Player.isStarted || (!MainPlaylistController.empty && MainPlaylistController.currentIndex >= 0)
 
-    text: VLCIcons.history // stands in for rd_replay
+    text: VLCIcons.rd_replay
     description: qsTr("Replay")
 
     onClicked: {
