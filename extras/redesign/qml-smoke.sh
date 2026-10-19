@@ -155,7 +155,7 @@ OURS_RE='VLC/Redesign'
 # the container image ships no Qt 6 SVG image plugin (only libqsvg for Qt 5), so
 # every SVG fails to decode here. Anchored to exactly the two messages Qt and
 # ImageHelper produce for that.
-ENV_RE='generic warning: \(default\) (qrc:[^ ]+:[0-9]+:[0-9]+: QML [^ ]+: )?Error decoding: [^ ]+\.svg: Unsupported image format$|generic warning: \(default\) ImageHelper: svg image plugin is not found\.$'
+ENV_RE='generic warning: \(default\) (qrc:[^ ]+:[0-9]+:[0-9]+: QML [^:]+: )?Error decoding: [^ ]+\.svg: Unsupported image format$|generic warning: \(default\) ImageHelper: svg image plugin is not found\.$'
 
 # norm: strip what differs between runs (VLC object pointers).
 norm() { sed -E 's/^\[[0-9a-f]+\] //; s/0x[0-9a-f]+/0xPTR/g'; }

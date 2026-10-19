@@ -19,6 +19,7 @@ import QtQuick
 import QtQuick.Layouts
 
 import VLC.MainInterface
+import VLC.Widgets as Widgets
 import VLC.Player
 import VLC.Style
 import VLC.Redesign
@@ -46,10 +47,29 @@ FocusScope {
 
     readonly property bool showsMedia: root.shellState !== "browse"
 
+    // Functions
+
+    // The pointer or the keyboard is used in an interactive menu (DVD): the navigation box and the
+    // button for the bars stay up for a moment and the pointer stays visible.
+    function noteInteractiveActivity() {
+        interactiveTimer.restart()
+    }
+
+    // Signals
+
+    // the user asks for the bars of the immersive state (the pointer does not bring them in a menu)
+    signal showBarsRequested()
+
     // Settings
 
     Accessible.role: Accessible.Pane
     Accessible.name: root.showsMedia ? qsTr("Player") : qsTr("Library")
+
+    onShellStateChanged: {
+        // the pointer is visible when the immersive state starts, then rests
+        if (shellState === "immersive")
+            pointerRest.restart()
+    }
 
     // Children
 
@@ -90,19 +110,100 @@ FocusScope {
             focus: false
 
             // the pointer of the immersive state hides when it rests
-            cursorShape: (root.shellState === "immersive") && !pointerRest.running ? Qt.BlankCursor
-                                                                                   : Qt.ArrowCursor
+            cursorShape: (root.shellState === "immersive") && !pointerRest.running && !interactiveTimer.running
+                         ? Qt.BlankCursor : Qt.ArrowCursor
 
-            onMouseMoved: pointerRest.restart()
-            onMousePressed: pointerRest.restart()
+            // like the stock player: the mouse on the video keeps the interactive menu helpers up
+            function onMouseEvent() {
+                pointerRest.restart()
+                if (Player.isInteractive)
+                    interactiveTimer.restart()
+            }
 
-            Timer {
-                id: pointerRest
-
-                running: true
-                interval: MainCtx.mouseHideTimeout
+            Component.onCompleted: {
+                mouseMoved.connect(videoSurface.onMouseEvent)
+                mousePressed.connect(videoSurface.onMouseEvent)
+                mouseReleased.connect(videoSurface.onMouseEvent)
+                mouseDblClicked.connect(videoSurface.onMouseEvent)
             }
         }
+    }
+
+    // the pointer of the immersive state hides when it rests
+    Timer {
+        id: pointerRest
+
+        running: true
+        interval: MainCtx.mouseHideTimeout
+    }
+
+    // the helpers of an interactive menu (DVD) stay up for a moment after the last mouse or key activity
+    Timer {
+        id: interactiveTimer
+
+        interval: 3000
+    }
+
+    Connections {
+        target: MainCtx
+
+        function onNavBoxToggled() {
+            interactiveTimer.restart()
+        }
+    }
+
+    // the navigation buttons of a DVD menu (shown with the navigation button of the control bar)
+    NavigationBox {
+        id: navBox
+
+        z: 1
+
+        visible: root.showsMedia && Player.isInteractive && navBox.show
+                 && (interactiveTimer.running || navBox.hovered || !MainCtx.hasEmbededVideo)
+
+        // the box can be dragged, which breaks these bindings
+        x: RedesignStyle.spacingL
+        y: root.height - navBox.height - RedesignStyle.spacingL
+
+        dragXMin: 0
+        dragXMax: root.width - navBox.width
+        dragYMin: 0
+        dragYMax: root.height - navBox.height
+
+        Connections {
+            target: root
+
+            function onWidthChanged() {
+                if (navBox.x > navBox.dragXMax)
+                    navBox.x = navBox.dragXMax
+            }
+
+            function onHeightChanged() {
+                if (navBox.y > navBox.dragYMax)
+                    navBox.y = navBox.dragYMax
+            }
+        }
+    }
+
+    // In an interactive menu the bars of the immersive state do not follow the pointer (the menu is
+    // under it): this button shows them.
+    Widgets.IconToolButton {
+        z: 1
+
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            bottom: parent.bottom
+            bottomMargin: RedesignStyle.spacingL
+        }
+
+        visible: (root.shellState === "immersive") && Player.isInteractive && MainCtx.hasEmbededVideo
+                 && (interactiveTimer.running || hovered)
+
+        font.pixelSize: VLCStyle.icon_large
+        text: VLCIcons.expand_inverted
+        description: qsTr("Show the controls")
+
+        onClicked: root.showBarsRequested()
     }
 
     // The music view: the artwork of the playing media and its title. The full music view

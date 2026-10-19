@@ -37,7 +37,7 @@ FocusScope {
 
     // Properties
 
-    // upstream pages carry the prefix of the path they were pushed with, the Stage sets it
+    // upstream pages carry the prefix of the path they were pushed with, the PageLoader sets it
     property var pagePrefix: []
 
     // Functions

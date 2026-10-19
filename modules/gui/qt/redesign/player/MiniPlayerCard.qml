@@ -76,9 +76,16 @@ Item {
     x: _target.x
     y: _target.y
 
-    Accessible.role: Accessible.Graphic
+    Accessible.role: Accessible.Button
     Accessible.name: qsTr("Mini player, show the player")
     Accessible.onPressAction: root.activated()
+
+    // the card can be reached and used with the keyboard
+    activeFocusOnTab: true
+
+    Keys.onReturnPressed: root.activated()
+    Keys.onEnterPressed: root.activated()
+    Keys.onSpacePressed: root.activated()
 
     // Private
 
@@ -137,6 +144,14 @@ Item {
         color: theme.bg.secondary
     }
 
+    ColorContext {
+        id: focusTheme
+
+        colorSet: ColorContext.Item
+
+        focused: root.activeFocus
+    }
+
     Image {
         anchors.fill: parent
 
@@ -162,6 +177,19 @@ Item {
 
     // It is acceptable for effects to exceed the boundaries of the parent
     Widgets.DefaultShadow {
+    }
+
+    // the focus ring
+    Rectangle {
+        anchors.fill: parent
+
+        z: 2
+
+        visible: root.activeFocus
+
+        color: "transparent"
+        border.width: VLCStyle.focus_border
+        border.color: focusTheme.visualFocus
     }
 
     // The card takes the mouse before the video does (a click must not pause the video, a double

@@ -65,8 +65,12 @@ Item {
 
     // Properties
 
-    // whether the library panel is requested (browse: the header strip, watch: docked or overlay)
-    property bool libraryPanelOpen: true
+    // whether the header strip of the library is shown in the browse state
+    property bool browsePanelOpen: true
+
+    // Whether the library panel is requested in the watch state: docked beside the video by
+    // default, an overlay (which covers the video) only when the user asks for it
+    property bool watchPanelOpen: MainCtx.canShowVideoPIP
 
     // title shown while no media with a folder is playing: the label of the current rail entry
     readonly property string pageTitle: {
@@ -112,6 +116,9 @@ Item {
     // the library panel is not shown beside the video: it is an overlay, a click outside closes it
     readonly property bool _panelIsOverlay: shellStates.panelMode === "overlay"
 
+    // the media is playing or paused
+    readonly property bool _hasMedia: Player.playingState !== Player.PLAYING_STATE_STOPPED
+
     // Settings
 
     Accessible.role: Accessible.Client
@@ -141,12 +148,57 @@ Item {
         loadCurrentHistoryView(Qt.OtherFocusReason)
     }
 
-    // gives the keyboard to the part of the window the state is about
+    // The one place that decides where the keyboard is, called (delayed, so that the state and the panel
+    // mode are final) whenever one of them changes:
+    //   - the overlay is open: the page in it
+    //   - browse: the current page
+    //   - watch (panel docked or closed) and immersive: the Stage, whose keys are the hotkeys
     function _focusState() {
-        if (shellStates.state === "browse")
-            libraryHost.forceActiveFocus()
-        else
+        const showsPage = (shellStates.state === "browse") || (shellStates.panelMode === "overlay")
+        if (showsPage) {
+            libraryHost.forceActiveFocus(Qt.TabFocusReason)
+            if (libraryPages.currentItem)
+                libraryPages.setCurrentItemFocus(Qt.TabFocusReason)
+        } else {
             stage.forceActiveFocus()
+        }
+    }
+
+    // The explicit actions of the user that leave the video for the library (the title bar button, the
+    // "Browse the library" button of the panel, the back gesture): the library is shown in the Stage.
+    // Without a way to place the video around the library (see ShellStates.miniPlayerShowsVideo) the
+    // video would have no surface in the browse state: it stops, like the stock back button does.
+    // Never called when the playback ends by itself.
+    function leaveToBrowse() {
+        root.browsePanelOpen = true
+        if (MainCtx.minimalView)
+            MainCtx.minimalView = false
+        // fullscreen is the immersive state, the library is not shown in it
+        if (Player.fullscreen)
+            Player.fullscreen = false
+        if (MainCtx.intfMainWindow.visibility === Window.FullScreen)
+            MainCtx.toggleInterfaceFullScreen()
+
+        if (root._hasMedia && MainCtx.hasEmbededVideo && !MainCtx.canShowVideoPIP)
+            MainPlaylistController.stop()
+        MainCtx.playerView = false
+    }
+
+    // The library button of the title bar: from the video to the library and, when there is
+    // something to watch or listen to, from the library back to it (else it shows or hides the strip).
+    function toggleLibrary() {
+        if (shellStates.state !== "browse")
+            leaveToBrowse()
+        else if (root._hasMedia)
+            MainCtx.playerView = true
+        else
+            root.browsePanelOpen = !root.browsePanelOpen
+    }
+
+    // shows the bars of the immersive state for a moment
+    function _showBars() {
+        shellStates.recentKeyActivity = true
+        keyActivityTimer.restart()
     }
 
     // Events
@@ -161,12 +213,15 @@ Item {
     // the immersive state up while the keyboard is used. (The window does not turn the keys into
     // hotkeys by itself: that is MainCtx.preferHotkeys, which stays off.)
     Keys.onPressed: (event) => {
-        shellStates.recentKeyActivity = true
-        keyActivityTimer.restart()
+        if (Player.isInteractive)
+            // in a DVD menu the keys are for the menu: they do not bring up the bars
+            stage.noteInteractiveActivity()
+        else
+            root._showBars()
 
         if ((event.key === Qt.Key_Escape) && root._panelIsOverlay) {
             // the overlay closes first
-            root.libraryPanelOpen = false
+            root.watchPanelOpen = false
         } else if (KeyHelper.matchSearch(event)) {
             MainCtx.search.askShow()
         } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
@@ -196,11 +251,13 @@ Item {
         fullscreen: Player.fullscreen || (MainCtx.intfMainWindow.visibility === Window.FullScreen)
         minimalView: MainCtx.minimalView
         canShowVideoPIP: MainCtx.canShowVideoPIP
-        panelRequested: root.libraryPanelOpen
+        hasMedia: root._hasMedia
+        panelRequested: (shellStates.state === "browse") ? root.browsePanelOpen : root.watchPanelOpen
 
         // the pointer within 80 px of an edge shows the bar of that edge in the immersive state
-        pointerNearTop: pointer.hovered && (pointer.point.position.y < MainCtx.dp(80))
-        pointerNearBottom: pointer.hovered && (pointer.point.position.y > (root.height - MainCtx.dp(80)))
+        // (not in an interactive menu, the DVD menu is under the pointer there: the bars come with the button of the Stage)
+        pointerNearTop: pointer.hovered && !Player.isInteractive && (pointer.point.position.y < MainCtx.dp(80))
+        pointerNearBottom: pointer.hovered && !Player.isInteractive && (pointer.point.position.y > (root.height - MainCtx.dp(80)))
     }
 
     HoverHandler {
@@ -224,6 +281,15 @@ Item {
         }
     }
 
+    // the interface is asked to show itself (second instance, tray)
+    Connections {
+        target: MainCtx
+
+        function onAskShow() {
+            root._showBars()
+        }
+    }
+
     Connections {
         target: History
 
@@ -232,7 +298,7 @@ Item {
 
             // a page asked for while watching is shown beside the video
             if (shellStates.state === "watch")
-                root.libraryPanelOpen = true
+                root.watchPanelOpen = true
         }
     }
 
@@ -240,17 +306,11 @@ Item {
         target: shellStates
 
         function onStateChanged() {
-            // Without a way to place the video around the library (see ShellStates.miniPlayerShowsVideo)
-            // the video would have no surface in the browse state: it stops, like the stock interface does
-            if ((shellStates.state === "browse") && !MainCtx.canShowVideoPIP && MainCtx.hasEmbededVideo)
-                MainPlaylistController.stop()
-
-            root._focusState()
+            Qt.callLater(root._focusState)
         }
 
         function onPanelModeChanged() {
-            if (root._panelIsOverlay)
-                libraryHost.forceActiveFocus()
+            Qt.callLater(root._focusState)
         }
     }
 
@@ -342,7 +402,7 @@ Item {
                 if (!active) {
                     if (historyDragHandler.accumulatedDelta >= threshold) {
                         if (MainCtx.playerView)
-                            MainCtx.playerView = false
+                            root.leaveToBrowse()
                         else if (MainCtx.minimalView)
                             MainCtx.minimalView = false
                         else
@@ -590,6 +650,8 @@ Item {
                             }
 
                             shellState: shellStates.state
+
+                            onShowBarsRequested: root._showBars()
                         }
 
                         // the library over the video: a click outside of the panel closes it
@@ -600,7 +662,7 @@ Item {
 
                             visible: root._panelIsOverlay
 
-                            onClicked: root.libraryPanelOpen = false
+                            onClicked: root.watchPanelOpen = false
 
                             ColorContext {
                                 id: scrimTheme
@@ -633,7 +695,7 @@ Item {
                                                                                                           : shellStates.panelMode
                             title: root.pageTitle
 
-                            onBrowseRequested: MainCtx.playerView = false
+                            onBrowseRequested: root.leaveToBrowse()
                         }
 
                         // The pages of the library. It is one item: the panel shows it beside the video,
@@ -648,7 +710,7 @@ Item {
 
                             Navigation.cancelAction: function() {
                                 if (root._panelIsOverlay)
-                                    root.libraryPanelOpen = false
+                                    root.watchPanelOpen = false
                                 else if (shellStates.state === "browse")
                                     History.previous(Qt.BacktabFocusReason)
                                 else
@@ -737,12 +799,13 @@ Item {
                 visible: shellStates.topBarVisible
 
                 pageTitle: root.pageTitle
-                libraryPanelOpen: root.libraryPanelOpen
+                libraryActive: shellStates.state === "browse"
 
-                onLibraryToggleRequested: root.libraryPanelOpen = !root.libraryPanelOpen
+                onLibraryToggleRequested: root.toggleLibrary()
 
                 onLibraryRequested: (folderUrl) => {
-                    root.libraryPanelOpen = true
+                    root.browsePanelOpen = true
+                    root.watchPanelOpen = true
                     libraryPanel.openAt(folderUrl)
                 }
 

@@ -27,8 +27,8 @@ import VLC.Util
  * control bar bind to the outputs. The state itself is held by an FSM, the other
  * outputs are derived from the state and the inputs.
  *
- *   state:     "immersive" if fullscreen || minimalView, else "watch" if playerView,
- *              else "browse"
+ *   state:     "immersive" if (fullscreen && hasMedia) || minimalView, else "watch" if
+ *              playerView, else "browse" (fullscreen with nothing playing is no empty video view)
  *   panelMode: "hidden" in immersive or when no panel is requested; in watch "docked"
  *              if canShowVideoPIP, else "overlay"; in browse "docked"
  *   bars:      browse shows both (uiHidden is ignored), watch shows both unless
@@ -41,6 +41,8 @@ QtObject {
     // inputs
     property bool playerView: false
     property bool fullscreen: false
+    // a media is playing or paused (not stopped)
+    property bool hasMedia: true
     property bool minimalView: false
     property bool canShowVideoPIP: false
     property bool panelRequested: false
@@ -75,7 +77,7 @@ QtObject {
     }
 
     // the state the inputs ask for
-    readonly property string _target: (fullscreen || minimalView) ? "immersive"
+    readonly property string _target: ((fullscreen && hasMedia) || minimalView) ? "immersive"
                                     : playerView ? "watch"
                                     : "browse"
     // the state of the machine, set by the enter handlers of the FSM states

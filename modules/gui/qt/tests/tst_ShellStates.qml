@@ -122,6 +122,31 @@ TestCase {
         compare(shell.state, "browse")
     }
 
+    // fullscreen with nothing playing is no empty immersive view: the library stays
+    function test_fullscreenWithoutMedia() {
+        const shell = createShell({ fullscreen: true, hasMedia: false, panelRequested: true })
+        compare(shell.state, "browse")
+        compare(shell.panelMode, "docked")
+        shell.hasMedia = true
+        compare(shell.state, "immersive")
+        compare(shell.panelMode, "hidden")
+        // playback ends while fullscreen
+        shell.hasMedia = false
+        compare(shell.state, "browse")
+        shell.hasMedia = true
+        compare(shell.state, "immersive")
+    }
+
+    // the minimal view is not about the media: it stays immersive without any
+    function test_minimalViewWithoutMedia() {
+        const shell = createShell({ minimalView: true, hasMedia: false })
+        compare(shell.state, "immersive")
+    }
+
+    function test_hasMediaDefault() {
+        compare(createShell().hasMedia, true)
+    }
+
     function test_panelFollowsInputsInState() {
         const shell = createShell({ playerView: true, canShowVideoPIP: true, panelRequested: true })
         compare(shell.panelMode, "docked")

@@ -46,8 +46,8 @@ FocusScope {
     // title shown when no media with a folder is playing
     property string pageTitle: MainCtx.productName
 
-    // whether the library panel is shown (checked state of the toggle)
-    property bool libraryPanelOpen: false
+    // whether the library is shown in the whole window, the browse state (checked state of the library button)
+    property bool libraryActive: false
 
     // the folder of the playing media (file:// URL), "" if there is none
     readonly property string folderUrl: Player.isStarted ? _parentUrl(Player.url.toString()) : ""
@@ -209,8 +209,8 @@ FocusScope {
 
         TitleButton {
             text: VLCIcons.rd_sidebar
-            description: qsTr("Show or hide the library")
-            checked: root.libraryPanelOpen
+            description: root.libraryActive ? qsTr("Back to the player") : qsTr("Show the library")
+            checked: root.libraryActive
 
             onClicked: root.libraryToggleRequested()
         }
