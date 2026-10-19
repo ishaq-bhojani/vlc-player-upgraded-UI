@@ -30,8 +30,8 @@ bash extras/redesign/linux-tests.sh tst_FSM base_model_test
 It runs in `registry.videolan.org/vlc-debian-unstable:20260611225331` (the image
 upstream's `debian-meson` CI job uses; Qt 6.10.2 with QuickTest, meson 1.11):
 
-1. creates the Docker named volume `vlc-reborn-linux-build` (build tree at
-   `/build/linux`; the repository is bind-mounted at `/vlc`);
+1. creates the Docker named volume for this source tree (see below; build tree
+   at `/build/linux`; the repository is bind-mounted at `/vlc`);
 2. first run only: `meson setup /build/linux /vlc -Dextra_checks=true -Dqt=enabled`
    (upstream's options minus coverage; `-Dqt=enabled` makes a missing Qt a hard
    error rather than a silent GUI-less build with no Qt tests);
@@ -47,15 +47,38 @@ failure, on an unknown test name, or on a build error), and the final
 `Ok: N  Fail: M ...` summary is printed. `VLC_TEST_TIMEOUT` (default 60) is
 forwarded to the container.
 
-Build tree reset: `docker volume rm vlc-reborn-linux-build` (the next run
-reconfigures and rebuilds from scratch).
+### One volume per source tree
+
+The volume is named `vlc-reborn-linux-build-<10 hex digits>`, where the digits
+are the start of the SHA-1 of the repository's Windows path, so every git
+worktree gets its own build directory (printed on every run as `volume: ...`).
+ninja decides what is up to date from file mtimes; sharing one build directory
+between two checkouts would silently reuse the other tree's objects and report
+the wrong result. Consequence: the first run in each new worktree is a full
+build (~4.5 min), and each volume takes several GB of disk. Remove the volumes
+of worktrees you no longer use with `docker volume rm <name>` (list them with
+`docker volume ls | grep vlc-reborn-linux-build`); the next run in that tree
+reconfigures and rebuilds from scratch.
+
+To pick the volume yourself (for example to keep a throwaway build), set
+`VLC_LINUX_VOLUME`:
+
+```bash
+VLC_LINUX_VOLUME=my-vlc-build bash extras/redesign/linux-tests.sh tst_FSM
+```
+
+Concurrent runs that use the same volume are serialized: the script holds
+`flock /build/.lock` inside the volume for the whole setup/compile/test, so a
+second invocation prints `another linux-tests.sh run uses this build volume;
+waiting...` and continues when the first has finished. Runs on different
+volumes (different worktrees) run in parallel.
 
 ### Timing (12 cores, 31 GB, image already pulled)
 
 | Run | Time |
 | --- | --- |
 | Image pull (once) | ~6 min |
-| First run, empty volume (configure + 2401-step build + tests) | ~4.5 min |
+| First run in a worktree, empty volume (configure + 2401-step build + tests) | ~4.5 min |
 | Re-run, nothing changed, single test | ~9 s |
 | Re-run after touching one Qt source file, single test | ~16 s |
 
