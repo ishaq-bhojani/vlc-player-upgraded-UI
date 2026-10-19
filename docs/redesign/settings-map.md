@@ -13,7 +13,7 @@ Column `notes`: the word `restart` marks keys that are read only at startup or a
 
 Types: `toggle` (bool), `choice`, `number`, `slider`, `path`, `text`, `color`, `font`, `hotkey`. `EffectsController` method names are proposed names for Task 31; the persisted keys are the config keys listed.
 
-189 rows (176 bound to a verified config key). Pages follow the sidebar order: General, Interface, Privacy, Controls, Playback, Video, Audio, Subtitles, Library, Network, Performance, Recording, Extensions.
+190 rows (176 bound to a verified config key). Pages follow the sidebar order: General, Interface, Privacy, Controls, Playback, Video, Audio, Subtitles, Library, Network, Performance, Recording, Extensions.
 
 | page | label | VLC config key or EffectsController method | type | notes |
 |---|---|---|---|---|
@@ -187,6 +187,7 @@ Types: `toggle` (bool), `choice`, `number`, `slider`, `path`, `text`, `color`, `
 | Network | Connection timeout (ms) | `ipv4-timeout` | number | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1943` |
 | Network | RTSP over TCP | `rtsp-tcp` | toggle | PROVISIONAL (upstream prefs). live555 module. `modules/access/live555.cpp:112` |
 | Network | Network discovery services | `services-discovery` | text (module list) | PROVISIONAL (upstream prefs). `src/libvlc-module.c:2211` |
+| Network | Download website playback tools (yt-dlp, ffmpeg) | `ToolManager.consentGiven` (QSettings group `redesign`, key `toolsConsent`; not a config key) | toggle | Task 52, spec 12.1. Default off. Turning it on is the consent of the first-use dialog (`redesign/dialogs/ToolConsentDialog.qml`): the tools are then downloaded from their GitHub releases and verified against `redesign/tools/tools.json`. The key is stored by `ToolManager` (`redesign/cpp/toolmanager.cpp`) in the same store as the QML `Settings { category: "redesign" }` of the rail and the pins (`vlc-qt-interface.conf` is separate: this is the default `QSettings()` of the application, organisation `redesign::productName()`). `qt.cpp` has no new key. |
 | Performance | File caching (ms) | `file-caching` | number | PROVISIONAL (upstream prefs). next playback. `src/libvlc-module.c:1998` |
 | Performance | Network caching (ms) | `network-caching` | number | PROVISIONAL (upstream prefs). next playback. `src/libvlc-module.c:2010` |
 | Performance | Disc caching (ms) | `disc-caching` | number | PROVISIONAL (upstream prefs). next playback. `src/libvlc-module.c:2006` |

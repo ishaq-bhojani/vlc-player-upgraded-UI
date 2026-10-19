@@ -32,6 +32,7 @@
 #include "mlrecentaudiomodel.hpp"
 #include "pinnavigation.hpp"
 #include "settingsmodel.hpp"
+#include "toolmanagervlc.hpp"
 
 #include "../../maininterface/mainctx.hpp"
 #include "../../qt.hpp"
@@ -54,6 +55,7 @@ static_assert(SettingItem::Bool == 0 && SettingItem::Integer == 1 && SettingItem
  *   SettingItem            uncreatable, returned by RedesignSettings.item()
  *   RedesignSettings       singleton, SettingsModel (not "Settings": that would
  *                          clash with QtCore.Settings)
+ *   ToolManager            singleton, verified yt-dlp / ffmpeg downloads (consent, pinned manifest)
  * plus, only when the interface has a media library, the default backend
  * factory of CurrentMediaFavorite (MLFavoriteBackend), and the
  * qmlRegisterModule/qmlProtectModule pair of the URI.
@@ -79,6 +81,8 @@ void registerQmlTypes(MainCtx* ctx)
         "SettingItem is returned by RedesignSettings.item()");
     qmlRegisterSingletonType<SettingsModel>(uri, versionMajor, versionMinor, "RedesignSettings",
         [intf](QQmlEngine*, QJSEngine*) { return new SettingsModel(VLC_OBJECT(intf)); });
+    qmlRegisterSingletonType<ToolManager>(uri, versionMajor, versionMinor, "ToolManager",
+        [intf](QQmlEngine*, QJSEngine*) { return createToolManager(VLC_OBJECT(intf)); });
     if (ctx->hasMediaLibrary()) {
         CurrentMediaFavorite::setDefaultBackendFactory([ml = ctx->getMediaLibrary()] {
             return std::make_unique<MLFavoriteBackend>(ml);

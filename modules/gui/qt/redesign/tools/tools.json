@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "name": "yt-dlp",
+      "version": "2026.08.19",
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe",
+      "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a",
+      "size": 17840399,
+      "exe": "yt-dlp.exe"
+    },
+    {
+      "name": "ffmpeg",
+      "version": "autobuild-2026-10-17-20-33",
+      "url": "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/autobuild-2026-10-17-20-33/ffmpeg-N-127617-g94cba3150c-win64-gpl.zip",
+      "sha256": "19852763398ad0a56f9c763c96e0cb7706bec68994b33c77786451b9cc5cee98",
+      "size": 200391563,
+      "archive": "zip",
+      "exe": "ffmpeg.exe"
+    }
+  ]
+}

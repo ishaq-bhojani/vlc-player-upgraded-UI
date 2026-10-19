@@ -6,5 +6,6 @@
         <file alias="fonts/OFL.txt">fonts/OFL.txt</file>
         <file alias="VLCIconsRedesign.ttf">VLCIconsRedesign.ttf</file>
         <file alias="settings/choice-labels.json">../settings/choice-labels.json</file>
+        <file alias="tools/tools.json">../tools/tools.json</file>
     </qresource>
 </RCC>

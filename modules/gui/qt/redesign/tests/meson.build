@@ -293,3 +293,24 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+# ToolManager (yt-dlp / ffmpeg downloads) with a fake ToolFetcher: no network, no libvlc, the
+# tools and the settings live in a temporary directory.
+vlc_tests += {
+    'name': 'test_qt_tool_manager',
+    'sources': [files(
+        '../../tests/test_tool_manager.cpp',
+        '../cpp/toolmanager.hpp',
+        '../cpp/toolmanager.cpp'
+    ), redesign_qrc],
+    'moc_sources': files(
+        '../../tests/test_tool_manager.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/toolmanager.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qtest_qt6_dep],
+}

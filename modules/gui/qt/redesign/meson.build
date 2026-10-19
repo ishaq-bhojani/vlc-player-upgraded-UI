@@ -36,6 +36,7 @@ moc_headers += files(
     'cpp/pinnavigation.hpp',
     'cpp/settingsmodel.hpp',
     'cpp/shortcutsmodel.hpp',
+    'cpp/toolmanager.hpp',
 )
 
 qt_plugin_sources += files(
@@ -57,6 +58,10 @@ qt_plugin_sources += files(
     'cpp/settingsmodel.hpp',
     'cpp/shortcutsmodel.cpp',
     'cpp/shortcutsmodel.hpp',
+    'cpp/toolmanager.cpp',
+    'cpp/toolmanager.hpp',
+    'cpp/toolmanagervlc.cpp',
+    'cpp/toolmanagervlc.hpp',
     'cpp/currentmediafavorite.cpp',
     'cpp/currentmediafavorite.hpp',
     'cpp/effectscontroller.cpp',
@@ -108,6 +113,7 @@ qml_modules += {
         'settings/controls/NumberControl.qml',
         'settings/controls/PathControl.qml',
         'settings/controls/TextControl.qml',
+        'dialogs/ToolConsentDialog.qml',
         'library/HomeContent.qml',
         'library/HomePage.qml',
         'library/HomeSection.qml',
