@@ -821,8 +821,26 @@ Item {
                     libraryPanel.openAt(folderUrl)
                 }
 
-                // the menu itself comes with the menu task, nothing opens yet
-                onMenuRequested: (globalPos) => {}
+                onMenuRequested: (globalPos) => mainMenu.openAtGlobal(globalPos)
+            }
+
+            // --- Menus (host lines of the menus; the main menu opened by the title bar) ---
+
+            // The main menu, in place of the menu bar of the classic interface. It closes when the shell
+            // changes state (a menu does not follow the bars it was opened from), and the keyboard goes
+            // back to where the state wants it.
+            MainMenu {
+                id: mainMenu
+
+                onClosed: Qt.callLater(root._focusState)
+            }
+
+            Connections {
+                target: shellStates
+
+                function onStateChanged() {
+                    mainMenu.dismiss()
+                }
             }
 
             // The stock control-bar control LangButton (a profile may contain it) opens its tracks menu in
