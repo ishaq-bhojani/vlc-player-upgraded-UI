@@ -963,11 +963,24 @@ qml_modules += {
     'name' : 'VLC.Redesign',
     'target' : 'redesign',
     'outdir' : 'VLC/Redesign',
-    'singletons': files('redesign/theme/RedesignStyle.qml'),
+    'sources': files(
+        'redesign/player/controls/MediaLabelWidget.qml',
+        'redesign/player/controls/DividerWidget.qml',
+        'redesign/player/controls/TitleLabelWidget.qml',
+        'redesign/player/controls/ArtistLabelWidget.qml',
+        'redesign/player/controls/FolderLabelWidget.qml',
+        'redesign/player/controls/PlaylistLabelWidget.qml',
+        'redesign/player/controls/ReplayButton.qml',
+    ),
+    'singletons': files(
+        'redesign/theme/RedesignStyle.qml',
+        'redesign/util/MediaText.qml',
+    ),
 }
 
 qml_tests = {
     'tst_FSM': files('tests/tst_FSM.qml'),
+    'tst_MediaText': files('tests/tst_MediaText.qml'),
 }
 
 qmllibs = []

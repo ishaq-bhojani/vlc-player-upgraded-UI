@@ -96,13 +96,13 @@ public:
         RESERVED_0X36,
         RESERVED_0X37,
         RESERVED_0X38,
-        RESERVED_0X39,
-        RESERVED_0X3A,
-        RESERVED_0X3B,
-        RESERVED_0X3C,
-        RESERVED_0X3D,
-        RESERVED_0X3E,
-        RESERVED_0X3F,
+        REDESIGN_DIVIDER,
+        REDESIGN_TITLE_LABEL,
+        REDESIGN_ARTIST_LABEL,
+        REDESIGN_FOLDER_LABEL,
+        REDESIGN_PLAYLIST_LABEL,
+        REDESIGN_REPLAY_BUTTON,
+        REDESIGN_FAVORITE_BUTTON,
 
         WIDGET_SPACER = 0x40,
         WIDGET_SPACER_EXTEND,
@@ -112,7 +112,7 @@ public:
 
     static_assert(RESERVED_0X1F == 0x1F, "missaligned");
     static_assert(RESERVED_0X2B == 0x2B, "missaligned");
-    static_assert(RESERVED_0X3F == 0x3F, "missaligned");
+    static_assert(REDESIGN_FAVORITE_BUTTON == 0x3F, "missaligned");
 
     // Basic functionality:
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;

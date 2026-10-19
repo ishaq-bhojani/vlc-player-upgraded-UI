@@ -28,6 +28,8 @@ import VLC.Style
 
 QtObject {
     readonly property string controlPath : "qrc:///qt/qml/VLC/PlayerControls/"
+    // entries of the redesign carry an absolute `source` instead of a `file` in controlPath
+    readonly property string redesignPath : "qrc:///qt/qml/VLC/Redesign/"
 
     readonly property var controlList: [
         { id: ControlListModel.PLAY_BUTTON, file: "PlayButton.qml", label: VLCIcons.play_filled, text: qsTr("Play") },
@@ -69,7 +71,13 @@ QtObject {
         { id: ControlListModel.PLAYER_SWITCH_BUTTON, file: "PlayerSwitchButton.qml", label: VLCIcons.fullscreen, text: qsTr("Switch Player") },
         { id: ControlListModel.ARTWORK_INFO, file: "ArtworkInfoWidget.qml", label: VLCIcons.info, text: qsTr("Artwork Info") },
         { id: ControlListModel.PLAYBACK_SPEED_BUTTON, file: "PlaybackSpeedButton.qml", label: "1x", text: qsTr("Playback Speed") },
-        { id: ControlListModel.HIGH_RESOLUTION_TIME_WIDGET, file: "HighResolutionTimeWidget.qml", label: VLCIcons.time, text: qsTr("High Resolution Time") }
+        { id: ControlListModel.HIGH_RESOLUTION_TIME_WIDGET, file: "HighResolutionTimeWidget.qml", label: VLCIcons.time, text: qsTr("High Resolution Time") },
+        { id: ControlListModel.REDESIGN_DIVIDER, source: redesignPath + "DividerWidget.qml", label: VLCIcons.space, text: qsTr("Divider") },
+        { id: ControlListModel.REDESIGN_TITLE_LABEL, source: redesignPath + "TitleLabelWidget.qml", label: VLCIcons.info, text: qsTr("Title") },
+        { id: ControlListModel.REDESIGN_ARTIST_LABEL, source: redesignPath + "ArtistLabelWidget.qml", label: VLCIcons.profile_new, text: qsTr("Artist") },
+        { id: ControlListModel.REDESIGN_FOLDER_LABEL, source: redesignPath + "FolderLabelWidget.qml", label: VLCIcons.ic_fluent_folder_open_24_regular, text: qsTr("Folder") },
+        { id: ControlListModel.REDESIGN_PLAYLIST_LABEL, source: redesignPath + "PlaylistLabelWidget.qml", label: VLCIcons.playlist, text: qsTr("Play Queue Position") },
+        { id: ControlListModel.REDESIGN_REPLAY_BUTTON, source: redesignPath + "ReplayButton.qml", label: VLCIcons.history, text: qsTr("Replay") }
     ]
 
     function control(id) {
@@ -80,7 +88,8 @@ QtObject {
             return { source: controlPath + "Fallback.qml" }
         }
 
-        entry.source = controlPath + entry.file
+        if (entry.source === undefined)
+            entry.source = controlPath + entry.file
 
         return entry
     }
