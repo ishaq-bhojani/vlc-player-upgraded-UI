@@ -2,57 +2,57 @@
 
 Maps every Settings control to a VLC config key or an `EffectsController` method. Spec: sections 6 and 11.4.
 
-**Keys verified against source; re-verified against a build in Task 30 Step 0.** No `vlc.exe` build existed when this file was written, so each key was checked by finding its `add_*` declaration in `src/`, `modules/` or `include/` (declaration file and line are in `notes`). Obsolete (`add_obsolete_*`) options were rejected. A key that appears here but is not declared would fail the `SettingsModel` "unknown key" check, so Task 30 Step 0 must re-run `vlc.exe -H --advanced` and compare.
+**Keys verified against source twice.** The first pass (Task 3) found each key's `add_*` declaration in `src/`, `modules/` or `include/` (declaration file and line are in `notes`) and rejected obsolete (`add_obsolete_*`) options. Task 30 Step 0 repeated the check by script on 2026-10-19: every key in the third column was matched against all `add_*` declarations of the tree, none is obsolete, and none is missing, so no row moved to "Dropped (no backend)". 27 filter keys (`sharpen-sigma`, `gradfun-radius`, `grain-variance`, `croppadd-*`, `extract-component`, `colorthres-*`, `gradient-*`, `posterize-level`, `sepia-intensity`, `compressor-*`, `stereowiden-*`) are declared through a prefix macro or a name table, so they were checked by reading their declarations. The `qt.cpp:N` line numbers had drifted by 7 lines (the fork's `qt-redesign` option) and were corrected. `vlc.exe -H --advanced` was not run (no build is launched in this environment); `SettingsModel` (Task 30) reports an unknown key at run time with `msg_Err`, and its tests check a handful of keys against a real libvlc instance.
 
 Provenance tags in `notes`:
 
 - `Figma (<png>)`: the control is drawn in that PNG; the label is copied from the PNG.
 - `PROVISIONAL (upstream prefs)`: the export shows only the General, Audio and Subtitles pages plus effect panels, so rows for the other pages are built from the upstream simple preferences (`modules/gui/qt/dialogs/preferences/sprefs_*.ui` and `simple_preferences.cpp`) and grouped by hand into the 13 pages. They are a starting set, not a Figma-confirmed list; the owner should review them when the missing Figma frames are available.
 
-Column `notes`: the word `restart` marks keys that are read only at startup or at module creation (a restart banner is needed); `next playback` marks keys that apply to the next media. The restart classification is a judgement from where each option is read, not from a build; confirm in Task 30 Step 0. Anything not marked applies immediately.
+Column `notes`: the word `restart` marks keys that are read only at startup or at module creation (a restart banner is needed); `next playback` marks keys that apply to the next media. The restart classification is a judgement from where each option is read, not from a build; it was not confirmed against a build. `SettingsModel` (`modules/gui/qt/redesign/cpp/settingsmodel.cpp`) keeps its own list of the keys marked `restart`; change both together. Anything not marked applies immediately.
 
 Types: `toggle` (bool), `choice`, `number`, `slider`, `path`, `text`, `color`, `font`, `hotkey`. `EffectsController` method names are proposed names for Task 31; the persisted keys are the config keys listed.
 
-184 rows (171 bound to a verified config key). Pages follow the sidebar order: General, Interface, Privacy, Controls, Playback, Video, Audio, Subtitles, Library, Network, Performance, Recording, Extensions.
+189 rows (176 bound to a verified config key). Pages follow the sidebar order: General, Interface, Privacy, Controls, Playback, Video, Audio, Subtitles, Library, Network, Performance, Recording, Extensions.
 
 | page | label | VLC config key or EffectsController method | type | notes |
 |---|---|---|---|---|
 | General | Interface language | Windows registry value `HKCU\Software\VideoLAN\VLC\Lang` (not a config key) | choice {auto + language codes} | Figma (Settings - global.png). restart. Written by `SPrefsPanel::saveLang` (`simple_preferences.cpp`); language list at `simple_preferences.cpp:85-146`. "auto" deletes the value. Task 30 (SettingsModel) needs a special-case setter for this row, because `config_Put*` cannot reach the registry |
 | General | Theme (Dark / Light / System) | `MainCtx::colorScheme` (QSettings `MainWindow/color-scheme-index`) | choice {Dark, Light, System} | Figma (Settings - global.png). not a config key. Index 0 = System, 1 = Day (Light), 2 = Night (Dark); Figma shows Dark, Light, System in that order. `maininterface/mainctx.cpp` lines 336 and 497; needs Qt >= 6.8 for `setColorScheme` |
-| General | Accent color | `qt-accent-color` | choice {9 swatches} | Figma (Settings - global.png). restart. Stored as `#RRGGBB`, or `default`, or `system` (Qt >= 6.6). Swatch list: tokens.md Table C. Read once in `SystemPalette::componentComplete`; Task 5 may make it live. `modules/gui/qt/qt.cpp:480` |
-| General | Show confirmation and error dialogs | `qt-error-dialogs` | toggle | Figma (Settings - global.png). `modules/gui/qt/qt.cpp:437` |
-| General | Check for updates automatically | `qt-updates-notif` | toggle | Figma (Settings - global.png). only compiled with `UPDATE_CHECK`; the fork replaces the update source in Task 14. Interval key `qt-updates-days` (not in Figma). `modules/gui/qt/qt.cpp:399` |
+| General | Accent color | `qt-accent-color` | choice {9 swatches} | Figma (Settings - global.png). restart. Stored as `#RRGGBB`, or `default`, or `system` (Qt >= 6.6). Swatch list: tokens.md Table C. Read once in `SystemPalette::componentComplete`; Task 5 may make it live. `modules/gui/qt/qt.cpp:487` |
+| General | Show confirmation and error dialogs | `qt-error-dialogs` | toggle | Figma (Settings - global.png). `modules/gui/qt/qt.cpp:444` |
+| General | Check for updates automatically | `qt-updates-notif` | toggle | Figma (Settings - global.png). only compiled with `UPDATE_CHECK`; the fork replaces the update source in Task 14. Interval key `qt-updates-days` (not in Figma). `modules/gui/qt/qt.cpp:406` |
 | General | Save a log | `file-logging` | toggle | Figma (Settings - global.png). restart (the logger module is opened at startup). `modules/logger/file.c:239` |
 | General | Log file | `logfile` | path (save file) | Figma (Settings - global.png). restart. `modules/logger/file.c:240` |
 | General | Log details | `log-verbose` | choice {Default -1, Info, Error, Warning, Debug} | Figma (Settings - global.png). restart. Figma shows "Errors only" = Error (`VLC_MSG_ERR`). Choice list is `verbosity_values` in the file below. `modules/logger/file.c:243` |
 | General | Advanced Options > | (link) | button | Figma (Settings - global.png). opens the Advanced section of this page; subcategories in the last table |
-| Interface | Show system tray icon | `qt-system-tray` | toggle | PROVISIONAL (upstream prefs). restart. `modules/gui/qt/qt.cpp:361` |
-| Interface | Close to system tray | `qt-close-to-system-tray` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:472` |
-| Interface | Show notifications | `qt-notification` | choice {never, minimized, always} | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:363` |
-| Interface | Start minimized | `qt-start-minimized` | toggle | PROVISIONAL (upstream prefs). restart. `modules/gui/qt/qt.cpp:368` |
-| Interface | Pause when minimized | `qt-pause-minimized` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:370` |
-| Interface | Resize window to video size | `qt-video-autoresize` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:384` |
+| Interface | Show system tray icon | `qt-system-tray` | toggle | PROVISIONAL (upstream prefs). restart. `modules/gui/qt/qt.cpp:368` |
+| Interface | Close to system tray | `qt-close-to-system-tray` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:479` |
+| Interface | Show notifications | `qt-notification` | choice {never, minimized, always} | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:370` |
+| Interface | Start minimized | `qt-start-minimized` | toggle | PROVISIONAL (upstream prefs). restart. `modules/gui/qt/qt.cpp:375` |
+| Interface | Pause when minimized | `qt-pause-minimized` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:377` |
+| Interface | Resize window to video size | `qt-video-autoresize` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:391` |
 | Interface | Embed video in the main window | `embedded-video` | toggle | PROVISIONAL (upstream prefs). restart. `src/libvlc-module.c:1683` |
 | Interface | Window decorations | `video-deco` | toggle | PROVISIONAL (upstream prefs). restart. The redesign shell draws its own title bar; confirm in R2 whether this row stays. `src/libvlc-module.c:1767` |
-| Interface | Show controls in fullscreen | `qt-fs-controller` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:388` |
-| Interface | Fullscreen controls reveal distance | `qt-fs-sensitivity` | number (px) | PROVISIONAL (upstream prefs). spec 11.1 fixes 80 px; this key is the existing equivalent. `modules/gui/qt/qt.cpp:459` |
-| Interface | Raise window on playback | `qt-auto-raise` | choice {never, video, audio, audio or video} | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:462` |
+| Interface | Show controls in fullscreen | `qt-fs-controller` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:395` |
+| Interface | Fullscreen controls reveal distance | `qt-fs-sensitivity` | number (px) | PROVISIONAL (upstream prefs). spec 11.1 fixes 80 px; this key is the existing equivalent. `modules/gui/qt/qt.cpp:466` |
+| Interface | Raise window on playback | `qt-auto-raise` | choice {never, video, audio, audio or video} | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:469` |
 | Interface | Allow only one instance | `one-instance` | toggle | PROVISIONAL (upstream prefs). restart. Windows only (`_WIN32`). `src/libvlc-module.c:2166` |
 | Interface | Enqueue items into the playlist in one-instance mode | `playlist-enqueue` | toggle | PROVISIONAL (upstream prefs). Windows only. `src/libvlc-module.c:2173` |
 | Interface | One instance when started from file manager | `one-instance-when-started-from-file` | toggle | PROVISIONAL (upstream prefs). Windows only. `src/libvlc-module.c:2171` |
-| Interface | Window opacity | `qt-opacity` | slider 0.1-1.0 | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:373` |
-| Interface | Fullscreen controller opacity | `qt-fs-opacity` | slider 0.1-1.0 | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:375` |
-| Interface | Interface scale | `qt-interface-scale` | slider 0.3-3.0 (-1 = automatic) | PROVISIONAL (upstream prefs). applied live through `MainCtx::setIntfUserScaleFactor` as well. `modules/gui/qt/qt.cpp:380` |
-| Interface | Maximum volume | `qt-max-volume` | number % (60-300) | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:457` |
-| Interface | Picture-in-picture mode | `qt-pip-mode` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:476` |
-| Interface | Show background cone | `qt-bgcone` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:451` |
+| Interface | Window opacity | `qt-opacity` | slider 0.1-1.0 | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:380` |
+| Interface | Fullscreen controller opacity | `qt-fs-opacity` | slider 0.1-1.0 | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:382` |
+| Interface | Interface scale | `qt-interface-scale` | slider 0.3-3.0 (-1 = automatic) | PROVISIONAL (upstream prefs). applied live through `MainCtx::setIntfUserScaleFactor` as well. `modules/gui/qt/qt.cpp:387` |
+| Interface | Maximum volume | `qt-max-volume` | number % (60-300) | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:464` |
+| Interface | Picture-in-picture mode | `qt-pip-mode` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:483` |
+| Interface | Show background cone | `qt-bgcone` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:458` |
 | Privacy | Allow metadata network access | `metadata-network-access` | toggle | PROVISIONAL (upstream prefs). same option as the first-run wizard. `src/libvlc-module.c:2196` |
 | Privacy | Save recently played items | `save-recentplay` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1926` |
 | Privacy | Forward cookies to the server | `http-forward-cookies` | toggle | PROVISIONAL (upstream prefs). `modules/access/http/access.c:298` |
-| Privacy | Ask about privacy on first run | `qt-privacy-ask` | internal flag, not shown | PROVISIONAL (upstream prefs). Onboarding clears it (spec section 6). Declared at `modules/gui/qt/qt.cpp:442` |
+| Privacy | Ask about privacy on first run | `qt-privacy-ask` | internal flag, not shown | PROVISIONAL (upstream prefs). Onboarding clears it (spec section 6). Declared at `modules/gui/qt/qt.cpp:449` |
 | Controls | Mouse wheel (vertical) action | `hotkeys-y-wheel-mode` | choice | PROVISIONAL (upstream prefs). `src/libvlc-module.c:2276` |
 | Controls | Mouse wheel (horizontal) action | `hotkeys-x-wheel-mode` | choice | PROVISIONAL (upstream prefs). `src/libvlc-module.c:2279` |
-| Controls | Disable volume keys | `qt-disable-volume-keys` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:411` |
+| Controls | Disable volume keys | `qt-disable-volume-keys` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:418` |
 | Controls | Volume step | `volume-step` | number | PROVISIONAL (upstream prefs). applies to keys and wheel. `src/libvlc-module.c:1617` |
 | Controls | Extra-short jump size | `extrashort-jump-size` | number (s) | PROVISIONAL (upstream prefs). `src/libvlc-module.c:2765` |
 | Controls | Medium jump size | `medium-jump-size` | number (s) | PROVISIONAL (upstream prefs). `src/libvlc-module.c:2769` |
@@ -70,6 +70,7 @@ Types: `toggle` (bool), `choice`, `number`, `slider`, `path`, `text`, `color`, `
 | Playback | Exit after playback | `play-and-exit` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:2156` |
 | Playback | Default playback speed | `rate` | slider | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1914` |
 | Playback | Fast seek | `input-fast-seek` | toggle | PROVISIONAL (upstream prefs). seek to nearest keyframe. `src/libvlc-module.c:1911` |
+| Playback | Preferred video quality for adaptive streams | `preferred-resolution` | choice {Best available -1, Full HD 1080, HD 720, SD 576, Low 360, Very low 240} | PROVISIONAL (Pylon harvest A, `docs/redesign/pylon-harvest.md`; not in Figma). next playback. The key declares an integer list (`pi_prefres`), so `SettingsModel` already returns the labels. `src/libvlc-module.c:1889` |
 | Video | Enable video | `video` | toggle | PROVISIONAL (upstream prefs). restart. `src/libvlc-module.c:1673` |
 | Video | Start in fullscreen | `fullscreen` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1677` |
 | Video | Always on top | `video-on-top` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1698` |
@@ -79,7 +80,7 @@ Types: `toggle` (bool), `choice`, `number`, `slider`, `path`, `text`, `color`, `
 | Video | Deinterlace mode | `deinterlace-mode` | choice | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1779` |
 | Video | Default aspect ratio | `aspect-ratio` | text | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1753` |
 | Video | Scale video to the window | `autoscale` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1756` |
-| Video | Fullscreen display number | `qt-fullscreen-screennumber` | choice (screens) | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:445` |
+| Video | Fullscreen display number | `qt-fullscreen-screennumber` | choice (screens) | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:452` |
 | Video | Show media title on video start | `video-title-show` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1705` |
 | Video | Title position | `video-title-position` | choice | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1715` |
 | Video | Title display time (ms) | `video-title-timeout` | number | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1712` |
@@ -89,6 +90,8 @@ Types: `toggle` (bool), `choice`, `number`, `slider`, `path`, `text`, `color`, `
 | Video | Snapshot prefix | `snapshot-prefix` | text | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1724` |
 | Video | Snapshot format | `snapshot-format` | choice | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1726` |
 | Video | Sequential snapshot numbers | `snapshot-sequential` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1731` |
+| Video | Upscaling mode (Direct3D11) | `d3d11-upscale-mode` | choice {linear, point, processor, super} | PROVISIONAL (Pylon harvest A, `docs/redesign/pylon-harvest.md`; not in Figma). next playback. Windows only, read when the Direct3D11 display is opened (module `direct3d11`). String list `ppsz_upscale_mode` gives the labels (Linear Sampler, Point Sampler, Video Processor, Super Resolution). `modules/video_output/win32/direct3d11.cpp:96` |
+| Video | HDR output mode (Direct3D11) | `d3d11-hdr-mode` | choice {auto, never, always, generate} | PROVISIONAL (Pylon harvest A, `docs/redesign/pylon-harvest.md`; not in Figma). next playback. Windows only, read when the Direct3D11 display is opened. The upstream label "Never out HDR" is a typo of "Never output HDR": show it as "Never output HDR". `modules/video_output/win32/direct3d11.cpp:99` |
 | Video | Effects: Hue | `hue` | slider -180..180 | Figma (Property 1=expanded*.png). EffectsController.setVideoAdjust("hue"). Filter `adjust` (`video-filter` list). `modules/video_filter/adjust.c:78` |
 | Video | Effects: Brightness | `brightness` | slider 0..2 | Figma (Property 1=expanded*.png). EffectsController.setVideoAdjust("brightness"). `modules/video_filter/adjust.c:75` |
 | Video | Effects: Contrast | `contrast` | slider 0..2 | Figma (Property 1=expanded*.png). EffectsController.setVideoAdjust("contrast"). `modules/video_filter/adjust.c:72` |
@@ -118,6 +121,8 @@ Types: `toggle` (bool), `choice`, `number`, `slider`, `path`, `text`, `color`, `
 | Audio | Preferred audio language | `audio-language` | text | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1867` |
 | Audio | Remember volume | `volume-save` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1620` |
 | Audio | Replay gain mode | `audio-replay-gain-mode` | choice | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1640` |
+| Audio | Replay gain preamp (dB) | `audio-replay-gain-preamp` | number (float, dB, default 0) | PROVISIONAL (Pylon harvest A, `docs/redesign/pylon-harvest.md`; not in Figma). applied to the next track (read per input in `src/input/replay_gain.c:138`). `src/libvlc-module.c:1643` |
+| Audio | Default replay gain (dB) | `audio-replay-gain-default` | number (float, dB, default -7) | PROVISIONAL (Pylon harvest A, `docs/redesign/pylon-harvest.md`; not in Figma). gain used for streams without replay gain information; applied to the next track. `src/libvlc-module.c:1645` |
 | Audio | Time stretching | `audio-time-stretch` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1621` |
 | Audio | Visualization | `audio-visual` | choice (module list) | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1662` |
 | Audio | Audio desynchronization (ms) | `audio-desync` | number | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1635` |
@@ -191,12 +196,12 @@ Types: `toggle` (bool), `choice`, `number`, `slider`, `path`, `text`, `color`, `
 | Performance | Direct rendering | `avcodec-dr` | toggle | PROVISIONAL (upstream prefs). next playback. `modules/codec/avcodec/avcodec.c:107` |
 | Performance | Preload MKV files in the same folder | `mkv-preload-local-dir` | toggle | PROVISIONAL (upstream prefs). `modules/demux/mkv/mkv.cpp:69` |
 | Performance | Repair AVI files | `avi-index` | choice | PROVISIONAL (upstream prefs). `modules/demux/avi/avi.c:85` |
-| Performance | Smooth scrolling | `qt-smooth-scrolling` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:466` |
-| Performance | Backdrop blur | `qt-backdrop-blur` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:474` |
-| Performance | Qt compositor | `qt-compositor` | choice | PROVISIONAL (upstream prefs). restart. `modules/gui/qt/qt.cpp:391` |
+| Performance | Smooth scrolling | `qt-smooth-scrolling` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:473` |
+| Performance | Backdrop blur | `qt-backdrop-blur` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:481` |
+| Performance | Qt compositor | `qt-compositor` | choice | PROVISIONAL (upstream prefs). restart. `modules/gui/qt/qt.cpp:398` |
 | Recording | Recording folder | `input-record-path` | path (folder) | PROVISIONAL (upstream prefs). `src/libvlc-module.c:2027` |
 | Recording | Record in native format | `input-record-native` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:2029` |
-| Extensions | Autoload extensions | `qt-autoload-extensions` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:448` |
+| Extensions | Autoload extensions | `qt-autoload-extensions` | toggle | PROVISIONAL (upstream prefs). `modules/gui/qt/qt.cpp:455` |
 | Extensions | Lua interpreter | `lua` | toggle | PROVISIONAL (upstream prefs). restart. `modules/lua/vlc.c:658` |
 | Extensions | Last.fm user name | `lastfm-username` | text | PROVISIONAL (upstream prefs). audioscrobbler module. `modules/misc/audioscrobbler.c:135` |
 | Extensions | Last.fm password | `lastfm-password` | password | PROVISIONAL (upstream prefs). audioscrobbler module; stored in plain config by upstream, flag in review. `modules/misc/audioscrobbler.c:137` |
@@ -208,7 +213,7 @@ Controls with no usable backend. They are not shown in the UI (spec: no fake swi
 
 | Control | Reason |
 |---|---|
-| Developer mode (General, Figma) | No VLC option matches. The nearest, `qt-verbose` (verbose Qt logging, `qt.cpp:470`), is not obviously the same. Owner to decide; dropped until then. |
+| Developer mode (General, Figma) | No VLC option matches. The nearest, `qt-verbose` (verbose Qt logging, `qt.cpp:477`), is not obviously the same. Owner to decide; dropped until then. |
 | Subtitle Duration Factor (Subtitles, Figma) | No option exists (`sub-duration-factor` is not declared anywhere in `src/` or `modules/`). |
 | Default Preset dropdown (Subtitles, Figma) | Per-show presets are a redesign feature (spec 11.3, stored in `presets.json`, Release 4), not a VLC option. Hidden until then. |
 | Equalizer "Close Equalizer" (Audio, Figma) | UI-only disclosure; listed above as UI only, no persistence. |
@@ -225,7 +230,7 @@ After the curated rows each page lists every remaining option of these `SUBCAT_*
 | page | subcategories | declared at |
 |---|---|---|
 | General | SUBCAT_INTERFACE_GENERAL | `src/libvlc-module.c:2239` |
-| Interface | SUBCAT_INTERFACE_MAIN | `modules/gui/qt/qt.cpp:352` |
+| Interface | SUBCAT_INTERFACE_MAIN | `modules/gui/qt/qt.cpp:359` |
 | Privacy | (none: no VLC subcategory is privacy specific; page has curated rows only) | n/a |
 | Controls | SUBCAT_INTERFACE_CONTROL, SUBCAT_INTERFACE_HOTKEYS | `src/libvlc-module.c:2268, 2273` |
 | Playback | SUBCAT_INPUT_GENERAL, SUBCAT_PLAYLIST_GENERAL | `src/libvlc-module.c:1848, 2145` |
