@@ -270,6 +270,8 @@ Item {
         // (not in an interactive menu, the DVD menu is under the pointer there: the bars come with the button of the Stage)
         pointerNearTop: pointer.hovered && !Player.isInteractive && (pointer.point.position.y < MainCtx.dp(80))
         pointerNearBottom: pointer.hovered && !Player.isInteractive && (pointer.point.position.y > (root.height - MainCtx.dp(80)))
+        // the track popup is placed above a button of the bottom bar: the bar stays while it is open
+        keepBottomBar: trackPopup.opened
     }
 
     HoverHandler {
@@ -842,13 +844,29 @@ Item {
                 z: 15
 
                 anchors.fill: parent
+
+                // the keyboard focus was in the popup and its button can not take it
+                onClosed: Qt.callLater(root._focusState)
             }
 
             Connections {
                 target: ShellActions
 
                 function onTrackPopupRequested(tab, anchor) {
+                    // the popup does not float over the library
+                    if (shellStates.state === "browse")
+                        return
                     trackPopup.toggle(tab, anchor)
+                }
+            }
+
+            Connections {
+                target: shellStates
+
+                // the bars are hidden: there is no button to anchor the popup
+                function onUiHiddenChanged() {
+                    if (shellStates.uiHidden)
+                        trackPopup.close(false)
                 }
             }
 

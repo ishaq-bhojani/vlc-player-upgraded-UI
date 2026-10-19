@@ -32,7 +32,7 @@ import VLC.Redesign
  * that asked for it (ShellActions.trackPopupRequested).
  *
  *   Subtitles: the subtitle tracks, "Add subtitles..."
- *   Audio:     the audio tracks, then the "Output" devices
+ *   Audio:     the audio tracks, "Add audio track...", then the "Output" devices
  *   Video:     the video tracks
  *
  * It fills its parent (the area it floats in) and is invisible while closed. Choosing a track
@@ -72,6 +72,11 @@ FocusScope {
 
     readonly property int _margin: RedesignStyle.spacingS
 
+    // Signals
+
+    // the popup closed with the keyboard focus and did not give it to its button: the owner places it
+    signal closed()
+
     // Functions
 
     // Opens the popup on `tab`, above `anchor`.
@@ -83,11 +88,14 @@ FocusScope {
         _keyboard = (anchor?.visualFocus === true)
         opened = true
         reposition()
+        // again once the layouts have settled
+        scheduleReposition()
         _focusTab(_keyboard ? Qt.TabFocusReason : Qt.OtherFocusReason)
     }
 
     // Closes the popup. With `refocus` the keyboard focus goes back to the button, if the popup
-    // has it.
+    // has it. When the popup had the focus and the button can not take it (it is gone or hidden,
+    // or there was no `refocus`), `closed` is emitted so that the owner places the focus.
     function close(refocus: bool) {
         if (!opened)
             return
@@ -95,16 +103,27 @@ FocusScope {
         const hadFocus = root.activeFocus
         opened = false
 
-        if (refocus && hadFocus && anchorItem && anchorItem.visible)
+        if (!hadFocus)
+            return
+
+        if (refocus && anchorItem && anchorItem.visible)
             anchorItem.forceActiveFocus(_keyboard ? Qt.TabFocusReason : Qt.OtherFocusReason)
+        else
+            closed()
     }
 
-    // The button asks again: the same request closes the popup, another one moves it.
+    // The button asks again: the same request closes the popup, another one moves it. (The
+    // request is compared with the tab asked for, not with the tab shown instead of a disabled
+    // one, so a second request always closes.)
     function toggle(tab: string, anchor: Item) {
-        if (opened && anchor === anchorItem && TrackPopupLogic.normalized(tab) === shownTab)
+        if (opened && anchor === anchorItem && TrackPopupLogic.normalized(tab) === _tab)
             close(true)
         else
             open(tab, anchor)
+    }
+
+    function scheduleReposition() {
+        Qt.callLater(reposition)
     }
 
     function reposition() {
@@ -155,6 +174,7 @@ FocusScope {
         } else if (shownTab === "audio") {
             if (audioList.count > 0)
                 items.push(audioList)
+            items.push(addAudio)
             if (deviceList.count > 0)
                 items.push(deviceList)
         } else if (videoList.count > 0) {
@@ -182,8 +202,14 @@ FocusScope {
 
     // Events
 
-    onWidthChanged: reposition()
-    onHeightChanged: reposition()
+    onWidthChanged: scheduleReposition()
+    onHeightChanged: scheduleReposition()
+
+    // the button went away while the popup is open
+    onAnchorItemChanged: {
+        if (opened && !anchorItem)
+            close(false)
+    }
 
     // The keys the lists and the buttons did not take. The arrows are not for the interface
     // behind the popup either (they would seek and change the volume).
@@ -213,6 +239,17 @@ FocusScope {
         colorSet: ColorContext.Tooltip
     }
 
+    // the popup follows its button (the layout of the control bar moves it)
+    Connections {
+        target: root.anchorItem
+
+        function onXChanged() { root.scheduleReposition() }
+        function onYChanged() { root.scheduleReposition() }
+        function onWidthChanged() { root.scheduleReposition() }
+        function onHeightChanged() { root.scheduleReposition() }
+        function onVisibleChanged() { root.scheduleReposition() }
+    }
+
     // a click outside of the popup closes it and does nothing else
     MouseArea {
         anchors.fill: parent
@@ -228,16 +265,21 @@ FocusScope {
     Rectangle {
         id: panel
 
+        // PROVISIONAL: the width (320), the 0.95 alpha of the surface (tokens.md: popups, menus
+        // and modals are exported at 95 %), the 0.15 alpha of the border and the row heights
+        // (tabs 32, rows 36) are not in tokens.md Table D yet, replace them from it.
         width: Math.min(VLCStyle.dp(320, VLCStyle.scale), root.width - 2 * root._margin)
-        height: column.implicitHeight + 2 * RedesignStyle.spacingS
+        // never taller than the area: the lists shrink (they scroll) to fit
+        height: Math.min(column.implicitHeight + 2 * RedesignStyle.spacingS,
+                         Math.max(0, root.height - 2 * root._margin))
 
         radius: RedesignStyle.radiusL
         color: Qt.alpha(theme.bg.primary, 0.95)
         border.width: VLCStyle.dp(1, VLCStyle.scale)
         border.color: Qt.alpha(theme.fg.primary, 0.15)
 
-        onWidthChanged: root.reposition()
-        onHeightChanged: root.reposition()
+        onWidthChanged: root.scheduleReposition()
+        onHeightChanged: root.scheduleReposition()
 
         // a click on the popup itself is not outside
         MouseArea {
@@ -294,12 +336,14 @@ FocusScope {
                                               : subtitlesPage
 
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.preferredHeight: current.implicitHeight
 
                 ColumnLayout {
                     id: subtitlesPage
 
                     width: parent.width
+                    height: parent.height
                     visible: (root.shownTab === "subtitles")
 
                     spacing: RedesignStyle.spacingXS
@@ -308,6 +352,8 @@ FocusScope {
                         id: subtitleList
 
                         Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: rowHeight
 
                         model: Player.subtitleTracks
                         name: qsTr("Subtitle tracks")
@@ -324,7 +370,7 @@ FocusScope {
 
                         Layout.fillWidth: true
 
-                        text: qsTr("Add subtitles2026")
+                        text: qsTr("Add subtitles…")
                         iconText: VLCIcons.add
 
                         // Task 37 replaces it with the dialog of the redesign
@@ -336,6 +382,7 @@ FocusScope {
                     id: audioPage
 
                     width: parent.width
+                    height: parent.height
                     visible: (root.shownTab === "audio")
 
                     spacing: RedesignStyle.spacingXS
@@ -344,6 +391,8 @@ FocusScope {
                         id: audioList
 
                         Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: rowHeight
 
                         maxVisibleRows: 4
                         model: Player.audioTracks
@@ -354,6 +403,17 @@ FocusScope {
                         onBoundaryReached: (direction) => root._moveFocus(direction)
                         onKeyboardUsed: root._keyboard = true
                         onPointerUsed: root._keyboard = false
+                    }
+
+                    ActionRow {
+                        id: addAudio
+
+                        Layout.fillWidth: true
+
+                        text: qsTr("Add audio track…")
+                        iconText: VLCIcons.add
+
+                        onTriggered: DialogsProvider.loadAudioFile()
                     }
 
                     T.Label {
@@ -377,6 +437,8 @@ FocusScope {
                         id: deviceList
 
                         Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: rowHeight
 
                         visible: (count > 0)
 
@@ -396,6 +458,7 @@ FocusScope {
                     id: videoPage
 
                     width: parent.width
+                    height: parent.height
                     visible: (root.shownTab === "video")
 
                     spacing: RedesignStyle.spacingXS
@@ -404,6 +467,8 @@ FocusScope {
                         id: videoList
 
                         Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: rowHeight
 
                         model: Player.videoTracks
                         name: qsTr("Video tracks")
@@ -444,17 +509,21 @@ FocusScope {
         Accessible.selected: tab.shown
         Accessible.onPressAction: tab.clicked()
 
-        onClicked: {
-            root._keyboard = false
-            root.selectTab(tabName)
+        onClicked: root.selectTab(tabName)
+
+        // the pointer, not the keyboard, chose it (a key also ends in `clicked`)
+        TapHandler {
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchScreen | PointerDevice.Stylus
+
+            onPressedChanged: if (pressed) root._keyboard = false
         }
 
         Keys.onLeftPressed: root.stepTab(-1)
         Keys.onRightPressed: root.stepTab(1)
         Keys.onDownPressed: root._moveFocus(1)
         Keys.onUpPressed: root._moveFocus(-1)
-        Keys.onReturnPressed: tab.clicked()
-        Keys.onEnterPressed: tab.clicked()
+        Keys.onReturnPressed: root.selectTab(tabName)
+        Keys.onEnterPressed: root.selectTab(tabName)
 
         readonly property ColorContext colorContext: ColorContext {
             id: tabTheme
@@ -523,9 +592,12 @@ FocusScope {
         Accessible.name: action.text
         Accessible.onPressAction: action.triggered()
 
-        onClicked: {
-            root._keyboard = false
-            action.triggered()
+        onClicked: action.triggered()
+
+        TapHandler {
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchScreen | PointerDevice.Stylus
+
+            onPressedChanged: if (pressed) root._keyboard = false
         }
 
         Keys.onReturnPressed: action.triggered()

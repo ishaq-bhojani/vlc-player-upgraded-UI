@@ -33,7 +33,8 @@ import VLC.Util
  *              if canShowVideoPIP, else "overlay"; in browse "docked"
  *   bars:      browse shows both (uiHidden is ignored), watch shows both unless
  *              uiHidden, immersive shows a bar only while the pointer is near it or
- *              a key was recently pressed (and never when uiHidden)
+ *              a key was recently pressed or keepBottomBar is set (bars never when
+ *              uiHidden)
  */
 QtObject {
     id: root
@@ -50,6 +51,8 @@ QtObject {
     property bool pointerNearTop: false
     property bool pointerNearBottom: false
     property bool recentKeyActivity: false
+    // an open popup of the control bar needs the bottom bar (never against uiHidden)
+    property bool keepBottomBar: false
 
     // outputs
     readonly property string state: _state
@@ -73,7 +76,7 @@ QtObject {
             return true
         if (_state === "watch")
             return !uiHidden
-        return !uiHidden && (pointerNearBottom || recentKeyActivity)
+        return !uiHidden && (keepBottomBar || pointerNearBottom || recentKeyActivity)
     }
 
     // the state the inputs ask for

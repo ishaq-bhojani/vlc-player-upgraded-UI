@@ -104,6 +104,13 @@ TestCase {
         compare(p.y, data.y)
     }
 
+    // taller than the area: sticks to the top edge (the popup caps its own height)
+    function test_placeTallerThanArea() {
+        const p = TrackPopupLogic.place(480, 550, 40, 40, 320, 700, 1000, 600, 8, 8)
+        compare(p.x, 340)
+        compare(p.y, 8)
+    }
+
     function test_placeInTooNarrowArea() {
         const p = TrackPopupLogic.place(100, 300, 40, 40, 320, 200, 200, 600, 8, 8)
         compare(p.x, 8)

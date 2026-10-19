@@ -186,4 +186,44 @@ TestCase {
         compare(shell.topBarVisible, data.top)
         compare(shell.bottomBarVisible, data.bottom)
     }
+
+    // an open popup of the control bar keeps the bottom bar (its buttons anchor the popup)
+    function test_keepBottomBar() {
+        const shell = createShell({ playerView: true, fullscreen: true })
+        compare(shell.state, "immersive")
+        compare(shell.keepBottomBar, false)
+        compare(shell.bottomBarVisible, false)
+
+        shell.keepBottomBar = true
+        compare(shell.bottomBarVisible, true)
+        // only the bottom bar
+        compare(shell.topBarVisible, false)
+
+        shell.keepBottomBar = false
+        compare(shell.bottomBarVisible, false)
+    }
+
+    function test_keepBottomBarInWatch() {
+        const shell = createShell({ playerView: true })
+        compare(shell.state, "watch")
+        shell.keepBottomBar = true
+        compare(shell.bottomBarVisible, true)
+        shell.keepBottomBar = false
+        compare(shell.bottomBarVisible, true)
+    }
+
+    // the user hid the interface: nothing keeps the bar
+    function test_keepBottomBarNeverWithUiHidden() {
+        const shell = createShell({ playerView: true, fullscreen: true, keepBottomBar: true })
+        compare(shell.bottomBarVisible, true)
+        shell.uiHidden = true
+        compare(shell.bottomBarVisible, false)
+
+        shell.fullscreen = false
+        compare(shell.state, "watch")
+        compare(shell.bottomBarVisible, false)
+
+        shell.uiHidden = false
+        compare(shell.bottomBarVisible, true)
+    }
 }

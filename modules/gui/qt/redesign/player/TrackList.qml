@@ -56,6 +56,8 @@ ListView {
     // the row with the keyboard focus is outlined (the keyboard is used, not the pointer)
     property bool showFocus: false
 
+    // PROVISIONAL: the row height (36), the width (240) and the sizes of the radio mark (16, 8)
+    // are not in tokens.md Table D yet, replace them from it.
     readonly property int rowHeight: VLCStyle.dp(36, VLCStyle.scale)
 
     readonly property ColorContext colorContext: ColorContext {
