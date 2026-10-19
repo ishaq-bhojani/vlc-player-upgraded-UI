@@ -32,6 +32,7 @@
 #include <QVariantMap>
 
 #include <cfloat>
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 
@@ -121,17 +122,29 @@ SettingItem::SettingItem(vlc_object_t* obj, module_config_t* config, const QVari
         break;
     }
 
-    // enumerations: the item's own list, a module list, an enumerator of the plugin; else the
-    // labels of choice-labels.json for an integer that is an enumeration without a list
-    if (m_type == Integer || (m_type == String && config->i_type != CONFIG_ITEM_PASSWORD
-                              && config->i_type != CONFIG_ITEM_FONT))
+    // enumerations: the item's own list or a module list (both are read without loading any
+    // plugin and make the item a Choice), else the labels of choice-labels.json for an integer
+    // that is an enumeration without a list. Any other integer or string option may have an
+    // enumerator in its plugin: asking would load the plugin, so that is left to choices().
+    const bool canEnumerate = m_type == Integer
+        || (m_type == String && config->i_type != CONFIG_ITEM_PASSWORD
+            && config->i_type != CONFIG_ITEM_FONT);
+    if (canEnumerate && (config->list_count > 0 || config->i_type == CONFIG_ITEM_MODULE))
     {
         m_choices = readChoices();
-        if (m_choices.isEmpty() && m_type == Integer)
-            m_choices = labels;
-        if (!m_choices.isEmpty())
-            m_type = Choice;
+        m_choicesResolved = true;
     }
+    else if (canEnumerate && m_type == Integer && !labels.isEmpty())
+    {
+        m_choices = labels;
+        m_choicesResolved = true;
+    }
+    else if (!canEnumerate)
+    {
+        m_choicesResolved = true;
+    }
+    if (!m_choices.isEmpty())
+        m_type = Choice;
 
     // a range exists when the option declared one
     if (m_type == Integer)
@@ -163,6 +176,17 @@ bool SettingItem::storesFloat() const
 bool SettingItem::storesString() const
 {
     return isStringClass(m_config->i_type);
+}
+
+QVariantList SettingItem::choices() const
+{
+    if (!m_choicesResolved)
+    {
+        // the plugin that declares the option may be loaded by this
+        m_choices = readChoices();
+        m_choicesResolved = true;
+    }
+    return m_choices;
 }
 
 QVariantList SettingItem::readChoices() const
@@ -252,13 +276,14 @@ void SettingItem::setValue(const QVariant& newValue)
     {
         bool ok = false;
         const double number = newValue.toDouble(&ok);
-        if (!ok || std::isnan(number))
+        if (!ok || !std::isfinite(number))
         {
             msg_Err(m_obj, "settings: '%s' is not a number for %s",
                     qUtf8Printable(newValue.toString()), name.constData());
             return;
         }
-        config_PutFloat(name.constData(), float(number));
+        // the configuration clamps to the range of the option, but the cast must be defined
+        config_PutFloat(name.constData(), float(std::clamp(number, -double(FLT_MAX), double(FLT_MAX))));
     }
     else
     {

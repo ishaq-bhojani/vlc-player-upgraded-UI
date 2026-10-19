@@ -20,6 +20,7 @@
 #endif
 
 #include <cstdlib>
+#include <limits>
 #include <memory>
 
 #include <QFile>
@@ -176,6 +177,59 @@ private slots:
         QCOMPARE(volume->value().toLongLong(), qlonglong(200));
     }
 
+    void integerValidation()
+    {
+        SettingItem* volume = m_model->item("qt-max-volume");
+        QVERIFY(volume);
+        QSignalSpy changed(volume, &SettingItem::valueChanged);
+
+        // out of range: the configuration clamps, and the value that is held is what counts
+        volume->setValue(1000);
+        QCOMPARE(volume->value().toLongLong(), qlonglong(300));
+        QCOMPARE(cfgInt("qt-max-volume"), qlonglong(300));
+        QCOMPARE(changed.count(), 1);
+
+        // the same request again changes nothing, and does not rewrite the file
+        QVERIFY(QFile::remove(m_configFile));
+        volume->setValue(1000);
+        QCOMPARE(changed.count(), 1);
+        QVERIFY(!QFile::exists(m_configFile));
+
+        // not an integer: ignored
+        volume->setValue("abc");
+        volume->setValue(QVariant());
+        QCOMPARE(volume->value().toLongLong(), qlonglong(300));
+        QCOMPARE(cfgInt("qt-max-volume"), qlonglong(300));
+        QCOMPARE(changed.count(), 1);
+        QVERIFY(!QFile::exists(m_configFile));
+    }
+
+    void floatValidation()
+    {
+        SettingItem* opacity = m_model->item("qt-opacity");
+        QVERIFY(opacity);
+        QSignalSpy changed(opacity, &SettingItem::valueChanged);
+
+        opacity->setValue(0.01);
+        QCOMPARE(opacity->value().toDouble(), 0.1);
+        QCOMPARE(changed.count(), 1);
+
+        // not a finite number: ignored, nothing is saved
+        QVERIFY(QFile::remove(m_configFile));
+        opacity->setValue("abc");
+        opacity->setValue(std::numeric_limits<double>::quiet_NaN());
+        opacity->setValue(std::numeric_limits<double>::infinity());
+        opacity->setValue(-std::numeric_limits<double>::infinity());
+        QCOMPARE(opacity->value().toDouble(), 0.1);
+        QCOMPARE(changed.count(), 1);
+        QVERIFY(!QFile::exists(m_configFile));
+
+        // huge but finite: clamped by the configuration, not undefined
+        opacity->setValue(1e300);
+        QCOMPARE(opacity->value().toDouble(), 1.0);
+        QCOMPARE(changed.count(), 2);
+    }
+
     void floatWithRange()
     {
         // add_float_with_range( "qt-opacity", 1., 0.1, 1., ...)
@@ -210,7 +264,7 @@ private slots:
         QVERIFY(restore);
         QCOMPARE(restore->type(), SettingItem::Choice);
         QVERIFY(restore->choices().size() >= 2);
-        QVERIFY(choiceAt(restore, 0).value("value").canConvert<qlonglong>());
+        QCOMPARE(choiceAt(restore, 0).value("value").typeId(), int(QMetaType::LongLong));
         QVERIFY(!choiceAt(restore, 0).value("label").toString().isEmpty());
 
         // string option with a declared list
@@ -248,6 +302,7 @@ private slots:
         SettingItem* language = m_model->item("audio-language");
         QVERIFY(language);
         QCOMPARE(language->type(), SettingItem::String);
+        QVERIFY(language->choices().isEmpty());
         language->setValue("fra");
         char* stored = config_GetPsz("audio-language");
         QCOMPARE(QString::fromUtf8(stored), QString("fra"));
@@ -309,7 +364,9 @@ private slots:
         QCOMPARE(pending.count(), 1);
 
         // it stays pending, and is signalled once
-        m_model->item("aout")->setValue("none");
+        SettingItem* aout = m_model->item("aout");
+        QVERIFY(aout);
+        aout->setValue("none");
         QVERIFY(m_model->restartPending());
         QCOMPARE(pending.count(), 1);
     }

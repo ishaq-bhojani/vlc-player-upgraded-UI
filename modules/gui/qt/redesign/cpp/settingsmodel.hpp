@@ -47,7 +47,14 @@ class SettingItem : public QObject
     Q_PROPERTY(QVariant min READ min CONSTANT)
     //! upper bound; invalid (undefined in QML) when the option declares no range
     Q_PROPERTY(QVariant max READ max CONSTANT)
-    //! [{value, label}] for a Choice, else empty
+    /**
+     * [{value, label}] for a Choice, else empty. Options with a static list, module options and
+     * labelled enumerations (choice-labels.json) are known from the start and decide `type`.
+     * For any other integer or string option the first read asks the plugin that declares the
+     * option for an enumerator (a device list...), which MAY LOAD THAT PLUGIN (a DLL load on
+     * the calling thread). `type` does not change in that case: it stays Integer or String
+     * while `choices` may be non-empty.
+     */
     Q_PROPERTY(QVariantList choices READ choices CONSTANT)
     //! translated psz_text
     Q_PROPERTY(QString text READ text CONSTANT)
@@ -74,7 +81,7 @@ public:
     QVariant defaultValue() const;
     QVariant min() const { return m_min; }
     QVariant max() const { return m_max; }
-    QVariantList choices() const { return m_choices; }
+    QVariantList choices() const;
     QString text() const { return m_text; }
     QString longText() const { return m_longText; }
     bool requiresRestart() const { return m_requiresRestart; }
@@ -100,7 +107,8 @@ private:
     Type m_type = String;
     QVariant m_min;
     QVariant m_max;
-    QVariantList m_choices;
+    mutable QVariantList m_choices;
+    mutable bool m_choicesResolved = false;
     bool m_requiresRestart = false;
 };
 
@@ -121,6 +129,9 @@ public:
     /**
      * The item of a configuration key, the same object for every call. nullptr (and msg_Err)
      * if there is no such key, e.g. the plugin that declares it is not loaded.
+     *
+     * Keys must come from keysInSubcategory() or from docs/redesign/settings-map.md, never from
+     * user input: config_FindConfig also finds obsolete options, which are accepted here.
      */
     Q_INVOKABLE SettingItem* item(const QString& key);
 
