@@ -92,10 +92,10 @@ public:
         RESERVED_0X32,
         RESERVED_0X33,
         RESERVED_0X34,
-        RESERVED_0X35,
-        RESERVED_0X36,
-        RESERVED_0X37,
-        RESERVED_0X38,
+        REDESIGN_SIDEBAR_BUTTON,
+        REDESIGN_AUDIO_POPUP,
+        REDESIGN_SUBTITLE_POPUP,
+        REDESIGN_SEEKBAR,
         REDESIGN_DIVIDER,
         REDESIGN_TITLE_LABEL,
         REDESIGN_ARTIST_LABEL,
@@ -112,6 +112,7 @@ public:
 
     static_assert(RESERVED_0X1F == 0x1F, "missaligned");
     static_assert(RESERVED_0X2B == 0x2B, "missaligned");
+    static_assert(REDESIGN_SIDEBAR_BUTTON == 0x35 && REDESIGN_SEEKBAR == 0x38, "missaligned");
     static_assert(REDESIGN_FAVORITE_BUTTON == 0x3F, "missaligned");
 
     // Basic functionality:

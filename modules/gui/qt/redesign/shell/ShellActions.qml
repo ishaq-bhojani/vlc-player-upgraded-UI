@@ -1,0 +1,40 @@
+/*****************************************************************************
+ * Copyright (C) 2026 VLC Reborn contributors
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
+ *****************************************************************************/
+pragma Singleton
+import QtQuick
+
+/**
+ * @brief Requests of the controls of the player to the shell.
+ *
+ * Control items (the buttons of the control bar) emit these signals and know nothing about the
+ * panels; the root window connects them (queue panel, watch sidebar, track popups).
+ */
+QtObject {
+    // the Queue button was clicked: toggle the queue panel
+    signal queueRequested()
+
+    // the Settings button was clicked: toggle the watch sidebar
+    signal sidebarRequested()
+
+    // open the track popup on `tab` ("subtitles", "audio" or "video"), placed at `anchor`
+    signal trackPopupRequested(string tab, Item anchor)
+
+    // the Play button of the control bar (null while there is none), the resume prompt is
+    // placed above it
+    property Item playButton: null
+}

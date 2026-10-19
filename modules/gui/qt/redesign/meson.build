@@ -76,6 +76,15 @@ qml_modules += {
         'player/controls/PlaylistLabelWidget.qml',
         'player/controls/ReplayButton.qml',
         'player/controls/FavoriteButton.qml',
+        'player/controls/PlayPillButton.qml',
+        'player/controls/QueueButton.qml',
+        'player/controls/SeekBarWidget.qml',
+        'player/controls/ConeVolumeSlider.qml',
+        'player/controls/SubtitlePopupButton.qml',
+        'player/controls/AudioPopupButton.qml',
+        'player/controls/SidebarButton.qml',
+        'player/ControlBar.qml',
+        'player/ResumePrompt.qml',
         'shell/Rail.qml',
         'shell/RedesignInterface.qml',
         'shell/TitleBar.qml',
@@ -86,7 +95,9 @@ qml_modules += {
         'theme/RedesignStyle.qml',
         'util/MediaText.qml',
         'util/ReplayLogic.qml',
+        'util/ConeMath.qml',
         'shell/PinStore.qml',
+        'shell/ShellActions.qml',
     ),
 }
 
@@ -96,4 +107,5 @@ qml_tests += {
     'tst_RailModel': files('../tests/tst_RailModel.qml'),
     'tst_ShellStates': files('../tests/tst_ShellStates.qml'),
     'tst_PinStore': files('../tests/tst_PinStore.qml'),
+    'tst_ConeMath': files('../tests/tst_ConeMath.qml'),
 }

@@ -32,7 +32,7 @@ QtObject {
     readonly property string redesignPath : "qrc:///qt/qml/VLC/Redesign/"
 
     readonly property var controlList: [
-        { id: ControlListModel.PLAY_BUTTON, file: "PlayButton.qml", label: VLCIcons.play_filled, text: qsTr("Play") },
+        { id: ControlListModel.PLAY_BUTTON, file: "PlayButton.qml", source: MainCtx.redesign ? redesignPath + "PlayPillButton.qml" : undefined, label: VLCIcons.play_filled, text: qsTr("Play") },
         { id: ControlListModel.STOP_BUTTON, file: "StopButton.qml", label: VLCIcons.stop, text: qsTr("Stop") },
         { id: ControlListModel.OPEN_BUTTON, file: "OpenButton.qml", label: VLCIcons.eject, text: qsTr("Open") },
         { id: ControlListModel.PREVIOUS_BUTTON, file: "PreviousButton.qml", label: VLCIcons.previous, text: qsTr("Previous") },
@@ -41,7 +41,7 @@ QtObject {
         { id: ControlListModel.FASTER_BUTTON, file: "FasterButton.qml", label: VLCIcons.faster, text: qsTr("Faster") },
         { id: ControlListModel.FULLSCREEN_BUTTON, file: "FullscreenButton.qml", label: VLCIcons.fullscreen, text: qsTr("Fullscreen") },
         { id: ControlListModel.EXTENDED_BUTTON, file: "ExtendedSettingsButton.qml", label: VLCIcons.effect_filter, text: qsTr("Extended panel") },
-        { id: ControlListModel.PLAYLIST_BUTTON, file: "PlaylistButton.qml", label: VLCIcons.playlist, text: qsTr("Play Queue") },
+        { id: ControlListModel.PLAYLIST_BUTTON, file: "PlaylistButton.qml", source: MainCtx.redesign ? redesignPath + "QueueButton.qml" : undefined, label: VLCIcons.playlist, text: MainCtx.redesign ? qsTr("Queue") : qsTr("Play Queue") },
         { id: ControlListModel.SNAPSHOT_BUTTON, file: "SnapshotButton.qml", label: VLCIcons.snapshot, text: qsTr("Snapshot") },
         { id: ControlListModel.RECORD_BUTTON, file: "RecordButton.qml", label: VLCIcons.record, text: qsTr("Record") },
         { id: ControlListModel.ATOB_BUTTON, file: "AtoBButton.qml", label: VLCIcons.atob, text: qsTr("A-B Loop") },
@@ -58,7 +58,7 @@ QtObject {
         { id: ControlListModel.BOOKMARK_BUTTON, file: "BookmarkButton.qml", label: VLCIcons.bookmark, text: qsTr("Bookmark Button") },
         { id: ControlListModel.CHAPTER_PREVIOUS_BUTTON, file: "ChapterPreviousButton.qml", label: VLCIcons.dvd_prev, text: qsTr("Previous chapter") },
         { id: ControlListModel.CHAPTER_NEXT_BUTTON, file: "ChapterNextButton.qml", label: VLCIcons.dvd_next, text: qsTr("Next chapter") },
-        { id: ControlListModel.VOLUME, file: "VolumeWidget.qml", label: VLCIcons.volume_high, text: qsTr("Volume Widget") },
+        { id: ControlListModel.VOLUME, file: "VolumeWidget.qml", source: MainCtx.redesign ? redesignPath + "ConeVolumeSlider.qml" : undefined, label: VLCIcons.volume_high, text: qsTr("Volume Widget") },
         { id: ControlListModel.NAVIGATION_BOX, file: "NavigationBoxButton.qml", label: VLCIcons.ic_fluent_arrow_move, text: qsTr("Navigation Box") },
         { id: ControlListModel.NAVIGATION_BUTTONS, file: "NavigationWidget.qml", label: VLCIcons.dvd_menu, text: qsTr("Navigation") },
         { id: ControlListModel.DVD_MENUS_BUTTON, file: "DvdMenuButton.qml", label: VLCIcons.dvd_menu, text: qsTr("DVD menus") },
@@ -72,6 +72,10 @@ QtObject {
         { id: ControlListModel.ARTWORK_INFO, file: "ArtworkInfoWidget.qml", label: VLCIcons.info, text: qsTr("Artwork Info") },
         { id: ControlListModel.PLAYBACK_SPEED_BUTTON, file: "PlaybackSpeedButton.qml", label: "1x", text: qsTr("Playback Speed") },
         { id: ControlListModel.HIGH_RESOLUTION_TIME_WIDGET, file: "HighResolutionTimeWidget.qml", label: VLCIcons.time, text: qsTr("High Resolution Time") },
+        { id: ControlListModel.REDESIGN_SIDEBAR_BUTTON, source: redesignPath + "SidebarButton.qml", label: VLCIcons.rd_sidebar, text: qsTr("Settings"), redesign: true },
+        { id: ControlListModel.REDESIGN_AUDIO_POPUP, source: redesignPath + "AudioPopupButton.qml", label: VLCIcons.rd_audio, text: qsTr("Audio"), redesign: true },
+        { id: ControlListModel.REDESIGN_SUBTITLE_POPUP, source: redesignPath + "SubtitlePopupButton.qml", label: VLCIcons.rd_subtitles, text: qsTr("Subtitles"), redesign: true },
+        { id: ControlListModel.REDESIGN_SEEKBAR, source: redesignPath + "SeekBarWidget.qml", label: VLCIcons.space, text: qsTr("Seek bar"), redesign: true },
         { id: ControlListModel.REDESIGN_DIVIDER, source: redesignPath + "DividerWidget.qml", label: VLCIcons.rd_divider, text: qsTr("Divider"), redesign: true },
         { id: ControlListModel.REDESIGN_TITLE_LABEL, source: redesignPath + "TitleLabelWidget.qml", label: VLCIcons.info, text: qsTr("Title"), redesign: true },
         { id: ControlListModel.REDESIGN_ARTIST_LABEL, source: redesignPath + "ArtistLabelWidget.qml", label: VLCIcons.rd_artist, text: qsTr("Artist"), redesign: true },
