@@ -227,3 +227,25 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+# EffectsController against a libvlc instance without playback (no aout/vout):
+# the configuration side of every setter. Own throwaway --config, see the test.
+vlc_tests += {
+    'name': 'test_qt_effects_controller',
+    'sources': files(
+        '../../tests/test_effects_controller.cpp',
+        '../cpp/effectscontroller.hpp',
+        '../cpp/effectscontroller.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_effects_controller.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/effectscontroller.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore, libvlc],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

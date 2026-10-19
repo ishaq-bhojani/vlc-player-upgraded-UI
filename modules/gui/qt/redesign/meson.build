@@ -31,6 +31,7 @@ qt_cppargs += redesign_branding_cppargs
 
 moc_headers += files(
     'cpp/currentmediafavorite.hpp',
+    'cpp/effectscontroller.hpp',
     'cpp/mlrecentaudiomodel.hpp',
     'cpp/pinnavigation.hpp',
 )
@@ -50,6 +51,8 @@ qt_plugin_sources += files(
     'cpp/redesign.hpp',
     'cpp/currentmediafavorite.cpp',
     'cpp/currentmediafavorite.hpp',
+    'cpp/effectscontroller.cpp',
+    'cpp/effectscontroller.hpp',
     'cpp/mlfavoritebackend.cpp',
     'cpp/mlfavoritebackend.hpp',
     'cpp/mlrecentaudiomodel.cpp',

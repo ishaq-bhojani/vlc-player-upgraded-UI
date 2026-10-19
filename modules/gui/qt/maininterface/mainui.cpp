@@ -88,6 +88,7 @@
 #include "videosurface.hpp"
 #include "redesign/cpp/redesign.hpp"
 #include "redesign/cpp/currentmediafavorite.hpp"
+#include "redesign/cpp/effectscontroller.hpp"
 #include "redesign/cpp/mlfavoritebackend.hpp"
 #include "redesign/cpp/mlrecentaudiomodel.hpp"
 #include "mainctx.hpp"
@@ -509,6 +510,8 @@ void MainUI::registerQMLTypes()
         // @uri VLC.Redesign
         qmlRegisterType<CurrentMediaFavorite>(uri, versionMajor, versionMinor, "CurrentMediaFavorite");
         qmlRegisterType<MLRecentAudioModel>(uri, versionMajor, versionMinor, "MLRecentAudioModel");
+        qmlRegisterSingletonType<EffectsController>(uri, versionMajor, versionMinor, "Effects",
+            [intf = m_intf](QQmlEngine*, QJSEngine*) { return new EffectsController(intf->p_player, VLC_OBJECT(intf)); });
         qmlRegisterSingletonType<PinNavigation>(uri, versionMajor, versionMinor, "PinNavigation",
             [](QQmlEngine*, QJSEngine*) { return new PinNavigation; });
         if (m_mainCtx->hasMediaLibrary()) {
