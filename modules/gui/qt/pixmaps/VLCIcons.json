@@ -101,6 +101,20 @@
         {"key":"medialibrary_add", "path": "./icons/ic_medialibrary_add.svg"},
         {"key":"medialibrary_remove", "path": "./icons/ic_medialibrary_remove.svg"},
         {"key":"regex", "path": "./icons/regex.svg"},
-        {"key":"ic_fluent_text_change_case_24_regular", "path": "./icons/ic_fluent_text_change_case_24_regular.svg"}
+        {"key":"ic_fluent_text_change_case_24_regular", "path": "./icons/ic_fluent_text_change_case_24_regular.svg"},
+        {"key":"rd_heart", "path": "./icons/rd_heart.svg"},
+        {"key":"rd_heart_filled", "path": "./icons/rd_heart_filled.svg"},
+        {"key":"rd_divider", "path": "./icons/rd_divider.svg"},
+        {"key":"rd_replay", "path": "./icons/rd_replay.svg"},
+        {"key":"rd_folder", "path": "./icons/rd_folder.svg"},
+        {"key":"rd_artist", "path": "./icons/rd_artist.svg"},
+        {"key":"rd_playlist_label", "path": "./icons/rd_playlist_label.svg"},
+        {"key":"rd_queue", "path": "./icons/rd_queue.svg"},
+        {"key":"rd_subtitles", "path": "./icons/rd_subtitles.svg"},
+        {"key":"rd_audio", "path": "./icons/rd_audio.svg"},
+        {"key":"rd_sidebar", "path": "./icons/rd_sidebar.svg"},
+        {"key":"rd_menu", "path": "./icons/rd_menu.svg"},
+        {"key":"rd_library", "path": "./icons/rd_library.svg"},
+        {"key":"rd_pin", "path": "./icons/rd_pin.svg"}
     ]
 }

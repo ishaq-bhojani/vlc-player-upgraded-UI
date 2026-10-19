@@ -9,7 +9,7 @@
 #                the same script as local dev builds (extras/redesign/container-build.sh)
 #                and uploads the result as the "build-win64" artifact.
 # linux-tests    builds VLC natively on Debian and runs the Qt/QML tests (meson "qt"
-#                suite, incl. the QML Quick tests), plus the QML module check.
+#                suite, incl. the QML Quick tests), plus the QML module and icon checks.
 # windows-tests  runs the cross-built Qt test executables natively on Windows with
 #                extras/redesign/run-tests.sh.
 #
@@ -125,6 +125,13 @@ jobs:
 
       - name: Mark workspace safe for git
         run: git config --global --add safe.directory '*'
+
+      # Every glyph of VLCIcons.json has an SVG whose viewBox matches its size, and the
+      # committed SVGs are what extras/redesign/build_icons.py produces from the sources.
+      - name: Check icons
+        run: |
+          python3 extras/redesign/check_icons.py modules/gui/qt/pixmaps
+          python3 extras/redesign/build_icons.py --check
 
       # Same invocation as configure.ac (the only caller; extras/ci/gitlab-ci.yml
       # does not run this script): check that the Qt QML modules VLC needs at
