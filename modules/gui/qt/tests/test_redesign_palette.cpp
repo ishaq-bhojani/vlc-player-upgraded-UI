@@ -75,6 +75,20 @@ private slots:
         QCOMPARE(redesign::parseAccent("red", redesign::defaultAccent()), QColor(Qt::red));
     }
 
+    void unsupportedAccentNeverReachesTheShadesInvalid()
+    {
+        // "system" is not a color; on Qt < 6.6 it is the unsupported value
+        QVERIFY(redesign::parseAccent("system", redesign::defaultAccent()).isValid());
+        QCOMPARE(redesign::parseAccent("system", redesign::defaultAccent()), redesign::defaultAccent());
+        const auto shades = redesign::accentShades(QColor());
+        QVERIFY(shades.base.isValid());
+        QVERIFY(shades.hover.isValid());
+        QVERIFY(shades.pressed.isValid());
+        QVERIFY(shades.onAccent.isValid());
+        const Filled f = fill(true, shades);
+        QCOMPARE(f.colors.value(key(C::ButtonAccent, C::Bg, C::Primary, C::Normal)), redesign::defaultAccent());
+    }
+
     void swatchesAreNine()
     {
         QCOMPARE(redesign::accentSwatches().size(), 9);

@@ -359,6 +359,8 @@ QColor onAccentColor(QColor accent)
 
 AccentShades accentShades(QColor base)
 {
+    if (!base.isValid())
+        base = defaultAccent();
     return { base, base.lighter(115), base.darker(115), onAccentColor(base) };
 }
 

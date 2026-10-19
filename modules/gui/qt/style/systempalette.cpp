@@ -337,6 +337,10 @@ void SystemPalette::componentComplete()
             orange800 = orange500.lighter(150);
         }
 
+        // Qt < 6.6 has no "system" accent: it reaches the last branch above as an invalid colour
+        if (m_redesign && !orange500.isValid())
+            orange500 = redesign::defaultAccent();
+
         free(accentColor);
     }
 
@@ -936,9 +940,7 @@ void SystemPalette::makeSystemPalette()
 
     m_colorMap.clear();
     int ret = palette->update();
-    if (m_redesign)
-        makeRedesignPalette(palette->isThemeDark());
-    else if (ret != VLC_SUCCESS)
+    if (ret != VLC_SUCCESS)
     {
         if (palette->isThemeDark())
             makeDarkPalette();
