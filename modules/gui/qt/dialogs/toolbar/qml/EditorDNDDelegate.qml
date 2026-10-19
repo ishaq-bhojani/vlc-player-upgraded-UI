@@ -25,6 +25,8 @@ import QtQml.Models
 import VLC.Player
 import VLC.Widgets as Widgets
 import VLC.Style
+import VLC.Redesign
+import VLC.MainInterface
 
 T.Control {
     id: control
@@ -139,7 +141,10 @@ T.Control {
     }
 
     background: Rectangle {
-        color: "transparent"
+        // redesign: rounded slot, filled on hover
+        radius: MainCtx.redesign ? RedesignStyle.radiusM : 0
+        color: (MainCtx.redesign && control.containsMouse && !control.dragActive) ? theme.bg.highlight
+                                                                                  : "transparent"
 
         border.width: VLCStyle.dp(1, VLCStyle.scale)
         border.color: theme.border

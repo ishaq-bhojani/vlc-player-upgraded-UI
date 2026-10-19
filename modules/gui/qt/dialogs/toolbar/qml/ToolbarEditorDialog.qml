@@ -38,6 +38,10 @@ WindowDialog {
     modal: true
     title: qsTr("Toolbar Editor")
 
+    // redesign: the accepting button reads "Save" (accent styled in WindowDialog)
+    standardButtons: MainCtx.redesign ? (DialogButtonBox.Save | DialogButtonBox.Cancel)
+                                      : (DialogButtonBox.Ok | DialogButtonBox.Cancel)
+
     signal unload()
 
     Component.onCompleted: {

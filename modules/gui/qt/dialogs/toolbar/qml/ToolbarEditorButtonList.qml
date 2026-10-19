@@ -25,6 +25,8 @@ import VLC.Player
 import VLC.Style
 import VLC.Widgets as Widgets
 import VLC.Util
+import VLC.Redesign
+import VLC.MainInterface
 
 GridView {
     id: root
@@ -103,6 +105,7 @@ GridView {
 
         opacity: 0.8
         color: theme.bg.primary
+        radius: MainCtx.redesign ? RedesignStyle.radiusL : 0
 
         border.color: theme.border
         border.width: VLCStyle.dp(2, VLCStyle.scale)
@@ -182,20 +185,24 @@ GridView {
 
         Rectangle {
             anchors.fill: parent
+            // redesign: rounded tile with a gap to its neighbours, filled (not outlined) on hover
+            anchors.margins: MainCtx.redesign ? RedesignStyle.spacingXS : 0
+            radius: MainCtx.redesign ? RedesignStyle.radiusM : 0
 
             implicitWidth: childrenRect.width
             implicitHeight: childrenRect.height
 
-            color: "transparent"
+            color: (MainCtx.redesign && containsMouse && !buttonDragItem.Drag.active) ? colorContext.bg.highlight
+                                                                                       : "transparent"
 
-            border.width: VLCStyle.dp(1, VLCStyle.scale)
+            border.width: MainCtx.redesign ? 0 : VLCStyle.dp(1, VLCStyle.scale)
             border.color: containsMouse && !buttonDragItem.Drag.active ? colorContext.border
                                                                        : "transparent"
             border.pixelAligned: (radius < Number.EPSILON)
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: MainCtx.redesign ? RedesignStyle.spacingS : 10
 
                 EditorDummyButton {
                     Layout.preferredWidth: VLCStyle.icon_medium

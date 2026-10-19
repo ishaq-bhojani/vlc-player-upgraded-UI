@@ -26,6 +26,7 @@ import VLC.Style
 import VLC.Widgets as Widgets
 import VLC.Util
 import VLC.PlayerControls
+import VLC.Redesign
 
 Item {
     id: root
@@ -131,7 +132,7 @@ Item {
                             return null
                     }
 
-                    spacing: VLCStyle.margin_small
+                    spacing: MainCtx.redesign ? RedesignStyle.spacingS : VLCStyle.margin_small
 
                     Repeater {
                         id: repeater
@@ -192,6 +193,7 @@ Item {
 
                             sourceComponent: Rectangle {
                                 color: theme.bg.primary
+                                radius: MainCtx.redesign ? RedesignStyle.radiusL : 0
 
                                 border.color: theme.border
                                 border.width: VLCStyle.border
@@ -256,9 +258,10 @@ Item {
         Rectangle {
             Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.topMargin: VLCStyle.margin_xxsmall
+            Layout.topMargin: MainCtx.redesign ? RedesignStyle.spacingS : VLCStyle.margin_xxsmall
 
             color: buttonList.colorContext.bg.primary
+            radius: MainCtx.redesign ? RedesignStyle.radiusL : 0
             border.color: theme.border
             border.width: VLCStyle.border
             border.pixelAligned: (radius < Number.EPSILON)

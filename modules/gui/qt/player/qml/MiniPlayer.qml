@@ -23,6 +23,7 @@ import VLC.Player
 import VLC.PlayerControls
 import VLC.Style
 import VLC.Util
+import VLC.Redesign
 
 ControlBar {
     id: root
@@ -54,8 +55,10 @@ ControlBar {
     textPosition: (MainCtx.pinVideoControls) ? ControlBar.TimeTextPosition.LeftRightSlider
                                              : ControlBar.TimeTextPosition.Hide
 
+    // redesign: slightly thicker (4) unpinned progress bar, the pinned one is unchanged
     sliderHeight: (MainCtx.pinVideoControls) ? VLCStyle.heightBar_xxsmall
-                                             : VLCStyle.dp(3, VLCStyle.scale)
+                                             : (MainCtx.redesign ? RedesignStyle.spacingXS
+                                                                 : VLCStyle.dp(3, VLCStyle.scale))
 
     bookmarksHeight: (MainCtx.pinVideoControls) ? VLCStyle.controlBarBookmarksHeight
                                                 : VLCStyle.icon_xsmall * 0.7

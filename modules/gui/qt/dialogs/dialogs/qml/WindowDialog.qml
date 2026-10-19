@@ -116,7 +116,9 @@ Window {
 
 
             delegate: Widgets.ButtonExt {
-
+                // redesign: the accepting button ("Save") is the accent button
+                colorContext.colorSet: (MainCtx.redesign && DialogButtonBox.buttonRole === DialogButtonBox.AcceptRole)
+                                       ? ColorContext.ButtonAccent : ColorContext.ButtonStandard
             }
         }
     }
