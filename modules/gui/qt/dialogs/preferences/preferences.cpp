@@ -35,6 +35,8 @@
 #include "widgets/native/searchlineedit.hpp"
 #include "widgets/native/qvlcframe.hpp"
 #include "maininterface/mainctx.hpp"
+#include "redesign/cpp/redesign.hpp"
+#include "redesign/cpp/branding.hpp"
 
 #include <QHBoxLayout>
 #include <QGroupBox>
@@ -418,7 +420,9 @@ void PrefsDialog::reset()
     int ret = QMessageBox::question(
                  this,
                  qtr( "Reset Preferences" ),
-                 qtr( "Are you sure you want to reset your VLC media player preferences?" ),
+                 redesign::isEnabled( VLC_OBJECT( p_intf ) )
+                     ? qtr( "Are you sure you want to reset your %1 preferences?" ).arg( redesign::productName() )
+                     : qtr( "Are you sure you want to reset your VLC media player preferences?" ),
                  QMessageBox::Ok | QMessageBox::Cancel,
                  QMessageBox::Ok);
 

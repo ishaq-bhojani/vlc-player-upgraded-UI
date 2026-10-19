@@ -29,6 +29,8 @@
 #include "help.hpp"
 #include "util/qt_dirs.hpp"
 #include "maininterface/mainctx.hpp"
+#include "redesign/cpp/redesign.hpp"
+#include "redesign/cpp/branding.hpp"
 
 #include <vlc_about.h>
 #include <vlc_intf_strings.h>
@@ -43,6 +45,7 @@
 #include <QEvent>
 #include <QDate>
 #include <QPushButton>
+#include <QFile>
 
 #include <cassert>
 
@@ -92,11 +95,24 @@ AboutDialog::AboutDialog( qt_intf_t *_p_intf)
     setWindowModality( Qt::WindowModal );
 
     ui.version->setText(qfu( " " VERSION_MESSAGE ) );
+    const bool redesignBranding = redesign::isEnabled( VLC_OBJECT( p_intf ) );
     ui.title->setText("<html><head/><body><p><span style=\" font-size:26pt; color:#353535;\"> " + qtr( "VLC media player" ) + " </span></p></body></html>");
 
     ui.MainBlabla->setText("<html><head/><body>" +
     qtr( "<p>VLC media player is a free and open source media player, encoder, and streamer made by the volunteers of the <a href=\"https://www.videolan.org/\"><span style=\" text-decoration: underline; color:#0057ae;\">VideoLAN</span></a> community.</p><p>VLC uses its internal codecs, works on essentially every popular platform, and can read almost all files, CDs, DVDs, network streams, capture cards and other media formats!</p><p><a href=\"https://www.videolan.org/contribute/\"><span style=\" text-decoration: underline; color:#0057ae;\">Help and join us!</span></a>" ) +
     "</p></body> </html>");
+
+    if( redesignBranding )
+    {
+        /* VLC Reborn: say it is built on VLC, link the source and credit the bundled font */
+        ui.MainBlabla->setText("<html><head/><body>" +
+            qtr( "<p>%1 is built on <a href=\"https://www.videolan.org/vlc/\"><span style=\" text-decoration: underline; color:#0057ae;\">VLC media player</span></a>, a free and open source media player made by the volunteers of the <a href=\"https://www.videolan.org/\"><span style=\" text-decoration: underline; color:#0057ae;\">VideoLAN</span></a> community.</p>"
+                 "<p>Source code: <a href=\"%2\"><span style=\" text-decoration: underline; color:#0057ae;\">%2</span></a></p>"
+                 "<p>The interface uses the Inter font (SIL Open Font License 1.1, see License).</p>" )
+                .arg( redesign::productName(), redesign::productWebsite() ) +
+            "</body> </html>");
+        ui.title->setText("<html><head/><body><p><span style=\" font-size:26pt; color:#353535;\"> " + redesign::productName() + " </span><span style=\" font-size:12pt; color:#353535;\">" + QChar( 0x2014 ) + " " + qtr( "built on VLC" ) + "</span></p></body></html>");
+    }
 
     const QDate today = QDate::currentDate();
     if( today.month() == 4 && today.day() == 1
@@ -106,7 +122,15 @@ AboutDialog::AboutDialog( qt_intf_t *_p_intf)
     ui.update->hide();
 
     /* GPL License */
-    ui.licensePage->setText( qfu( psz_license ) );
+    QString licenseText = qfu( psz_license );
+    if( redesignBranding )
+    {
+        /* licence of the bundled Inter font */
+        QFile ofl( QStringLiteral( ":/redesign/fonts/OFL.txt" ) );
+        if( ofl.open( QIODevice::ReadOnly ) )
+            licenseText += QStringLiteral( "\n\n----\nInter font\n\n" ) + QString::fromUtf8( ofl.readAll() );
+    }
+    ui.licensePage->setText( licenseText );
 
     /* People who helped */
     ui.creditPage->setText( qfu( psz_thanks ) );
@@ -403,7 +427,9 @@ UpdateDialog::UpdateDialog( qt_intf_t *_p_intf ) : QVLCFrame( _p_intf )
     ui.updateNotifyButtonBox->addButton( new QPushButton( qtr("&No"), this ),
                                          QDialogButtonBox::RejectRole );
 
-    setWindowTitle( qtr( "VLC media player updates" ) );
+    const bool redesignBranding = redesign::isEnabled( VLC_OBJECT( p_intf ) );
+    setWindowTitle( redesignBranding ? qtr( "%1 updates" ).arg( redesign::productName() )
+                                     : qtr( "VLC media player updates" ) );
     setWindowRole( "vlc-update" );
 
     BUTTONACT( recheckButton, &UpdateDialog::checkOrDownload );
@@ -505,7 +531,9 @@ void UpdateDialog::updateUI( )
     {
         ui.stackedWidget->setCurrentWidget( ui.updateDialogPage );
         ui.updateDialogLabel->setText(
-            qtr( "You have the latest version of VLC media player." ) );
+            redesign::isEnabled( VLC_OBJECT( p_intf ) )
+                ? qtr( "You have the latest version of %1." ).arg( redesign::productName() )
+                : qtr( "You have the latest version of VLC media player." ) );
         break;
     }
     case UpdateModel::CheckFailed:

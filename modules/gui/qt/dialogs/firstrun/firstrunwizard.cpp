@@ -21,6 +21,8 @@
 #include "maininterface/mainctx.hpp"
 #include "dialogs/toolbar/controlbar_profile_model.hpp"
 #include "medialibrary/medialib.hpp"
+#include "redesign/cpp/redesign.hpp"
+#include "redesign/cpp/branding.hpp"
 
 #include <QPushButton>
 #include <QButtonGroup>
@@ -48,7 +50,7 @@ FirstRunWizard::FirstRunWizard( qt_intf_t *_p_intf, QWidget *parent)
     ui.setupUi( this );
 
     /* Set the privacy and network policy */
-    ui.policy->setHtml( qtr( "<p>In order to protect your privacy, <i>VLC media player</i> "
+    QString policy = qtr( "<p>In order to protect your privacy, <i>VLC media player</i> "
         "does <b>not</b> collect personal data or transmit them, "
         "not even in anonymized form, to anyone."
         "</p>\n"
@@ -60,7 +62,10 @@ FirstRunWizard::FirstRunWizard( qt_intf_t *_p_intf, QWidget *parent)
         "<p>Consequently, this may entail identifying some of your media files to third party "
         "entities. Therefore the <i>VLC</i> developers require your express "
         "consent for the media player to access the Internet automatically."
-        "</p>\n" ) );
+        "</p>\n" );
+    if( redesign::isEnabled( VLC_OBJECT( p_intf ) ) )
+        policy.replace( qtr( "VLC media player" ), redesign::productName() );
+    ui.policy->setHtml( policy );
     ui.policy->setReadOnly( true );
 
     /* Set up the button group for colour schemes. */

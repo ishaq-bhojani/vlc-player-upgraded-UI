@@ -5,6 +5,8 @@ install_data('../../../COPYING',   rename : 'COPYING.txt', install_dir : '.')
 install_data('../../../NEWS',      rename : 'NEWS.txt',    install_dir : '.')
 install_data('../../../README.md', rename : 'README.txt',  install_dir : '.')
 install_data('../../../THANKS',    rename : 'THANKS.txt',  install_dir : '.')
+# VLC Reborn: licence of the bundled Inter font; the installer picks up *.txt
+install_data('../../../modules/gui/qt/redesign/assets/fonts/OFL.txt', rename : 'Inter-OFL.txt', install_dir : '.')
 
 install_data('../../../share/icons/vlc.ico',  install_dir : '.')
 

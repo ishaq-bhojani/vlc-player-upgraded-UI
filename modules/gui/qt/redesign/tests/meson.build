@@ -91,3 +91,19 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qtest_qt6_dep],
 }
+
+vlc_tests += {
+    'name': 'test_qt_redesign_branding',
+    'sources': files(
+        '../../tests/test_redesign_branding.cpp',
+        '../cpp/branding.hpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_redesign_branding.cpp'
+    ),
+    'suite': ['qt'],
+    'cpp_args': redesign_branding_cppargs,
+    'include_directories' : qt_include_dir,
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qtest_qt6_dep],
+}

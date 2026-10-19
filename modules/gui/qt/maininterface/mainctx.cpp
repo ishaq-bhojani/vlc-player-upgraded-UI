@@ -59,6 +59,7 @@
 #include "dialogs/toolbar/controlbar_profile_model.hpp"
 #include "dialogs/help/help.hpp"
 #include "redesign/cpp/redesign.hpp"
+#include "redesign/cpp/branding.hpp"
 
 #include <QKeyEvent>
 
@@ -130,6 +131,11 @@ bool loadVLCOption<bool>(vlc_object_t *obj, const char *name)
     return var_InheritBool(obj, name);
 }
 
+}
+
+QString MainCtx::productName() const
+{
+    return m_redesign ? redesign::productName() : qtr("VLC media player");
 }
 
 MainCtx::MainCtx(qt_intf_t *_p_intf)

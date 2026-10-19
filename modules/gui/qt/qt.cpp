@@ -97,6 +97,7 @@ extern "C" char **environ;
 #endif
 #include "style/defaultthemeproviders.hpp"
 #include "redesign/cpp/redesign.hpp"
+#include "redesign/cpp/branding.hpp"
 #include "redesign/cpp/widgetpalette.hpp"
 #include "dialogs/extensions/extensions_manager.hpp" /* Extensions manager */
 #include "dialogs/help/help.hpp"     /* Launch Update */
@@ -1283,7 +1284,8 @@ static void *Thread( void *obj )
     }
 #endif
 
-    app.setApplicationDisplayName( qtr("VLC media player") );
+    app.setApplicationDisplayName( redesign::isEnabled( VLC_OBJECT( p_intf ) ) ? redesign::productName()
+                                                                               : qtr("VLC media player") );
     app.setApplicationVersion( QString::fromUtf8(VERSION_MESSAGE) );
 
     if( QDate::currentDate().dayOfYear() >= QT_XMAS_JOKE_DAY && var_InheritBool( p_intf, "qt-icon-change" ) )

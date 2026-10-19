@@ -19,11 +19,22 @@
 # To add a source, QML file, QML test or unit test, edit this file or
 # redesign/tests/meson.build, never modules/gui/qt/meson.build.
 
+# Product name (redesign/cpp/branding.hpp): the meson option redesign_product_name
+# (root meson_options.txt) reaches the code as -DREDESIGN_PRODUCT_NAME. It is
+# appended to qt_cppargs, which the qt plugin consumes (modules/gui/qt/meson.build
+# is not touched); targets that include branding.hpp on their own, i.e. the unit
+# tests, take redesign_branding_cppargs.
+redesign_branding_cppargs = [
+    '-DREDESIGN_PRODUCT_NAME="' + get_option('redesign_product_name') + '"',
+]
+qt_cppargs += redesign_branding_cppargs
+
 moc_headers += files(
     'cpp/currentmediafavorite.hpp',
 )
 
 qt_plugin_sources += files(
+    'cpp/branding.hpp',
     'cpp/redesign.cpp',
     'cpp/redesign.hpp',
     'cpp/currentmediafavorite.cpp',

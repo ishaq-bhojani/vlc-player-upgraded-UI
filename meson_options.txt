@@ -841,6 +841,11 @@ option('wix',
        value: 'auto',
        description: 'Generate WIX files to create Windows MSI installer')
 
+option('redesign_product_name',
+       type: 'string',
+       value: 'VLC Reborn',
+       description: 'VLC Reborn: product name shown by the Qt interface when the redesign is enabled')
+
 # TODO: Missing rpi-omxil
 # TODO: Missing gst-decode
 # TODO: Missing libva

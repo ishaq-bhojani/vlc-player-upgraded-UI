@@ -3,12 +3,13 @@
 ; (http://nsis.sourceforge.net) ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-!define PRODUCT_NAME "VLC media player"
+; VLC Reborn: values from docs/redesign/branding.md
+!define PRODUCT_NAME "VLC Reborn"
 !define VERSION @VERSION@
 !define PRODUCT_VERSION @VERSION@
-!define PRODUCT_GROUP "VideoLAN"
-!define PRODUCT_PUBLISHER "VideoLAN"
-!define PRODUCT_WEB_SITE "https://www.videolan.org/"
+!define PRODUCT_GROUP "VLC Reborn"
+!define PRODUCT_PUBLISHER "VLC Reborn contributors"
+!define PRODUCT_WEB_SITE "https://github.com/ishaq-bhojani/vlc-player-upgraded-UI"
 !define PRODUCT_DIR_REGKEY "Software\VideoLAN\VLC"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
@@ -47,7 +48,7 @@ Name "${PRODUCT_NAME}"
 @HAVE_WIN64_FALSE@                   OutFile ..\vlc-${VERSION}-win32.exe
 @HAVE_WIN64_TRUE@ @HAVE_ARM64_FALSE@ OutFile ..\vlc-${VERSION}-win64.exe
 @HAVE_WIN64_TRUE@ @HAVE_ARM64_TRUE@  OutFile ..\vlc-${VERSION}-winarm64.exe
-InstallDir "$@PROGRAMFILES@\${PRODUCT_PUBLISHER}\VLC"
+InstallDir "$@PROGRAMFILES@\${PRODUCT_NAME}"
 !ifdef NSIS_LZMA_COMPRESS_WHOLE
 SetCompressor lzma
 !else
@@ -56,7 +57,7 @@ SetCompressor /SOLID lzma
 
 SetOverwrite ifdiff
 CRCCheck on
-BrandingText "${PRODUCT_GROUP} ${PRODUCT_NAME}"
+BrandingText "${PRODUCT_NAME}"
 
 InstType "$(Name_InstTypeRecommended)"
 InstType "$(Name_InstTypeMinimum)"
@@ -114,7 +115,7 @@ RequestExecutionLevel admin
     !define MUI_FINISHPAGE_RUN
     !define MUI_FINISHPAGE_RUN_FUNCTION AppExecAs
     !define MUI_FINISHPAGE_LINK "$(Link_VisitWebsite)"
-    !define MUI_FINISHPAGE_LINK_LOCATION "https://www.videolan.org/vlc/"
+    !define MUI_FINISHPAGE_LINK_LOCATION "${PRODUCT_WEB_SITE}"
     !define MUI_FINISHPAGE_NOREBOOTSUPPORT
     !insertmacro MUI_PAGE_FINISH
 
@@ -332,9 +333,9 @@ skip_uninstall32_cleanup:
   ; URLs
   WriteIniStr "$INSTDIR\${PRODUCT_GROUP} Website.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   FileWrite $UninstallLog "${PRODUCT_GROUP} Website.url$\r$\n"
-  WriteIniStr "$INSTDIR\Documentation.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}/doc/"
+  WriteIniStr "$INSTDIR\Documentation.url" "InternetShortcut" "URL" "https://www.videolan.org/doc/"
   FileWrite $UninstallLog "Documentation.url$\r$\n"
-  WriteIniStr "$INSTDIR\New_Skins.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}/vlc/skins.php"
+  WriteIniStr "$INSTDIR\New_Skins.url" "InternetShortcut" "URL" "https://www.videolan.org/vlc/skins.php"
   FileWrite $UninstallLog "New_Skins.url$\r$\n"
 
   !insertmacro CloseUninstallLog
@@ -567,7 +568,7 @@ ${Endif}
 
 ReadRegStr $INSTDIR HKLM "${PRODUCT_DIR_REGKEY}" "InstallDir"
 StrCmp $INSTDIR "" 0 WinOk
-StrCpy $INSTDIR "$@PROGRAMFILES@\${PRODUCT_PUBLISHER}\VLC"
+StrCpy $INSTDIR "$@PROGRAMFILES@\${PRODUCT_NAME}"
 Goto WinOk
 
 WinTooOld:
