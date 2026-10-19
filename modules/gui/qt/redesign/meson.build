@@ -34,6 +34,8 @@ moc_headers += files(
 )
 
 qt_plugin_sources += files(
+    'cpp/aboutbranding.cpp',
+    'cpp/aboutbranding.hpp',
     'cpp/branding.hpp',
     'cpp/redesign.cpp',
     'cpp/redesign.hpp',

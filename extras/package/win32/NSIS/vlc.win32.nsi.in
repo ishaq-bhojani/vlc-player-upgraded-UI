@@ -10,7 +10,8 @@
 !define PRODUCT_GROUP "VLC Reborn"
 !define PRODUCT_PUBLISHER "VLC Reborn contributors"
 !define PRODUCT_WEB_SITE "https://github.com/ishaq-bhojani/vlc-player-upgraded-UI"
-!define PRODUCT_DIR_REGKEY "Software\VideoLAN\VLC"
+; own key root: never read, write or delete Software\VideoLAN (stock VLC may be installed side by side)
+!define PRODUCT_DIR_REGKEY "Software\VLC Reborn"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 !define PRODUCT_ID "{ea92ef52-afe4-4212-bacb-dfe9fca94cd6}"
@@ -726,7 +727,7 @@ Function RunUninstaller
 
   IfFileExists "$INSTDIR\uninstall.exe" 0 no_remove_uninstaller
     Delete "$R1"
-    RMDir $INSTDIR
+    RMDir "$INSTDIR"
 
   no_remove_uninstaller:
 FunctionEnd
@@ -845,7 +846,7 @@ Section "un.$(Name_Section91)" SEC91
   Delete /REBOOTOK "$INSTDIR\npvlc.dll"
 
   RMDir "$SMPROGRAMS\${PRODUCT_PUBLISHER}"
-  RMDir /r $SMPROGRAMS\${PRODUCT_PUBLISHER}
+  RMDir /r "$SMPROGRAMS\${PRODUCT_PUBLISHER}"
 
   FileOpen $UninstallLog "$INSTDIR\uninstall.log" r
   UninstallLoop:
@@ -864,8 +865,6 @@ Section "un.$(Name_Section91)" SEC91
   Push "\"
   Call un.RemoveEmptyDirs
   RMDir "$INSTDIR"
-
-  DeleteRegKey HKLM Software\VideoLAN
 
   DeleteRegKey HKCR Applications\vlc.exe
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\vlc.exe"

@@ -33,7 +33,7 @@ Function AppExecAs
   ${If} ${AtLeastWinVista}
     Exec '"$WINDIR\explorer.exe" "$INSTDIR\vlc.exe"'
   ${Else}
-    Exec '$INSTDIR\vlc.exe'
+    Exec '"$INSTDIR\vlc.exe"'
   ${Endif}
 FunctionEnd
 
@@ -83,9 +83,9 @@ Function CheckPrevInstallDirExists
     StrCpy $R0 "$PreviousInstallDir" "" -1
     ${If} $R0 == '\'
     ${OrIf} $R0 == '/'
-      StrCpy $R0 $PreviousInstallDir*.*
+      StrCpy $R0 "$PreviousInstallDir*.*"
     ${Else}
-      StrCpy $R0 $PreviousInstallDir\*.*
+      StrCpy $R0 "$PreviousInstallDir\*.*"
     ${EndIf}
     ${IfNot} ${FileExists} $R0
       StrCpy $PreviousInstallDir ""
