@@ -1,0 +1,9 @@
+{
+    "sub-autodetect-fuzzy": [
+        [0, "Don't auto-detect"],
+        [1, "Any subtitle file"],
+        [2, "Subtitles containing the video name"],
+        [3, "Video name plus extra characters"],
+        [4, "Exact video name"]
+    ]
+}

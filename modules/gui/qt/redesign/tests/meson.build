@@ -249,3 +249,25 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+# SettingsModel against a real libvlc instance on a throwaway --config (the user's
+# configuration is never read or written); the options come from the plugins of the build.
+vlc_tests += {
+    'name': 'test_qt_settings_model',
+    'sources': [files(
+        '../../tests/test_settings_model.cpp',
+        '../cpp/settingsmodel.hpp',
+        '../cpp/settingsmodel.cpp'
+    ), redesign_qrc],
+    'moc_sources': files(
+        '../../tests/test_settings_model.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/settingsmodel.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore, libvlc],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

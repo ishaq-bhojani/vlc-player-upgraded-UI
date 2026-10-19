@@ -93,6 +93,7 @@
 #include "redesign/cpp/mlrecentaudiomodel.hpp"
 #include "mainctx.hpp"
 #include "redesign/cpp/pinnavigation.hpp"
+#include "redesign/cpp/settingsmodel.hpp"
 #ifdef _WIN32
 #include "mainctx_win32.hpp"
 #endif
@@ -514,6 +515,11 @@ void MainUI::registerQMLTypes()
             [intf = m_intf](QQmlEngine*, QJSEngine*) { return new EffectsController(intf->p_player, VLC_OBJECT(intf)); });
         qmlRegisterSingletonType<PinNavigation>(uri, versionMajor, versionMinor, "PinNavigation",
             [](QQmlEngine*, QJSEngine*) { return new PinNavigation; });
+        // not "Settings": that would clash with QtCore.Settings
+        qmlRegisterUncreatableType<SettingItem>(uri, versionMajor, versionMinor, "SettingItem",
+            "SettingItem is returned by RedesignSettings.item()");
+        qmlRegisterSingletonType<SettingsModel>(uri, versionMajor, versionMinor, "RedesignSettings",
+            [intf = m_intf](QQmlEngine*, QJSEngine*) { return new SettingsModel(VLC_OBJECT(intf)); });
         if (m_mainCtx->hasMediaLibrary()) {
             CurrentMediaFavorite::setDefaultBackendFactory([ml = m_mainCtx->getMediaLibrary()] {
                 return std::make_unique<MLFavoriteBackend>(ml);

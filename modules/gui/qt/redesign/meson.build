@@ -34,6 +34,7 @@ moc_headers += files(
     'cpp/effectscontroller.hpp',
     'cpp/mlrecentaudiomodel.hpp',
     'cpp/pinnavigation.hpp',
+    'cpp/settingsmodel.hpp',
 )
 
 qt_plugin_sources += files(
@@ -49,6 +50,8 @@ qt_plugin_sources += files(
     'cpp/rebornprofile.hpp',
     'cpp/redesign.cpp',
     'cpp/redesign.hpp',
+    'cpp/settingsmodel.cpp',
+    'cpp/settingsmodel.hpp',
     'cpp/currentmediafavorite.cpp',
     'cpp/currentmediafavorite.hpp',
     'cpp/effectscontroller.cpp',
