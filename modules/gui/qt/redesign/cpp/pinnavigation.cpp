@@ -22,17 +22,7 @@
 #include "pinnavigation.hpp"
 #include "pinlogic.hpp"
 
-#include "network/networkmediamodel.hpp"
-
-QVariant PinNavigation::networkTree(const QUrl& url, const QString& name)
-{
-    const auto directory = pinlogic::makeDirectoryTree(url, name);
-    if (!directory)
-        return {};
-    return QVariant::fromValue(NetworkTreeItem(directory->tree, directory->item));
-}
-
-QVariant PinNavigation::mlItemId(const QString& serialized)
+QVariant PinNavigation::mlItemId(const QString& serialized) const
 {
     const auto id = pinlogic::parseMlItemId(serialized);
     if (!id)
@@ -40,7 +30,7 @@ QVariant PinNavigation::mlItemId(const QString& serialized)
     return QVariant::fromValue(*id);
 }
 
-QString PinNavigation::serializeMlItemId(const QVariant& id)
+QString PinNavigation::serializeMlItemId(const QVariant& id) const
 {
     if (!id.canConvert<MLItemId>())
         return {};

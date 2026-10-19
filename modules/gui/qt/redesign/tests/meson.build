@@ -124,3 +124,26 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+vlc_tests += {
+    'name': 'test_qt_redesign_pin_navigation',
+    'sources': files(
+        '../../tests/test_redesign_pin_navigation.cpp',
+        '../cpp/pinlogic.hpp',
+        '../cpp/pinlogic.cpp',
+        '../cpp/pinnavigation.hpp',
+        '../cpp/pinnavigation.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_redesign_pin_navigation.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/pinnavigation.hpp',
+        '../../medialibrary/mlqmltypes.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

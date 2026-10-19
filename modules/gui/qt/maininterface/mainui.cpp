@@ -506,12 +506,13 @@ void MainUI::registerQMLTypes()
 
         // @uri VLC.Redesign
         qmlRegisterType<CurrentMediaFavorite>(uri, versionMajor, versionMinor, "CurrentMediaFavorite");
-        if (m_mainCtx->hasMediaLibrary())
         qmlRegisterSingletonType<PinNavigation>(uri, versionMajor, versionMinor, "PinNavigation",
             [](QQmlEngine*, QJSEngine*) { return new PinNavigation; });
+        if (m_mainCtx->hasMediaLibrary()) {
             CurrentMediaFavorite::setDefaultBackendFactory([ml = m_mainCtx->getMediaLibrary()] {
                 return std::make_unique<MLFavoriteBackend>(ml);
             });
+        }
 
         qmlRegisterModule(uri, versionMajor, versionMinor);
         qmlProtectModule(uri, versionMajor);

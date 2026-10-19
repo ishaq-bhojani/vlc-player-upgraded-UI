@@ -41,6 +41,7 @@ qt_plugin_sources += files(
     'cpp/pinlogic.cpp',
     'cpp/pinlogic.hpp',
     'cpp/pinnavigation.cpp',
+    'cpp/pinnavigationnetwork.cpp',
     'cpp/pinnavigation.hpp',
     'cpp/redesign.cpp',
     'cpp/redesign.hpp',

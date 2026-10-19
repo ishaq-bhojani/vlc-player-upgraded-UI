@@ -26,7 +26,8 @@
 /**
  * Builds the navigation properties that the upstream views expect for a pinned item, from
  * what PinStore stores (strings): the `tree` of the network browser and the `parentId` of
- * the playlist view. The QML singleton PinNavigation of VLC.Redesign.
+ * the playlist view. The QML singleton PinNavigation of VLC.Redesign (instance methods: static
+ * invokables are not reliably callable on a singleton instance).
  */
 class PinNavigation : public QObject
 {
@@ -36,13 +37,13 @@ public:
     explicit PinNavigation(QObject* parent = nullptr) : QObject(parent) {}
 
     /** `tree` for `History.push(["network", "browse"], {tree})`; invalid for an empty or invalid url. */
-    Q_INVOKABLE static QVariant networkTree(const QUrl& url, const QString& name);
+    Q_INVOKABLE QVariant networkTree(const QUrl& url, const QString& name) const;
 
     /** `parentId` of the playlist view from the stored string; invalid when it is not an ML id. */
-    Q_INVOKABLE static QVariant mlItemId(const QString& serialized);
+    Q_INVOKABLE QVariant mlItemId(const QString& serialized) const;
 
     /** String to store in a playlist pin for an MLItemId (a model's `id` role); empty if invalid. */
-    Q_INVOKABLE static QString serializeMlItemId(const QVariant& id);
+    Q_INVOKABLE QString serializeMlItemId(const QVariant& id) const;
 };
 
 #endif
