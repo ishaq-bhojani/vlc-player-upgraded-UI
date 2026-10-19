@@ -63,7 +63,7 @@ QtObject {
     }
 
     // "<title> - <artist>": the title as in titleText, then the artist unless it is empty or the
-    // title already contains it (case-insensitive, e.g. a file name "Artist - Song.mp3").
+    // title already starts with "<artist> - " (case-insensitive, e.g. a file name "Artist - Song.mp3").
     function captionText(title: string, name: string, url: string, artist: string): string {
         const resolved = titleText(title, name, url)
         const who = artist ? artist.trim() : ""
@@ -71,8 +71,8 @@ QtObject {
             return resolved
         if (resolved === "")
             return who
-        if (resolved.toLowerCase().indexOf(who.toLowerCase()) >= 0)
+        if (resolved.toLowerCase().indexOf(who.toLowerCase() + " - ") === 0)
             return resolved
-        return resolved + " - " + who
+        return qsTr("%1 - %2").arg(resolved).arg(who)
     }
 }

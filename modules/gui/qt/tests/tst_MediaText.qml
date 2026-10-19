@@ -59,5 +59,9 @@ TestCase {
     function test_captionTextNoDuplicateArtist() {
         compare(MediaText.captionText("", "", "file:///C:/Music/Artist%20-%20Song.mp3", "Artist"), "Artist - Song.mp3")
         compare(MediaText.captionText("Artist - Song", "", "", "ARTIST"), "Artist - Song")
+        compare(MediaText.captionText("ARTIST - Song", "", "", " artist "), "ARTIST - Song")
+        // a mere prefix or substring of the title is not the artist
+        compare(MediaText.captionText("Dance Mix", "", "", "Dan"), "Dance Mix - Dan")
+        compare(MediaText.captionText("Mr Dan - Song", "", "", "Dan"), "Mr Dan - Song - Dan")
     }
 }
