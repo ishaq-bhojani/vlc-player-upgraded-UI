@@ -67,7 +67,9 @@ qt_plugin_sources += redesign_qrc
 
 qml_modules += {
     'name' : 'VLC.Redesign',
-    'target' : 'redesign',
+    # not 'redesign': its resource (<target>_assets) would share the name of the font resource
+    # above (redesign_assets.qrc) and the linker would keep only one of the two
+    'target' : 'redesignqml',
     'outdir' : 'VLC/Redesign',
     'sources': files(
         'player/controls/MediaLabelWidget.qml',

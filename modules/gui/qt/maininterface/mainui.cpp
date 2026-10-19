@@ -86,6 +86,7 @@
 #endif
 
 #include "videosurface.hpp"
+#include "redesign/cpp/redesign.hpp"
 #include "redesign/cpp/currentmediafavorite.hpp"
 #include "redesign/cpp/mlfavoritebackend.hpp"
 #include "mainctx.hpp"
@@ -167,7 +168,7 @@ bool MainUI::setup(QQmlEngine* engine)
     engine->addImageProvider(QStringLiteral("svgcolor"), new SVGColorImageImageProvider());
     engine->addImageProvider(QStringLiteral("vlcaccess"), new VLCAccessImageProvider());
 
-    m_component  = new QQmlComponent(engine, QStringLiteral("qrc:/qt/qml/VLC/MainInterface/MainInterface.qml"), QQmlComponent::PreferSynchronous, engine);
+    m_component  = new QQmlComponent(engine, redesign::rootQmlUrl(redesign::isEnabled(VLC_OBJECT(m_intf))), QQmlComponent::PreferSynchronous, engine);
     if (m_component->isLoading())
     {
         msg_Warn(m_intf, "component is still loading");

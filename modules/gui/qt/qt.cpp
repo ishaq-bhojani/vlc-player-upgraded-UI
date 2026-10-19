@@ -854,6 +854,7 @@ static void *Thread( void *obj )
     Q_INIT_RESOURCE( style_assets );
     Q_INIT_RESOURCE( util_assets );
     Q_INIT_RESOURCE( widgets_assets );
+    Q_INIT_RESOURCE( redesignqml_assets );
 
 #ifdef QT_USE_QMLCACHEGEN
     Q_INIT_RESOURCE( dialogs_cachegen );
@@ -926,6 +927,8 @@ static void *Thread( void *obj )
         redesign::useRedesignIconFont(); // VLCIcons loads the redesign icon font
         if ( !redesign::installAppFont() )
             msg_Warn( p_intf, "failed to install the redesign font, keeping the system font" );
+        // QML Settings (rail, pins) refuse to work without an organization name
+        app.setOrganizationName( redesign::productName() );
     }
 
     {

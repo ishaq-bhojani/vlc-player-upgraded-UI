@@ -40,6 +40,7 @@ QtObject {
     readonly property int radiusL: MainCtx.dp(8, scale) // PROVISIONAL: replace from tokens.md Table D
 
     // Layout metrics
+    readonly property int titleBarHeight: MainCtx.dp(40, scale) // Player.png: 160 px at 4x
     readonly property int controlBarHeight: MainCtx.dp(48, scale) // PROVISIONAL: replace from tokens.md Table D
     readonly property int railWidthCollapsed: MainCtx.dp(48, scale) // PROVISIONAL: replace from tokens.md Table D
     readonly property int railWidthExpanded: MainCtx.dp(200, scale) // PROVISIONAL: replace from tokens.md Table D

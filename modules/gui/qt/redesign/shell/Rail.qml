@@ -163,7 +163,7 @@ FocusScope {
         RailButton {
             width: column.width
 
-            icon: VLCIcons.panel_left
+            glyph: VLCIcons.panel_left
             label: root.expanded ? qsTr("Collapse") : qsTr("Expand")
             showLabel: false
             description: root.expanded ? qsTr("Collapse the sidebar") : qsTr("Expand the sidebar")
@@ -181,7 +181,7 @@ FocusScope {
 
                 width: column.width
 
-                icon: VLCIcons[modelData.icon]
+                glyph: VLCIcons[modelData.icon]
                 label: modelData.label
                 showLabel: root.expanded
                 description: modelData.label
@@ -246,7 +246,7 @@ FocusScope {
 
             width: ListView.view.width
 
-            icon: root.pinIcon(modelData.kind)
+            glyph: root.pinIcon(modelData.kind)
             label: modelData.label
             showLabel: root.expanded
             description: modelData.label
@@ -268,7 +268,7 @@ FocusScope {
     component RailButton: T.AbstractButton {
         id: button
 
-        property string icon
+        property string glyph
         property string label
         property string description
         property bool showLabel: true
@@ -313,7 +313,7 @@ FocusScope {
                 Layout.preferredWidth: RedesignStyle.railWidthCollapsed - 2 * RedesignStyle.spacingS
                 Layout.fillHeight: true
 
-                text: button.icon
+                text: button.glyph
                 color: (button.selected || button.hovered)
                        ? itemTheme.fg.highlight
                        : itemTheme.fg.primary

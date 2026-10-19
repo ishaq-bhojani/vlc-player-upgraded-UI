@@ -21,6 +21,7 @@
 #include <vlc_common.h>
 
 #include <QString>
+#include <QUrl>
 #include <QStringList>
 
 namespace redesign
@@ -31,6 +32,12 @@ namespace redesign
  * option, true by default). Every redesign behaviour is gated by this.
  */
 bool isEnabled(vlc_object_t* obj);
+
+/**
+ * URL of the root QML item of the interface: the redesign root window if
+ * enabled, else the stock MainInterface.qml.
+ */
+QUrl rootQmlUrl(bool enabled);
 
 /**
  * Loads the bundled redesign font (Inter Regular, Medium and SemiBold from

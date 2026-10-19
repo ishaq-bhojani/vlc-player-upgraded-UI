@@ -41,6 +41,7 @@ T.ToolBar {
     property PlaylistPane plListView: null
 
     property bool _showCSD: MainCtx.clientSideDecoration && !(MainCtx.intfMainWindow.visibility === Window.FullScreen)
+        && !MainCtx.redesign // the redesign title bar has the window buttons
 
     hoverEnabled: true
 

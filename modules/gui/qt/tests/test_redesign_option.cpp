@@ -59,6 +59,14 @@ private slots:
         QVERIFY(!redesign::isEnabled(VLC_OBJECT(vlc->p_libvlc_int)));
         libvlc_release(vlc);
     }
+
+    void rootUrl()
+    {
+        QCOMPARE(redesign::rootQmlUrl(true),
+                 QUrl("qrc:/qt/qml/VLC/Redesign/RedesignInterface.qml"));
+        QCOMPARE(redesign::rootQmlUrl(false),
+                 QUrl("qrc:/qt/qml/VLC/MainInterface/MainInterface.qml"));
+    }
 };
 
 QTEST_GUILESS_MAIN(TestRedesignOption)

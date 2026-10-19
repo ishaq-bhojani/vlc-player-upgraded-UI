@@ -45,6 +45,7 @@ T.ToolBar {
     property bool _showCSD: MainCtx.clientSideDecoration
         && !(MainCtx.intfMainWindow.visibility === Window.FullScreen)
         && !MainCtx.hasToolbarMenu
+        && !MainCtx.redesign // the redesign title bar has the window buttons
 
     //whether the navigation pannel is actually visible or not
     property alias navigationVisible: navigationVisibilty.checked

@@ -56,6 +56,8 @@
     Q_IMPORT_QML_PLUGIN(QtQmlModelsPlugin)
     Q_IMPORT_QML_PLUGIN(QtQmlPlugin)
     Q_IMPORT_QML_PLUGIN(QtQmlWorkerScriptPlugin)
+    // QtCore.Settings, used by the redesign (rail, pins)
+    Q_IMPORT_QML_PLUGIN(QtQmlCorePlugin)
 
 #ifdef _WIN32
     Q_IMPORT_PLUGIN(QModernWindowsStylePlugin)

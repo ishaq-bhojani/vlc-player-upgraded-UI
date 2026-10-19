@@ -35,6 +35,13 @@ bool isEnabled(vlc_object_t* obj)
     return var_InheritBool(obj, "qt-redesign");
 }
 
+QUrl rootQmlUrl(bool enabled)
+{
+    return QUrl(enabled
+        ? QStringLiteral("qrc:/qt/qml/VLC/Redesign/RedesignInterface.qml")
+        : QStringLiteral("qrc:/qt/qml/VLC/MainInterface/MainInterface.qml"));
+}
+
 bool installAppFont(const QStringList& fontFiles, const QString& family)
 {
     // do not touch the application font unless every file is usable
