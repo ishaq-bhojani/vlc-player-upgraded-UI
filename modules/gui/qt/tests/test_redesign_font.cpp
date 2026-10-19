@@ -23,8 +23,14 @@
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QTest>
+#include <QtPlugin>
 
 #include "../redesign/cpp/redesign.hpp"
+
+#if defined(QT_STATIC) && defined(Q_OS_WIN)
+// the static win64 Qt only links the native platform plugin
+Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
+#endif
 
 class TestRedesignFont : public QObject
 {
@@ -80,5 +86,15 @@ private slots:
     }
 };
 
-QTEST_MAIN(TestRedesignFont)
+int main(int argc, char* argv[])
+{
+#if defined(QT_STATIC) && defined(Q_OS_WIN)
+    // no offscreen platform plugin in the static win64 Qt; the native one
+    // creates no window here, it only provides the font database
+    qputenv("QT_QPA_PLATFORM", "windows");
+#endif
+    QGuiApplication app(argc, argv);
+    TestRedesignFont test;
+    return QTest::qExec(&test, argc, argv);
+}
 #include "test_redesign_font.moc"
