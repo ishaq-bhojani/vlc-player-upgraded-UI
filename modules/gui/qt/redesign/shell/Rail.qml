@@ -25,6 +25,7 @@ import VLC.Widgets as Widgets
 import VLC.Style
 import VLC.Dialogs
 import VLC.Menus
+import VLC.Playlist
 import VLC.Util
 import VLC.Redesign
 
@@ -62,17 +63,38 @@ FocusScope {
         case "stream":
             return VLCIcons.stream
         default:
-            return VLCIcons.ic_fluent_folder_open_24_regular
+            return VLCIcons.rd_folder
         }
     }
 
-    // Opens a pinned item with the views of the network browser (folders and streams, by
-    // `tree`) and of the playlists of the media library (by `parentId`)
+    // Opens a pinned item:
+    // - a folder in the network browser: its `tree` is built from the url
+    // - a playlist in the playlist view of the media library: `parentId` is its ML id
+    // - a stream is played (appended to the play queue and started)
     function openPin(pin: var) {
-        if (pin.kind === "playlist")
-            History.push(["video", "playlists", "list"], { parentId: pin.target, title: pin.label })
-        else
-            History.push(["network", "browse"], { tree: pin.target })
+        switch (pin.kind) {
+        case "folder": {
+            const tree = PinNavigation.networkTree(pin.target, pin.label)
+            if (tree)
+                History.push(["network", "browse"], { tree: tree })
+            else
+                console.warn("Rail: can not open the pinned folder", pin.target)
+            break
+        }
+        case "playlist": {
+            const parentId = PinNavigation.mlItemId(pin.target)
+            if (parentId)
+                History.push(["video", "playlists", "list"], { parentId: parentId, title: pin.label })
+            else
+                console.warn("Rail: can not open the pinned playlist", pin.target)
+            break
+        }
+        case "stream":
+            MainPlaylistController.append([pin.target], true)
+            break
+        default:
+            console.warn("Rail: unknown kind of pinned item", pin.kind)
+        }
     }
 
     // shows the context menu of the pinned item pinId at the global position globalPos
@@ -173,44 +195,71 @@ FocusScope {
                 }
             }
         }
+    }
 
-        // separates the fixed entries from the pins
-        Rectangle {
-            visible: pinRepeater.count > 0
+    // separates the fixed entries from the pins
+    Rectangle {
+        id: pinsDivider
 
-            width: column.width
-            height: VLCStyle.border
+        visible: pinsView.count > 0
 
-            color: theme.separator
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: column.bottom
+            leftMargin: RedesignStyle.spacingS
+            rightMargin: RedesignStyle.spacingS
+            topMargin: RedesignStyle.spacingXS
         }
 
-        Repeater {
-            id: pinRepeater
+        height: VLCStyle.border
 
-            model: PinStore.items
+        color: theme.separator
+    }
 
-            RailButton {
-                id: pinButton
+    // the pins take the height that is left below the fixed entries and scroll when
+    // there are more of them: they never make the rail (and the window) taller
+    ListView {
+        id: pinsView
 
-                required property var modelData
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: pinsDivider.bottom
+            bottom: parent.bottom
+            leftMargin: RedesignStyle.spacingS
+            rightMargin: RedesignStyle.spacingS
+            topMargin: RedesignStyle.spacingXS
+            bottomMargin: RedesignStyle.spacingS
+        }
 
-                width: column.width
+        clip: true
+        spacing: RedesignStyle.spacingXS
+        boundsBehavior: Flickable.StopAtBounds
 
-                icon: root.pinIcon(modelData.kind)
-                label: modelData.label
-                showLabel: root.expanded
-                description: modelData.label
+        model: railModel.visiblePins(PinStore.items)
 
-                onClicked: root.openPin(modelData)
+        delegate: RailButton {
+            id: pinButton
 
-                Keys.onMenuPressed: root.showPinMenu(modelData.id, mapToGlobal(width / 2, height / 2))
+            required property var modelData
 
-                TapHandler {
-                    acceptedButtons: Qt.RightButton
+            width: ListView.view.width
 
-                    onTapped: (eventPoint, button) => root.showPinMenu(pinButton.modelData.id,
-                                                                       pinButton.mapToGlobal(eventPoint.position))
-                }
+            icon: root.pinIcon(modelData.kind)
+            label: modelData.label
+            showLabel: root.expanded
+            description: modelData.label
+
+            onClicked: root.openPin(modelData)
+
+            Keys.onMenuPressed: root.showPinMenu(modelData.id, mapToGlobal(width / 2, height / 2))
+
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+
+                onTapped: (eventPoint, button) => root.showPinMenu(pinButton.modelData.id,
+                                                                   pinButton.mapToGlobal(eventPoint.position))
             }
         }
     }

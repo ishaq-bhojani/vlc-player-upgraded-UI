@@ -31,12 +31,17 @@ qt_cppargs += redesign_branding_cppargs
 
 moc_headers += files(
     'cpp/currentmediafavorite.hpp',
+    'cpp/pinnavigation.hpp',
 )
 
 qt_plugin_sources += files(
     'cpp/aboutbranding.cpp',
     'cpp/aboutbranding.hpp',
     'cpp/branding.hpp',
+    'cpp/pinlogic.cpp',
+    'cpp/pinlogic.hpp',
+    'cpp/pinnavigation.cpp',
+    'cpp/pinnavigation.hpp',
     'cpp/redesign.cpp',
     'cpp/redesign.hpp',
     'cpp/currentmediafavorite.cpp',
@@ -71,6 +76,8 @@ qml_modules += {
         'player/controls/ReplayButton.qml',
         'player/controls/FavoriteButton.qml',
         'shell/Rail.qml',
+        'shell/RedesignInterface.qml',
+        'shell/TitleBar.qml',
         'shell/RailModel.qml',
         'shell/ShellStates.qml',
     ),

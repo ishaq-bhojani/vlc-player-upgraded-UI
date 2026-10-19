@@ -24,7 +24,8 @@ import QtQml
  * `icon` is the name of a VLCIcons glyph (resolved by Rail.qml with VLCIcons[icon]), so
  * that the glyph set can change without touching the model.
  *
- * Without a media library only the network browser and the "add" action are offered.
+ * Without a media library only the network browser and the "add" action are offered, and
+ * no pinned playlist.
  */
 QtObject {
     id: railModel
@@ -47,6 +48,13 @@ QtObject {
     function visibleItems(): var {
         const ml = hasMediaLibrary
         return items.filter(function (item) { return ml || !item.requiresML })
+    }
+
+    // The pins (entries of PinStore) to show: a playlist is stored in the media library, so
+    // it needs the library like the entries with requiresML.
+    function visiblePins(pins: var): var {
+        const ml = hasMediaLibrary
+        return pins.filter(function (pin) { return ml || pin.kind !== "playlist" })
     }
 
     // Index in `items` of the visible entry whose path is the longest prefix of viewPath,

@@ -107,3 +107,20 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qtest_qt6_dep],
 }
+
+vlc_tests += {
+    'name': 'test_qt_redesign_pin_logic',
+    'sources': files(
+        '../../tests/test_redesign_pin_logic.cpp',
+        '../cpp/pinlogic.hpp',
+        '../cpp/pinlogic.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_redesign_pin_logic.cpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

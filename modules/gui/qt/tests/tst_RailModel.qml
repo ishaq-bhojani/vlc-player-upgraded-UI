@@ -57,6 +57,19 @@ TestCase {
                 ["home", "video", "music", "playlists", "recent"])
     }
 
+    function test_visiblePins() {
+        const pins = [
+            { id: "a", kind: "folder", label: "A", target: "file:///a" },
+            { id: "b", kind: "playlist", label: "B", target: "VLC_ML_PARENT_PLAYLIST - 1" },
+            { id: "c", kind: "stream", label: "C", target: "http://c" }
+        ]
+        rail.hasMediaLibrary = true
+        compare(rail.visiblePins(pins).map(p => p.id), ["a", "b", "c"])
+        rail.hasMediaLibrary = false
+        compare(rail.visiblePins(pins).map(p => p.id), ["a", "c"])
+        compare(rail.visiblePins([]), [])
+    }
+
     function test_index() {
         rail.hasMediaLibrary = true
         compare(rail.items[rail.indexForPath(["video", "playlists", "all"])].id, "playlists")
