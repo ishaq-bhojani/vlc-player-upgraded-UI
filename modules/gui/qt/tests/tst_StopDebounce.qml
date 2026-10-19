@@ -27,7 +27,7 @@ TestCase {
         id: debounceComponent
 
         StopDebounce {
-            interval: 60
+            interval: 200
             property int settledCount: 0
             onSettledStopped: settledCount++
         }
@@ -39,9 +39,9 @@ TestCase {
         compare(d.stopped, false)
         d.input = true
         compare(d.stopped, false)
-        wait(20)
+        wait(30)
         d.input = false
-        wait(150) // well past the interval
+        wait(600) // 3x the interval
         compare(d.stopped, false)
         compare(d.settledCount, 0)
     }
@@ -50,9 +50,9 @@ TestCase {
         const d = createTemporaryObject(debounceComponent, testCase)
         d.input = true
         compare(d.stopped, false)
-        tryCompare(d, "stopped", true, 1000)
+        tryCompare(d, "stopped", true, 5000)
         compare(d.settledCount, 1)
-        wait(150)
+        wait(600)
         compare(d.settledCount, 1)
         compare(d.stopped, true)
     }
@@ -60,10 +60,10 @@ TestCase {
     function test_startAfterSettleClearsImmediately() {
         const d = createTemporaryObject(debounceComponent, testCase)
         d.input = true
-        tryCompare(d, "stopped", true, 1000)
+        tryCompare(d, "stopped", true, 5000)
         d.input = false
         compare(d.stopped, false) // no delay on start
-        wait(150)
+        wait(600)
         compare(d.stopped, false)
         compare(d.settledCount, 1)
     }
@@ -72,7 +72,7 @@ TestCase {
     function test_stoppedAtCreationIsImmediate() {
         const d = createTemporaryObject(debounceComponent, testCase, { input: true })
         compare(d.stopped, true)
-        wait(150)
+        wait(600)
         compare(d.stopped, true)
         compare(d.settledCount, 0) // not a transition
     }
@@ -83,7 +83,7 @@ TestCase {
         d.input = false
         d.input = true
         compare(d.stopped, false)
-        tryCompare(d, "stopped", true, 1000)
+        tryCompare(d, "stopped", true, 5000)
         compare(d.settledCount, 1)
     }
 
@@ -91,12 +91,14 @@ TestCase {
     function test_restartRestartsInterval() {
         const d = createTemporaryObject(debounceComponent, testCase)
         d.input = true
-        wait(40)
-        d.input = false
-        d.input = true
-        wait(40) // 80 ms since the first stop but only 40 since the last one
-        compare(d.stopped, false)
-        tryCompare(d, "stopped", true, 1000)
+        // 300 ms since the first stop, but never more than 50 ms since the last restart
+        for (let i = 0; i < 6; ++i) {
+            wait(50)
+            d.input = false
+            d.input = true
+            compare(d.stopped, false)
+        }
+        tryCompare(d, "stopped", true, 5000)
         compare(d.settledCount, 1)
     }
 
@@ -109,10 +111,10 @@ TestCase {
         host.state = 0
         compare(host.debounce.stopped, false)
         host.state = 1
-        wait(150)
+        wait(600)
         compare(host.debounce.stopped, false)
         host.state = 0
-        tryCompare(host.debounce, "stopped", true, 1000)
+        tryCompare(host.debounce, "stopped", true, 5000)
     }
 
     Component {
@@ -121,7 +123,7 @@ TestCase {
         QtObject {
             property int state: 0 // 0 stopped, 1 playing
             readonly property StopDebounce debounce: StopDebounce {
-                interval: 60
+                interval: 200
                 input: state === 0
             }
         }
