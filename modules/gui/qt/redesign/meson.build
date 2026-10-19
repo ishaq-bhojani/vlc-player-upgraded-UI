@@ -78,6 +78,7 @@ qml_modules += {
         'theme/RedesignStyle.qml',
         'util/MediaText.qml',
         'util/ReplayLogic.qml',
+        'shell/PinStore.qml',
     ),
 }
 
@@ -86,4 +87,5 @@ qml_tests += {
     'tst_ReplayLogic': files('../tests/tst_ReplayLogic.qml'),
     'tst_RailModel': files('../tests/tst_RailModel.qml'),
     'tst_ShellStates': files('../tests/tst_ShellStates.qml'),
+    'tst_PinStore': files('../tests/tst_PinStore.qml'),
 }

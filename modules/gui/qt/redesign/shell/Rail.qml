@@ -24,6 +24,7 @@ import VLC.MainInterface
 import VLC.Widgets as Widgets
 import VLC.Style
 import VLC.Dialogs
+import VLC.Menus
 import VLC.Util
 import VLC.Redesign
 
@@ -33,7 +34,8 @@ import VLC.Redesign
  * opens the open dialog.
  *
  * The expanded state is persisted. The entries and their mapping to navigation paths are
- * defined by RailModel.
+ * defined by RailModel. Below a divider, the rail lists the items pinned with PinStore:
+ * activating one opens it, the context menu unpins it.
  */
 FocusScope {
     id: root
@@ -49,6 +51,35 @@ FocusScope {
 
     implicitWidth: root.expanded ? RedesignStyle.railWidthExpanded : RedesignStyle.railWidthCollapsed
     implicitHeight: column.implicitHeight + 2 * RedesignStyle.spacingS
+
+    // Functions
+
+    // the glyph of a pinned item
+    function pinIcon(kind: string): string {
+        switch (kind) {
+        case "playlist":
+            return VLCIcons.playlist
+        case "stream":
+            return VLCIcons.stream
+        default:
+            return VLCIcons.ic_fluent_folder_open_24_regular
+        }
+    }
+
+    // Opens a pinned item with the views of the network browser (folders and streams, by
+    // `tree`) and of the playlists of the media library (by `parentId`)
+    function openPin(pin: var) {
+        if (pin.kind === "playlist")
+            History.push(["video", "playlists", "list"], { parentId: pin.target, title: pin.label })
+        else
+            History.push(["network", "browse"], { tree: pin.target })
+    }
+
+    // shows the context menu of the pinned item pinId at the global position globalPos
+    function showPinMenu(pinId: string, globalPos: point) {
+        pinMenu.pinId = pinId
+        pinMenu.popup(globalPos, [qsTr("Unpin")])
+    }
 
     Accessible.role: Accessible.ToolBar
     Accessible.name: qsTr("Navigation")
@@ -67,6 +98,19 @@ FocusScope {
         category: "redesign"
 
         property bool expanded: false
+    }
+
+    StringListMenu {
+        id: pinMenu
+
+        property string pinId
+
+        ctx: MainCtx
+
+        onSelected: (index, _) => {
+            if (index === 0)
+                PinStore.unpin(pinMenu.pinId)
+        }
     }
 
     ColorContext {
@@ -126,6 +170,46 @@ FocusScope {
                         DialogsProvider.simpleOpenDialog()
                     else
                         History.push(modelData.path)
+                }
+            }
+        }
+
+        // separates the fixed entries from the pins
+        Rectangle {
+            visible: pinRepeater.count > 0
+
+            width: column.width
+            height: VLCStyle.border
+
+            color: theme.separator
+        }
+
+        Repeater {
+            id: pinRepeater
+
+            model: PinStore.items
+
+            RailButton {
+                id: pinButton
+
+                required property var modelData
+
+                width: column.width
+
+                icon: root.pinIcon(modelData.kind)
+                label: modelData.label
+                showLabel: root.expanded
+                description: modelData.label
+
+                onClicked: root.openPin(modelData)
+
+                Keys.onMenuPressed: root.showPinMenu(modelData.id, mapToGlobal(width / 2, height / 2))
+
+                TapHandler {
+                    acceptedButtons: Qt.RightButton
+
+                    onTapped: (eventPoint, button) => root.showPinMenu(pinButton.modelData.id,
+                                                                       pinButton.mapToGlobal(eventPoint.position))
                 }
             }
         }
