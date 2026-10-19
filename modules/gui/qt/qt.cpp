@@ -97,6 +97,7 @@ extern "C" char **environ;
 #endif
 #include "style/defaultthemeproviders.hpp"
 #include "redesign/cpp/redesign.hpp"
+#include "redesign/cpp/iconfont.hpp"
 #include "redesign/cpp/branding.hpp"
 #include "redesign/cpp/widgetpalette.hpp"
 #include "dialogs/extensions/extensions_manager.hpp" /* Extensions manager */
@@ -920,8 +921,12 @@ static void *Thread( void *obj )
     QApplication app( argc, argv );
     app.setProperty("initialStyle", app.style()->name());
 
-    if ( redesign::isEnabled( VLC_OBJECT( p_intf ) ) && !redesign::installAppFont() )
-        msg_Warn( p_intf, "failed to install the redesign font, keeping the system font" );
+    if ( redesign::isEnabled( VLC_OBJECT( p_intf ) ) )
+    {
+        redesign::useRedesignIconFont(); // VLCIcons loads the redesign icon font
+        if ( !redesign::installAppFont() )
+            msg_Warn( p_intf, "failed to install the redesign font, keeping the system font" );
+    }
 
     {
         // Install custom translator:

@@ -2,10 +2,12 @@
 """Validate the icon sources of the VLC icon font.
 
     python3 extras/redesign/check_icons.py modules/gui/qt/pixmaps
+    python3 extras/redesign/check_icons.py modules/gui/qt/redesign/assets VLCIconsRedesign.json
 
 Exits 0 only if
 
-  * every glyph of <pixmaps>/VLCIcons.json has an SVG file, and
+  * every glyph of <dir>/<json> (default VLCIcons.json; the second command checks the redesign
+    font) has an SVG file, and
   * the viewBox of every one of those SVGs is as wide and as high as its
     width / height attributes (makeIconFont.py / fontforge scale the glyph by
     that ratio; a mismatch gives a glyph of the wrong size).
@@ -68,15 +70,16 @@ def check_svg(path):
 
 
 def main(argv):
-    if len(argv) != 2:
+    if len(argv) not in (2, 3):
         print(__doc__.strip().split("\n\n")[0], file=sys.stderr)
         return 2
     root = argv[1]
+    json_name = argv[2] if len(argv) == 3 else "VLCIcons.json"
     try:
-        with open(os.path.join(root, "VLCIcons.json"), encoding="utf-8") as fd:
+        with open(os.path.join(root, json_name), encoding="utf-8") as fd:
             glyphs = json.load(fd)["glyphs"]
     except (OSError, ValueError, KeyError) as e:
-        print("check_icons: cannot read %s/VLCIcons.json: %s" % (root, e), file=sys.stderr)
+        print("check_icons: cannot read %s/%s: %s" % (root, json_name, e), file=sys.stderr)
         return 2
 
     bad = []

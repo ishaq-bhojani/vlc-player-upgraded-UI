@@ -4,5 +4,6 @@
         <file alias="fonts/Inter-Medium.ttf">fonts/Inter-Medium.ttf</file>
         <file alias="fonts/Inter-SemiBold.ttf">fonts/Inter-SemiBold.ttf</file>
         <file alias="fonts/OFL.txt">fonts/OFL.txt</file>
+        <file alias="VLCIconsRedesign.ttf">VLCIconsRedesign.ttf</file>
     </qresource>
 </RCC>

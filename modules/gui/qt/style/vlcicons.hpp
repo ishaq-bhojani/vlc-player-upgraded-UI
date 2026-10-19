@@ -111,20 +111,20 @@ class VLCIcons : public QObject {
     Q_PROPERTY(QChar medialibrary_remove MEMBER medialibrary_remove CONSTANT FINAL)
     Q_PROPERTY(QChar regex MEMBER regex CONSTANT FINAL)
     Q_PROPERTY(QChar ic_fluent_text_change_case_24_regular MEMBER ic_fluent_text_change_case_24_regular CONSTANT FINAL)
-    Q_PROPERTY(QChar rd_heart MEMBER rd_heart CONSTANT FINAL)
-    Q_PROPERTY(QChar rd_heart_filled MEMBER rd_heart_filled CONSTANT FINAL)
+    Q_PROPERTY(QChar rd_menu MEMBER rd_menu CONSTANT FINAL)
     Q_PROPERTY(QChar rd_divider MEMBER rd_divider CONSTANT FINAL)
-    Q_PROPERTY(QChar rd_replay MEMBER rd_replay CONSTANT FINAL)
-    Q_PROPERTY(QChar rd_folder MEMBER rd_folder CONSTANT FINAL)
-    Q_PROPERTY(QChar rd_artist MEMBER rd_artist CONSTANT FINAL)
+    Q_PROPERTY(QChar rd_heart MEMBER rd_heart CONSTANT FINAL)
+    Q_PROPERTY(QChar rd_pin MEMBER rd_pin CONSTANT FINAL)
+    Q_PROPERTY(QChar rd_heart_filled MEMBER rd_heart_filled CONSTANT FINAL)
     Q_PROPERTY(QChar rd_playlist_label MEMBER rd_playlist_label CONSTANT FINAL)
     Q_PROPERTY(QChar rd_queue MEMBER rd_queue CONSTANT FINAL)
     Q_PROPERTY(QChar rd_subtitles MEMBER rd_subtitles CONSTANT FINAL)
     Q_PROPERTY(QChar rd_audio MEMBER rd_audio CONSTANT FINAL)
+    Q_PROPERTY(QChar rd_replay MEMBER rd_replay CONSTANT FINAL)
+    Q_PROPERTY(QChar rd_folder MEMBER rd_folder CONSTANT FINAL)
     Q_PROPERTY(QChar rd_sidebar MEMBER rd_sidebar CONSTANT FINAL)
-    Q_PROPERTY(QChar rd_menu MEMBER rd_menu CONSTANT FINAL)
     Q_PROPERTY(QChar rd_library MEMBER rd_library CONSTANT FINAL)
-    Q_PROPERTY(QChar rd_pin MEMBER rd_pin CONSTANT FINAL)
+    Q_PROPERTY(QChar rd_artist MEMBER rd_artist CONSTANT FINAL)
 
 
 public:
@@ -232,20 +232,20 @@ public:
     static constexpr inline QChar medialibrary_remove{ u'\ue05e' };
     static constexpr inline QChar regex{ u'\ue05f' };
     static constexpr inline QChar ic_fluent_text_change_case_24_regular{ u'\ue060' };
-    static constexpr inline QChar rd_heart{ u'\ue061' };
-    static constexpr inline QChar rd_heart_filled{ u'\ue062' };
-    static constexpr inline QChar rd_divider{ u'\ue063' };
-    static constexpr inline QChar rd_replay{ u'\ue064' };
-    static constexpr inline QChar rd_folder{ u'\ue065' };
-    static constexpr inline QChar rd_artist{ u'\ue066' };
-    static constexpr inline QChar rd_playlist_label{ u'\ue067' };
-    static constexpr inline QChar rd_queue{ u'\ue068' };
-    static constexpr inline QChar rd_subtitles{ u'\ue069' };
-    static constexpr inline QChar rd_audio{ u'\ue06a' };
-    static constexpr inline QChar rd_sidebar{ u'\ue06b' };
-    static constexpr inline QChar rd_menu{ u'\ue06c' };
+    static constexpr inline QChar rd_menu{ u'\ue061' };
+    static constexpr inline QChar rd_divider{ u'\ue062' };
+    static constexpr inline QChar rd_heart{ u'\ue063' };
+    static constexpr inline QChar rd_pin{ u'\ue064' };
+    static constexpr inline QChar rd_heart_filled{ u'\ue065' };
+    static constexpr inline QChar rd_playlist_label{ u'\ue066' };
+    static constexpr inline QChar rd_queue{ u'\ue067' };
+    static constexpr inline QChar rd_subtitles{ u'\ue068' };
+    static constexpr inline QChar rd_audio{ u'\ue069' };
+    static constexpr inline QChar rd_replay{ u'\ue06a' };
+    static constexpr inline QChar rd_folder{ u'\ue06b' };
+    static constexpr inline QChar rd_sidebar{ u'\ue06c' };
     static constexpr inline QChar rd_library{ u'\ue06d' };
-    static constexpr inline QChar rd_pin{ u'\ue06e' };
+    static constexpr inline QChar rd_artist{ u'\ue06e' };
 
 };
 
