@@ -39,6 +39,12 @@ T.Switch {
     //! the name of the setting, for assistive technologies
     property string label
 
+    //! set by the host once the constants (range, choices...) are in: the value is applied after
+    property bool ready: false
+
+    //! the long description of the setting, for assistive technologies
+    property string description
+
     //! the user chose `newValue`
     signal edited(var newValue)
 
@@ -59,6 +65,7 @@ T.Switch {
 
     Accessible.role: Accessible.CheckBox
     Accessible.name: label
+    Accessible.description: description
     Accessible.checked: checked
 
     onToggled: {

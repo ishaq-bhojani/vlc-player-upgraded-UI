@@ -43,6 +43,12 @@ Widgets.ComboBoxExt {
     //! [{value, label}]
     property var choices: []
 
+    //! set by the host once the constants (range, choices...) are in: the value is applied after
+    property bool ready: false
+
+    //! the long description of the setting, for assistive technologies
+    property string description
+
     //! the user chose `newValue`
     signal edited(var newValue)
 
@@ -59,6 +65,7 @@ Widgets.ComboBoxExt {
     currentIndex: ControlChooser.choiceIndex(choices, value)
 
     Accessible.name: label
+    Accessible.description: description
 
     onActivated: (index) => {
         if (index >= 0 && index < root.choices.length)

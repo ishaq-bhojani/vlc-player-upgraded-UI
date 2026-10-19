@@ -119,6 +119,13 @@ TestCase {
             { tag: "text", text: "abc", isFloat: false, expected: undefined },
             { tag: "trailing garbage", text: "12px", isFloat: false, expected: undefined },
             { tag: "infinity", text: "Infinity", isFloat: true, expected: undefined },
+            // an integer beyond 2^53 - 1 is not exact in a double: refused, a float is not
+            { tag: "largest safe integer", text: "9007199254740991", isFloat: false, expected: 9007199254740991 },
+            { tag: "smallest safe integer", text: "-9007199254740991", isFloat: false, expected: -9007199254740991 },
+            { tag: "integer beyond 2^53", text: "9007199254740993", isFloat: false, expected: undefined },
+            { tag: "negative integer beyond 2^53", text: "-9007199254740993", isFloat: false, expected: undefined },
+            { tag: "huge integer", text: "1" + "0".repeat(40), isFloat: false, expected: undefined },
+            { tag: "huge float", text: "1" + "0".repeat(40), isFloat: true, expected: 1e40 },
         ]
     }
 

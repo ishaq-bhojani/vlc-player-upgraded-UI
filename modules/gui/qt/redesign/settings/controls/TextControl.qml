@@ -42,6 +42,12 @@ Widgets.TextFieldExt {
     //! show dots instead of the text
     property bool password: false
 
+    //! set by the host once the constants (range, choices...) are in: the value is applied after
+    property bool ready: false
+
+    //! the long description of the setting, for assistive technologies
+    property string description
+
     //! the user entered `newValue`
     signal edited(var newValue)
 
@@ -65,6 +71,7 @@ Widgets.TextFieldExt {
     text: (value === undefined || value === null) ? "" : String(value)
 
     Accessible.name: label
+    Accessible.description: description
 
     onEditingFinished: {
         if (root.text !== String(root.value ?? ""))

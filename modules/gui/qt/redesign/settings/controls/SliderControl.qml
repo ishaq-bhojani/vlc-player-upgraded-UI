@@ -46,6 +46,12 @@ FocusScope {
     property real to: 1
     property real stepSize: 1
 
+    //! set by the host once the constants (range, choices...) are in: the value is applied after
+    property bool ready: false
+
+    //! the long description of the setting, for assistive technologies
+    property string description
+
     //! the user chose `newValue`, once per pick
     signal edited(var newValue)
 
@@ -131,6 +137,7 @@ FocusScope {
 
             Accessible.role: Accessible.Slider
             Accessible.name: root.label
+            Accessible.description: root.description
 
             Accessible.onIncreaseAction: slider.increase()
             Accessible.onDecreaseAction: slider.decrease()
@@ -153,7 +160,9 @@ FocusScope {
             Binding {
                 target: slider
                 property: "value"
-                value: root._number(root.value)
+                // limited to the range here, so that the binding depends on it: a range set after the
+                // value (or changed) places the thumb again instead of keeping a stale clamp
+                value: Math.min(root.to, Math.max(root.from, root._number(root.value)))
                 when: !root._picking && !slider.pressed
                 restoreMode: Binding.RestoreNone
             }

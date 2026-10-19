@@ -28,8 +28,12 @@ import QtQml
 QtObject {
     /**
      * The numbers of SettingItem.Type (settingsmodel.hpp). SettingItem is registered by the qt
-     * plugin at run time and is not there in qml_test, so they are mirrored here;
-     * redesign/cpp/qmlregistration.cpp has a static_assert that keeps the order in step.
+     * plugin at run time and is not there in qml_test, so they are mirrored here.
+     *
+     * Two guards, both literal copies of the same order, so edit them together when
+     * SettingItem::Type changes: the static_assert in redesign/cpp/qmlregistration.cpp (the C++
+     * enum against the numbers) and test_typeNumbers in tests/tst_ControlChooser.qml (these
+     * numbers against the numbers). The static_assert alone does not see this file.
      */
     readonly property var type: ({
         Bool: 0,
@@ -89,7 +93,8 @@ QtObject {
     }
 
     // The number typed in a field, or undefined if `text` is not a plain number (a ',' is read as
-    // the decimal point). An integer field rounds.
+    // the decimal point). An integer field rounds, and refuses what a double can not hold
+    // exactly (beyond +-Number.MAX_SAFE_INTEGER, i.e. 2^53 - 1).
     function parseNumber(text: string, isFloat: bool): var {
         const s = String(text).trim().replace(",", ".")
         if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s))
@@ -97,7 +102,11 @@ QtObject {
         const v = Number(s)
         if (!isFinite(v))
             return undefined
-        return isFloat ? v : Math.round(v)
+        if (isFloat)
+            return v
+        // (Math.round(v) of a large integer is not exact in the engine: leave integers alone)
+        const rounded = Number.isInteger(v) ? v : Math.round(v)
+        return Math.abs(rounded) > Number.MAX_SAFE_INTEGER ? undefined : rounded
     }
 
     // The index in `choices` ([{value, label}]) of `value`: 0 (the first row) if the value is not

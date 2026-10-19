@@ -17,6 +17,7 @@
  *****************************************************************************/
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Templates as T
 
 import VLC.Style
 import VLC.Widgets as Widgets
@@ -75,14 +76,10 @@ Item {
 
     // Private
 
-    readonly property string _description: {
-        if (!item)
-            return ""
-        if (item.requiresRestart)
-            return item.longText.length > 0 ? item.longText + "\n\n" + qsTr("Takes effect after a restart.")
-                                            : qsTr("Takes effect after a restart.")
-        return item.longText
-    }
+    readonly property string _description: item ? item.longText : ""
+
+    // the info tooltip does not grow wider than this, longer lines wrap
+    readonly property real _tipMaxWidth: VLCStyle.dp(320, VLCStyle.scale)
 
     // Settings
 
@@ -115,30 +112,102 @@ Item {
 
         spacing: RedesignStyle.spacingM
 
-        Text {
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
 
-            text: root.item ? root.item.text : ""
-            font.pixelSize: VLCStyle.fontSize_normal
-            color: theme.fg.primary
-            wrapMode: Text.WordWrap
-            maximumLineCount: 2
-            elide: Text.ElideRight
+            spacing: 0
 
-            Accessible.ignored: true
+            Text {
+                Layout.fillWidth: true
+
+                text: root.item ? root.item.text : ""
+                font.pixelSize: VLCStyle.fontSize_normal
+                color: theme.fg.primary
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+
+                Accessible.ignored: true
+            }
+
+            // the change is only applied by the next start
+            Text {
+                Layout.fillWidth: true
+
+                visible: root.item !== null && root.item.requiresRestart
+
+                text: qsTr("Restart required")
+                font.pixelSize: VLCStyle.fontSize_small
+                color: theme.fg.secondary
+                elide: Text.ElideRight
+
+                Accessible.ignored: true
+            }
         }
 
-        // Figma "i": the long description
-        Widgets.IconToolButton {
+        // Figma "i": the long description, on hover. Not a tab stop (the description is also the
+        // Accessible.description of the control): one stop per row.
+        T.AbstractButton {
+            id: infoButton
+
             Layout.alignment: Qt.AlignVCenter
 
             visible: root._description.length > 0
 
-            text: VLCIcons.info
-            description: root._description
+            hoverEnabled: true
+            focusPolicy: Qt.NoFocus
+            activeFocusOnTab: false
 
-            font.pixelSize: VLCStyle.icon_normal
+            implicitWidth: VLCStyle.icon_normal
+            implicitHeight: VLCStyle.icon_normal
+
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTr("More information")
+
+            contentItem: Widgets.IconLabel {
+                text: VLCIcons.info
+                font.pixelSize: VLCStyle.icon_normal
+                color: infoButton.hovered ? theme.fg.primary : theme.fg.secondary
+            }
+
+            Widgets.ToolTipExt {
+                id: infoTip
+
+                visible: infoButton.hovered
+                delay: VLCStyle.delayToolTipAppear
+                text: root._description
+
+                // wraps at _tipMaxWidth (the stock tooltip only wraps at the window width)
+                contentItem: Item {
+                    implicitWidth: tipText.width
+                    implicitHeight: tipText.implicitHeight
+
+                    Text {
+                        id: tipText
+
+                        width: Math.min(tipMetrics.width, root._tipMaxWidth)
+
+                        text: infoTip.text
+                        font: infoTip.font
+                        color: tipTheme.fg.primary
+                        wrapMode: Text.Wrap
+                    }
+
+                    TextMetrics {
+                        id: tipMetrics
+
+                        font: infoTip.font
+                        text: infoTip.text
+                    }
+
+                    ColorContext {
+                        id: tipTheme
+
+                        colorSet: ColorContext.Tooltip
+                    }
+                }
+            }
         }
 
         Loader {
@@ -153,6 +222,7 @@ Item {
                 const setting = root.item
 
                 control.label = setting.text
+                control.description = setting.longText
 
                 switch (root.controlFile) {
                 case "SliderControl.qml":
@@ -179,6 +249,9 @@ Item {
                     control.canBrowse = Qt.binding(() => root.canBrowse)
                     break
                 }
+
+                // the constants are in: now the value can be applied against the right range
+                control.ready = true
             }
         }
     }
@@ -188,7 +261,7 @@ Item {
         target: loader.item
         property: "value"
         value: root.item ? root.item.value : undefined
-        when: loader.item !== null && root.item !== null
+        when: loader.item !== null && loader.item.ready === true && root.item !== null
     }
 
     // and what the user does in it is stored in the setting

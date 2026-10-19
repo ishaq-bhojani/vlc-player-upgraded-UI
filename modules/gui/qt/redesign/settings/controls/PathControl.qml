@@ -46,6 +46,12 @@ FocusScope {
     //! the host handles browseRequested; without it the Browse button is hidden
     property bool canBrowse: false
 
+    //! set by the host once the constants (range, choices...) are in: the value is applied after
+    property bool ready: false
+
+    //! the long description of the setting, for assistive technologies
+    property string description
+
     //! the user entered `newValue`
     signal edited(var newValue)
 
@@ -79,6 +85,7 @@ FocusScope {
             text: (root.value === undefined || root.value === null) ? "" : String(root.value)
 
             Accessible.name: root.label
+            Accessible.description: root.description
 
             function showValue() {
                 field.text = Qt.binding(() => (root.value === undefined || root.value === null) ? "" : String(root.value))

@@ -52,6 +52,12 @@ Widgets.TextFieldExt {
 
     property real stepSize: 1
 
+    //! set by the host once the constants (range, choices...) are in: the value is applied after
+    property bool ready: false
+
+    //! the long description of the setting, for assistive technologies
+    property string description
+
     //! the user entered `newValue`
     signal edited(var newValue)
 
@@ -71,6 +77,11 @@ Widgets.TextFieldExt {
 
     function _report(number: var) {
         const v = ControlChooser.clamp(number, root.from, root.to)
+        // an integer the configuration (and a double) can not hold exactly: not written
+        if (!root.isFloat && Math.abs(v) > Number.MAX_SAFE_INTEGER) {
+            _showValue()
+            return
+        }
         if (v !== Number(root.value))
             root.edited(v)
         _showValue()
@@ -100,6 +111,7 @@ Widgets.TextFieldExt {
     text: _format(value)
 
     Accessible.name: label
+    Accessible.description: description
 
     onEditingFinished: {
         const parsed = ControlChooser.parseNumber(root.text, root.isFloat)
