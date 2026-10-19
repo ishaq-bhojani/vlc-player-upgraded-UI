@@ -74,10 +74,10 @@ ShortcutsModel::ShortcutsModel(vlc_object_t* obj, QObject* parent)
         Action action;
         action.key = QString::fromUtf8(cfg.psz_name);
         action.label = translated(cfg.psz_text);
-        // an action without a name (key-projection-toggle) can be neither shown nor named as
-        // the owner of a conflict
+        // declared without text (key-projection-toggle): as in KeySelectorControl it is listed
+        // all the same, named by its key so that it can still be named as the owner of a conflict
         if (action.label.isEmpty())
-            continue;
+            action.label = action.key;
         const QString global = QString::fromLatin1(globalPrefix) + action.key;
         if (globalKeys.contains(global))
             action.globalKey = global;
@@ -190,7 +190,8 @@ void ShortcutsModel::assign(const QString& actionKey, const QString& hotkey, boo
         return;
     }
 
-    const QStringList wanted = splitKeys(hotkey);
+    QStringList wanted = splitKeys(hotkey);
+    wanted.removeDuplicates();
     QVector<int> changedRows;
 
     // take the keys away from the other actions of the scope (only those keys)

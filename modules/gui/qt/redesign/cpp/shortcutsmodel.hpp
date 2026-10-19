@@ -38,6 +38,9 @@
  * string is "no hotkey". Hotkeys are compared as stored (case sensitive), each key of a value
  * on its own, and an empty hotkey never conflicts.
  *
+ * An action declared without text (key-projection-toggle) is listed too, with its configuration
+ * key as label.
+ *
  * Reads go to the live configuration; assign() writes it and saves the configuration file.
  */
 class ShortcutsModel : public QAbstractListModel
@@ -49,7 +52,7 @@ public:
     {
         //! the configuration key of the action, e.g. "key-play-pause"
         ActionKeyRole = Qt::UserRole + 1,
-        //! translated psz_text of the action
+        //! translated psz_text of the action; the configuration key if the action has no text
         LabelRole,
         //! the keys of the action, VLC key syntax
         HotkeyRole,
@@ -76,7 +79,7 @@ public:
     /**
      * Gives the action the hotkey in the scope. Every key of hotkey is first taken away from
      * the other actions of the scope that use it (an action left without key has ""), then the
-     * value of the action is replaced by hotkey; "" removes the keys of the action. The
+     * value of the action is replaced by hotkey (repeated keys stored once); "" removes the keys of the action. The
      * configuration is written and saved, dataChanged is emitted for every row that changed.
      * Does nothing (msg_Err) for an unknown action, or for global on an action without
      * global variant.

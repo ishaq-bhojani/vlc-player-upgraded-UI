@@ -196,8 +196,27 @@ private slots:
                  labelOf("key-play-pause"));
         // a value of several keys (outside Windows the default of key-play-pause) conflicts when
         // any of its keys does
-        QCOMPARE(m_model->conflictFor("key-stop", "Ctrl+Alt+Shift+F11	Space", false),
+        QCOMPARE(m_model->conflictFor("key-stop", "Ctrl+Alt+Shift+F11\tSpace", false),
                  labelOf("key-play-pause"));
+    }
+
+    void invalidParentHasNoRows()
+    {
+        QVERIFY(m_model->rowCount() > 0);
+        QCOMPARE(m_model->rowCount(m_model->index(0)), 0);
+    }
+
+    void actionWithoutTextIsListed()
+    {
+        // declared with an empty psz_text: listed as upstream does, labelled with its key
+        QVERIFY(rowOf("key-projection-toggle") >= 0);
+        QCOMPARE(labelOf("key-projection-toggle"), QString("key-projection-toggle"));
+        QVERIFY(hotkeyOf("key-projection-toggle").isEmpty());
+
+        m_model->assign("key-projection-toggle", "Ctrl+Alt+Shift+F11", false);
+        QCOMPARE(cfg("key-projection-toggle"), QString("Ctrl+Alt+Shift+F11"));
+        QCOMPARE(m_model->conflictFor("key-stop", "Ctrl+Alt+Shift+F11", false),
+                 QString("key-projection-toggle"));
     }
 
     void emptyHotkeyNeverConflicts()
@@ -221,7 +240,7 @@ private slots:
     {
         // as stored: "Space" is not "space"
         // (the default is "Space", plus "Media Play Pause" outside Windows)
-        QVERIFY(hotkeyOf("key-play-pause").split('	').contains("Space"));
+        QVERIFY(hotkeyOf("key-play-pause").split('\t').contains("Space"));
         QCOMPARE(m_model->conflictFor("key-stop", "space", false), QString());
         QCOMPARE(m_model->conflictFor("key-stop", "Space", false), labelOf("key-play-pause"));
     }
@@ -242,7 +261,9 @@ private slots:
         QCOMPARE(hotkeyOf("key-stop"), hotkey);
         QCOMPARE(cfg("key-stop"), hotkey);
 
-        // a signal for both rows
+        // a signal for both rows, for the local hotkey
+        for (const QList<QVariant>& args : changed)
+            QCOMPARE(args.at(2).value<QList<int>>(), QList<int>{ShortcutsModel::HotkeyRole});
         const QSet<int> rows = changedRows(changed);
         QVERIFY(rows.contains(playRow));
         QVERIFY(rows.contains(stopRow));
@@ -268,6 +289,25 @@ private slots:
         QCOMPARE(hotkeyOf("key-stop"), hotkey);
     }
 
+    void assignOneKeyOfSeveral()
+    {
+        // the scenario of the brief: Space moves from play/pause to stop, whatever the
+        // platform default
+        config_PutPsz("key-play-pause", "Space\tMedia Play Pause");
+        QCOMPARE(m_model->conflictFor("key-stop", "Space", false), labelOf("key-play-pause"));
+        m_model->assign("key-stop", "Space", false);
+        QCOMPARE(hotkeyOf("key-play-pause"), QString("Media Play Pause"));
+        QCOMPARE(cfg("key-play-pause"), QString("Media Play Pause"));
+        QCOMPARE(hotkeyOf("key-stop"), QString("Space"));
+    }
+
+    void duplicateKeysAreStoredOnce()
+    {
+        m_model->assign("key-stop", "Ctrl+Alt+Shift+F11\tCtrl+Alt+Shift+F11", false);
+        QCOMPARE(hotkeyOf("key-stop"), QString("Ctrl+Alt+Shift+F11"));
+        QCOMPARE(cfg("key-stop"), QString("Ctrl+Alt+Shift+F11"));
+    }
+
     void assignWithoutConflictChangesOneRow()
     {
         QSignalSpy changed(m_model.get(), &QAbstractItemModel::dataChanged);
@@ -275,6 +315,8 @@ private slots:
         QCOMPARE(hotkeyOf("key-stop"), QString("Ctrl+Alt+Shift+F11"));
         QCOMPARE(cfg("key-stop"), QString("Ctrl+Alt+Shift+F11"));
         QCOMPARE(changedRows(changed), QSet<int>{rowOf("key-stop")});
+        QCOMPARE(changed.first().at(2).value<QList<int>>(),
+                 QList<int>{ShortcutsModel::HotkeyRole});
 
         // assigning what the action already has changes nothing
         changed.clear();
@@ -330,6 +372,9 @@ private slots:
         QCOMPARE(globalHotkeyOf("key-pause"), QString("Ctrl+Alt+Shift+F11"));
         QCOMPARE(cfg("global-key-pause"), QString("Ctrl+Alt+Shift+F11"));
         QCOMPARE(changedRows(changed), (QSet<int>{rowOf("key-stop"), rowOf("key-pause")}));
+        for (const QList<QVariant>& args : changed)
+            QCOMPARE(args.at(2).value<QList<int>>(),
+                     QList<int>{ShortcutsModel::GlobalHotkeyRole});
     }
 
     void severalKeysAreSeparate()
