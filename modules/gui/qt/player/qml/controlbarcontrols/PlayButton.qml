@@ -45,6 +45,16 @@ T.Control {
         pressed: mouseArea.containsPress
     }
 
+    // flat accent fill, follows `qt-accent-color`
+    readonly property ColorContext accentContext: ColorContext {
+        id: accentTheme
+
+        colorSet: ColorContext.ButtonAccent
+
+        enabled: root.enabled || root.paintOnly
+        pressed: mouseArea.containsPress
+    }
+
     property bool _keyOkPressed: false
 
     // Aliases
@@ -217,8 +227,7 @@ T.Control {
                 return VLCIcons.play_filled
         }
 
-        color: cursorInside ? theme.accent
-                            : "black"  //foreground is always black
+        color: accentTheme.fg.primary
 
         font.pixelSize: Math.round(parent.height / 1.7)
 
@@ -260,10 +269,7 @@ T.Control {
 
             radius: width / 2
 
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#e25b01" }
-                GradientStop { position: 1.0; color: "#f89a06" }
-            }
+            color: accentTheme.bg.primary
 
             Widgets.RoundedRectangleShadow {
                 id: hoverShadow
@@ -280,7 +286,9 @@ T.Control {
             Rectangle {
                 id: innerRectangle
 
-                color: "white"
+                // press-and-hold feedback: only visible while pressed, shrinks away
+                color: Qt.alpha(accentTheme.fg.primary,
+                                (_keyOkPressed || mouseArea.pressed) ? 0.25 : 0.0)
 
                 anchors.fill: parent
                 anchors.margins: _diminished ? (parent.width / 2)

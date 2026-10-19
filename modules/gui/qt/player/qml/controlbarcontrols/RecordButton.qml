@@ -29,11 +29,16 @@ Widgets.IconToolButton {
 
     enabled: !paintOnly && Player.isStarted
 
-    color: "#FFFF0000" //red means recording
+    color: negativeTheme.fg.negative //red means recording
     text: VLCIcons.record
     description: qsTr("record")
 
     AccessibleCompat.id: "recordButton"
+
+    readonly property ColorContext negativeContext: ColorContext {
+        id: negativeTheme
+        colorSet: ColorContext.View
+    }
 
     onClicked: Player.toggleRecord()
 
@@ -48,23 +53,23 @@ Widgets.IconToolButton {
             running: control.enabled && Player.recording
 
             ColorAnimation  {
-                from:  "#FFFF0000"
-                to: "#00FF0000"//use "red" transparent
+                from: negativeTheme.fg.negative
+                to: Qt.alpha(negativeTheme.fg.negative, 0.0) //transparent negative
                 //this is an animation and not a transisition, we explicitly want a long duration
                 duration: 1000
                 easing.type: Easing.InSine
             }
 
             ColorAnimation  {
-                from:"#00FF0000"
-                to: "#FFFF0000"
+                from: Qt.alpha(negativeTheme.fg.negative, 0.0)
+                to: negativeTheme.fg.negative
                 //this is an animation and not a transisition, we explicitly want a long duration
                 duration: 1000
                 easing.type: Easing.OutSine
             }
 
             onStopped: {
-                color = "#FFFF0000"
+                color = negativeTheme.fg.negative
             }
         }
         font: control.font
