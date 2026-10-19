@@ -24,6 +24,7 @@
 #include "vlc_stub_modules.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -59,6 +60,10 @@ public:
         m_entries.insert(m_entries.begin(), Entry{id, type, title});
     }
 
+    // number of count queries of the audio history so far: every (re)load of the model
+    // starts with one
+    int audioCountQueries() const { return m_audioCountQueries; }
+
     void clear()
     {
         std::lock_guard<std::mutex> lock(m_lock);
@@ -72,6 +77,7 @@ public:
             switch (query)
             {
             case VLC_ML_COUNT_AUDIO_HISTORY:
+                ++m_audioCountQueries;
                 *va_arg(args, size_t *) = filtered(VLC_ML_MEDIA_TYPE_AUDIO, nullptr).size();
                 return VLC_SUCCESS;
             case VLC_ML_COUNT_VIDEO_HISTORY:
@@ -139,6 +145,7 @@ private:
         return list;
     }
 
+    std::atomic<int> m_audioCountQueries { 0 };
     std::mutex m_lock;
     std::vector<Entry> m_entries;
 };
@@ -220,6 +227,34 @@ private slots:
         notifyHistoryChanged();
 
         QTRY_COMPARE(m_model->rowCount(), 0);
+    }
+
+    // an added media is not in the history: it must not reload the model (a library scan
+    // adds many media, each would reset the model)
+    void testMediaAddedDoesNotReload()
+    {
+        m_history->add(1, VLC_ML_MEDIA_TYPE_AUDIO, "first song");
+        notifyHistoryChanged();
+        QTRY_COMPARE(m_model->rowCount(), 1);
+        QTRY_VERIFY(!m_model->loading());
+
+        const int queries = m_history->audioCountQueries();
+
+        vlc_ml_media_t media {};
+        media.i_id = 42;
+        for (vlc_ml_media_type_t type : { VLC_ML_MEDIA_TYPE_VIDEO, VLC_ML_MEDIA_TYPE_AUDIO })
+        {
+            media.i_type = type;
+            vlc_ml_event_t event {};
+            event.i_type = VLC_ML_EVENT_MEDIA_ADDED;
+            event.creation.p_media = &media;
+            m_env->sendMLEvent(event);
+        }
+
+        // let a (wrong) reset reach the loader
+        QTest::qWait(200);
+        QCOMPARE(m_history->audioCountQueries(), queries);
+        QCOMPARE(m_model->rowCount(), 1);
     }
 
 private:

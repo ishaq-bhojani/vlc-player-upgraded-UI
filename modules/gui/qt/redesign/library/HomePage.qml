@@ -51,8 +51,19 @@ FocusScope {
     // `loading`: it is reset once its entry points are listed)
     property bool _foldersLoaded: false
 
+    readonly property bool _loaded: !continueModel.loading && !listenModel.loading && _foldersLoaded
+
+    // Set after the first complete load and never reset: a later reload of a model (its
+    // `loading` is true again) must not flash the empty state.
+    property bool _loadedOnce: false
+
+    on_LoadedChanged: {
+        if (_loaded)
+            _loadedOnce = true
+    }
+
     // Nothing to show in any section. Only meaningful once the models have loaded.
-    readonly property bool isEmpty: !continueModel.loading && !listenModel.loading && _foldersLoaded
+    readonly property bool isEmpty: _loadedOnce
                                     && continueSection.count === 0
                                     && listenSection.count === 0
                                     && foldersSection.count === 0
@@ -78,6 +89,12 @@ FocusScope {
             foldersSection.forceActiveFocus(reason)
         else
             addFolders.forceActiveFocus(reason)
+    }
+
+    // scrolls the sections so that `item` (a section) is visible, used when it gets the focus
+    function reveal(item) {
+        if (item && item.parent)
+            Helpers.positionFlickableToContainItem(flickable, item)
     }
 
     // plays the media of a card / row delegate (its `id` role is the ML id of the media)
@@ -128,10 +145,15 @@ FocusScope {
         }
     }
 
-    MLRecentMediaModel {
-        id: recentModel
+    // the whole history, only loaded while it is shown (Rail > Recent)
+    Loader {
+        id: recentModelLoader
 
-        ml: MediaLib
+        active: root.recentView
+
+        sourceComponent: MLRecentMediaModel {
+            ml: MediaLib
+        }
     }
 
     ColorContext {
@@ -402,6 +424,11 @@ FocusScope {
 
                 Navigation.parentItem: sections
 
+                onActiveFocusChanged: {
+                    if (activeFocus)
+                        root.reveal(continueSection)
+                }
+
                 onItemActivated: (index) => root.play(listView.itemAtIndex(index))
                 onLinkActivated: (reason) => History.push(["video"], reason)
             }
@@ -428,6 +455,11 @@ FocusScope {
 
                 Navigation.parentItem: sections
 
+                onActiveFocusChanged: {
+                    if (activeFocus)
+                        root.reveal(listenSection)
+                }
+
                 onItemActivated: (index) => root.play(listView.itemAtIndex(index))
                 onLinkActivated: (reason) => History.push(["music"], reason)
             }
@@ -449,6 +481,11 @@ FocusScope {
 
                 Navigation.parentItem: sections
 
+                onActiveFocusChanged: {
+                    if (activeFocus)
+                        root.reveal(foldersSection)
+                }
+
                 onItemActivated: (index) => root.openFolder(listView.itemAtIndex(index))
                 onLinkActivated: (reason) => History.push(["network"], reason)
             }
@@ -465,7 +502,7 @@ FocusScope {
 
         visible: root.recentView
 
-        model: recentModel
+        model: recentModelLoader.item
         spacing: RedesignStyle.spacingXS
 
         header: Text {
@@ -563,6 +600,30 @@ FocusScope {
         text: qsTr("No media found\nPlease try adding sources")
 
         Navigation.parentItem: root
+
+        // Enter / OK activates the button (EmptyLabelButton does the same: the button alone
+        // only reacts to Space). The keys are not accepted by the button, so they reach here.
+        property bool _keyPressed: false
+
+        Keys.priority: Keys.AfterItem
+
+        Keys.onPressed: (event) => {
+            _keyPressed = true
+
+            Navigation.defaultKeyAction(event)
+        }
+
+        Keys.onReleased: (event) => {
+            if (_keyPressed === false)
+                return
+
+            _keyPressed = false
+
+            if (KeyHelper.matchOk(event))
+                addFolders.clicked()
+
+            Navigation.defaultKeyReleaseAction(event)
+        }
 
         Widgets.ButtonExt {
             id: addFolders

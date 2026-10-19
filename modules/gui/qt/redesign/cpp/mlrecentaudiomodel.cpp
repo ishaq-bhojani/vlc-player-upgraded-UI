@@ -37,12 +37,17 @@ void MLRecentAudioModel::onVlcMlEvent(const MLEvent &event) /* override */
         case VLC_ML_EVENT_HISTORY_CHANGED:
             emit resetRequested();
             return;
+        case VLC_ML_EVENT_MEDIA_ADDED:
+            // A new media is not in the history (history changes arrive with
+            // HISTORY_CHANGED). MLMediaModel would reset on every added media of any
+            // type, which is a reset storm while the library is scanned.
+            return;
         default:
             break;
     }
 
     // MLAudioModel::onVlcMlEvent is private. MLMediaModel handles the media
-    // updated / deleted / added events the same way (and MLBaseModel the rest).
+    // updated / deleted events the same way (and MLBaseModel the rest).
     MLMediaModel::onVlcMlEvent(event);
 }
 
