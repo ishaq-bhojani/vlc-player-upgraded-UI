@@ -231,29 +231,27 @@ Slot decisions the table cannot show on its own:
 
 ## Table C: accent swatches
 
-Source: `Settings - global.png`, Accent colour row, left to right (Figma order). Default accent = swatch 1 (Orange, #D37918), which is also the play-button colour in `Player.png`. Swatch size 58x60 px at 3x. Samples at y=692.
+Order is the Figma order in `Settings - global.png` (Accent colour row, left to right). Default accent = swatch 1 (Orange, #D37918), which is also the play-button colour in `Player.png`.
 
-Important: swatches 2-9 are drawn at about 70% opacity over #090909 in the Settings frame (swatch 1 is the selected one and is drawn at full strength). The accent actually applied in the player frames is brighter. This was verified exactly for purple, pink and grey against `Player-2.png`, `Player-3.png` and `Player-4.png` (play button at 38,574). The other five "applied" values are reconstructed with `(rendered - 0.3*9) / 0.7` per channel and are `PROVISIONAL (derived)`.
+**Code uses one column: "Swatch value (code uses this)".** `redesign::accentSwatches()` (Task 5) returns these nine values in this order and `defaultAccent()` returns swatch 1. This is the accent the user gets when the swatch is picked, i.e. the colour drawn on the play button and thumbs. The last column is only the picker preview as drawn in the Settings frame, where unselected swatches are dimmed; do not use it as a value.
 
-| # | Name | Rendered swatch hex (as in Settings frame) | Sampled at (x,y) | Applied accent hex (informational) | Applied source |
+How the values were obtained: swatch 1 is the selected swatch, drawn at full strength, and equals the play button in `Player.png`. Swatches 7, 8 and 9 (purple, pink, grey) are measured on the play button in `Player-2.png`, `Player-3.png` and `Player-4.png` (pixel 38,574). Swatches 2-6 have no player frame; they are un-dimmed from the drawn swatch with `(drawn - 0.3*9) / 0.7` per channel, which assumes the inactive swatches are drawn at about 70% opacity over the sampled #090909 background. That assumption reproduces swatches 7-9 to within 1 per channel, but swatches 2-6 remain `PROVISIONAL (derived)`.
+
+| # | Name | Swatch value (code uses this) | Source of the value | Picker preview as drawn (inactive state, Settings frame) | Drawn swatch sampled at (x,y) |
 |---|---|---|---|---|---|
-| 1 | Orange | #D37918 | 2208,692 | #D37918 | Player.png play button @ 268,4185 (matches swatch) |
-| 2 | Red | #A03B26 | 2315,692 | #E15032 | PROVISIONAL (derived): inverse of 70% opacity over #090909 |
-| 3 | Gold | #8C721B | 2422,692 | #C49F23 | PROVISIONAL (derived): inverse of 70% opacity over #090909 |
-| 4 | Green | #147428 | 2528,692 | #19A235 | PROVISIONAL (derived): inverse of 70% opacity over #090909 |
-| 5 | Teal | #147A97 | 2635,692 | #19AAD4 | PROVISIONAL (derived): inverse of 70% opacity over #090909 |
-| 6 | Blue | #144497 | 2742,692 | #195DD4 | PROVISIONAL (derived): inverse of 70% opacity over #090909 |
-| 7 | Purple | #6631B5 | 2849,692 | #8E42FF | Player-2.png @ 38,574 (measured) |
-| 8 | Pink | #AB3C80 | 2955,692 | #F052B3 | Player-3.png @ 38,574 (measured) |
-| 9 | Grey | #7E7E7E | 3062,692 | #AFAFAF | Player-4.png @ 38,574 (measured) |
-
-Default accent: **swatch 1, Orange, #D37918**.
-
-**Which column does code use?** The controller ruling for this task is "swatches exactly as rendered in `Settings - global.png`", so **`redesign::accentSwatches()` (Task 5) takes the "Rendered swatch hex" column** unless the controller or owner decides otherwise. The "Applied accent hex" column is informational: it is the colour the player frames actually show for the accent. Open decision for the controller: the rendered swatches are about 30% darker than the colour a user gets after picking them, so the swatch in the picker will not match the play button. Switching to the applied column is a one-column change in Task 5 and the AA test there covers either list.
+| 1 | Orange | #D37918 | Player.png play button @ 268,4185; equals the drawn swatch (selected state, full strength) | #D37918 | 2208,692 in Settings - global.png |
+| 2 | Red | #E15032 | PROVISIONAL (derived): un-dimmed from the drawn swatch, assumes 70% opacity over #090909 | #A03B26 | 2315,692 in Settings - global.png |
+| 3 | Gold | #C49F23 | PROVISIONAL (derived): un-dimmed from the drawn swatch, assumes 70% opacity over #090909 | #8C721B | 2422,692 in Settings - global.png |
+| 4 | Green | #19A235 | PROVISIONAL (derived): un-dimmed from the drawn swatch, assumes 70% opacity over #090909 | #147428 | 2528,692 in Settings - global.png |
+| 5 | Teal | #19AAD4 | PROVISIONAL (derived): un-dimmed from the drawn swatch, assumes 70% opacity over #090909 | #147A97 | 2635,692 in Settings - global.png |
+| 6 | Blue | #195DD4 | PROVISIONAL (derived): un-dimmed from the drawn swatch, assumes 70% opacity over #090909 | #144497 | 2742,692 in Settings - global.png |
+| 7 | Purple | #8E42FF | PROVISIONAL (PNG export): measured, Player-2.png @ 38,574 | #6631B5 | 2849,692 in Settings - global.png |
+| 8 | Pink | #F052B3 | PROVISIONAL (PNG export): measured, Player-3.png @ 38,574 | #AB3C80 | 2955,692 in Settings - global.png |
+| 9 | Grey | #AFAFAF | PROVISIONAL (PNG export): measured, Player-4.png @ 38,574 | #7E7E7E | 3062,692 in Settings - global.png |
 
 Accent shades follow the Task 5 plan: hover = `base.lighter(115)`, pressed = `base.darker(115)`; the text colour on accent is chosen at runtime by WCAG contrast (Task 5).
 
-Other accent-related colours seen: `accent-dim` #AB6314 (Settings sliders, toggle knob, menu icons) is about 80% of the default accent over the panel; `accent-tint` #371F06 is the 20% tint used for selected backgrounds and filled tracks. With a non-default accent these two must be derived from the active accent (Task 5).
+Other accent-related colours seen: `accent-dim` #AB6314 (Settings sliders, toggle knob, menu icons) is the default swatch value #D37918 at about 80% strength over the panel; `accent-tint` #371F06 is a 20% tint of the same swatch value used for selected backgrounds and filled tracks. With a non-default swatch value both must be derived from the active accent (Task 5).
 
 ## Table D: spacing, radius, sizes
 
