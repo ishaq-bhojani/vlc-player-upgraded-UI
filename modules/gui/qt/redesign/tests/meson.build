@@ -271,3 +271,25 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+# ShortcutsModel against a real libvlc instance on a throwaway --config: the key actions
+# come from the core module, the writes go to the throwaway file.
+vlc_tests += {
+    'name': 'test_qt_shortcuts_model',
+    'sources': files(
+        '../../tests/test_shortcuts_model.cpp',
+        '../cpp/shortcutsmodel.hpp',
+        '../cpp/shortcutsmodel.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_shortcuts_model.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/shortcutsmodel.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore, libvlc],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}
