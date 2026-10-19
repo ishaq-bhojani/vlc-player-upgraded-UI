@@ -43,6 +43,15 @@ TestCase {
         compare(rail.defaultPath(), ["home"])
     }
 
+    function test_selectedId() {
+        rail.hasMediaLibrary = true
+        compare(rail.selectedId(["video", "playlists", "all"]), "playlists")
+        compare(rail.selectedId(["mlsettings"]), "")
+        rail.hasMediaLibrary = false
+        compare(rail.selectedId(["home"]), "")
+        compare(rail.selectedId(["network"]), "network")
+    }
+
     function test_requiresML() {
         compare(rail.items.filter(i => i.requiresML).map(i => i.id),
                 ["home", "video", "music", "playlists", "recent"])

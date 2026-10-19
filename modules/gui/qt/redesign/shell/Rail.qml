@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 import QtQuick
+import QtQuick.Layouts
 import QtQuick.Templates as T
 import QtCore as QtCore
 
@@ -118,7 +119,7 @@ FocusScope {
                 label: modelData.label
                 showLabel: root.expanded
                 description: modelData.label
-                selected: railModel.items.indexOf(modelData) === railModel.indexForPath(root.viewPath)
+                selected: modelData.id === railModel.selectedId(root.viewPath)
 
                 onClicked: {
                     if (modelData.id === "add")
@@ -172,12 +173,12 @@ FocusScope {
             border.color: itemTheme.visualFocus
         }
 
-        contentItem: Row {
+        contentItem: RowLayout {
             spacing: RedesignStyle.spacingS
 
             Widgets.IconLabel {
-                width: RedesignStyle.railWidthCollapsed - 2 * RedesignStyle.spacingS
-                height: parent.height
+                Layout.preferredWidth: RedesignStyle.railWidthCollapsed - 2 * RedesignStyle.spacingS
+                Layout.fillHeight: true
 
                 text: button.icon
                 color: (button.selected || button.hovered)
@@ -187,8 +188,8 @@ FocusScope {
 
             Text {
                 visible: button.showLabel
-                height: parent.height
-                width: parent.width - x
+                Layout.fillWidth: true
+                Layout.fillHeight: true
 
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight

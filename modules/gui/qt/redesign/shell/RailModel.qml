@@ -77,6 +77,13 @@ QtObject {
         return best
     }
 
+    // id of the entry to highlight for viewPath, "" if there is none. Compare ids, not
+    // objects: delegates of a Repeater get copies of the entries.
+    function selectedId(viewPath: var): string {
+        const index = indexForPath(viewPath)
+        return index >= 0 ? items[index].id : ""
+    }
+
     // path to show on startup
     function defaultPath(): var {
         return hasMediaLibrary ? ["home"] : ["network"]
