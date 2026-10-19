@@ -1,0 +1,4 @@
+# The Linux build container bind-mounts this tree: shell scripts, patches and
+# generated-file inputs must be LF on disk even when core.autocrlf=true.
+# Files already stored with CRLF in the index are left untouched by text=auto.
+* text=auto eol=lf
