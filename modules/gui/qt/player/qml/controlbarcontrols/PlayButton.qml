@@ -227,7 +227,9 @@ T.Control {
                 return VLCIcons.play_filled
         }
 
-        color: accentTheme.fg.primary
+        color: MainCtx.redesign ? accentTheme.fg.primary
+                                : (cursorInside ? theme.accent
+                                                : "black")  //foreground is always black
 
         font.pixelSize: Math.round(parent.height / 1.7)
 
@@ -269,7 +271,16 @@ T.Control {
 
             radius: width / 2
 
-            color: accentTheme.bg.primary
+            // stock keeps the upstream gradient
+            color: MainCtx.redesign ? accentTheme.bg.primary : "transparent"
+
+            gradient: MainCtx.redesign ? null : stockGradient
+
+            Gradient {
+                id: stockGradient
+                GradientStop { position: 0.0; color: "#e25b01" }
+                GradientStop { position: 1.0; color: "#f89a06" }
+            }
 
             Widgets.RoundedRectangleShadow {
                 id: hoverShadow
@@ -287,8 +298,9 @@ T.Control {
                 id: innerRectangle
 
                 // press-and-hold feedback: only visible while pressed, shrinks away
-                color: Qt.alpha(accentTheme.fg.primary,
-                                (_keyOkPressed || mouseArea.pressed) ? 0.25 : 0.0)
+                color: MainCtx.redesign ? Qt.alpha(accentTheme.fg.primary,
+                                                   (_keyOkPressed || mouseArea.pressed) ? 0.25 : 0.0)
+                                        : "white"
 
                 anchors.fill: parent
                 anchors.margins: _diminished ? (parent.width / 2)

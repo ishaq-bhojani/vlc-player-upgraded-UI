@@ -175,7 +175,7 @@ QtObject {
     readonly property int button_width_normal: MainCtx.dp(96, scale)
     readonly property int button_width_large: MainCtx.dp(128, scale)
 
-    readonly property real button_radius: MainCtx.dp(7, scale)
+    readonly property real button_radius: MainCtx.dp(MainCtx.redesign ? 7 : 4, scale)
 
     readonly property int contextButton_width: icon_normal
     readonly property int contextButton_margin: margin_xxsmall
@@ -186,7 +186,7 @@ QtObject {
     readonly property int checkButton_margins: MainCtx.dp(4, scale)
     readonly property int checkButton_handle_margins: MainCtx.dp(2, scale)
 
-    readonly property int navBoxButton_radius: MainCtx.dp(2, scale)
+    readonly property int navBoxButton_radius: MainCtx.dp(MainCtx.redesign ? 2 : 8, scale)
 
     readonly property int table_section_width: MainCtx.dp(32, scale)
     readonly property int table_section_text_margin: MainCtx.dp(10, scale)
@@ -203,7 +203,7 @@ QtObject {
     readonly property int gridCover_video_height: ( gridCover_video_width * 10.0 ) / 16
     readonly property int gridCover_video_border: MainCtx.dp(4, scale)
 
-    readonly property int gridCover_radius: MainCtx.dp(10, scale)
+    readonly property int gridCover_radius: MainCtx.dp(MainCtx.redesign ? 10 : 4, scale)
 
     readonly property int expandCover_music_height: MainCtx.dp(171, scale)
     readonly property int expandCover_music_width: MainCtx.dp(171, scale)
@@ -324,7 +324,7 @@ QtObject {
     readonly property int controlBarBookmarksHeight: icon_xsmall * 0.9
 
     // Player control layout
-    readonly property int controlLayoutHeight: MainCtx.dp(55, scale)
+    readonly property int controlLayoutHeight: MainCtx.dp(MainCtx.redesign ? 55 : 64, scale)
     readonly property int controlLayoutHeightPinned: MainCtx.dp(32, scale)
 
     // Scroll bar (size means width or height, depending on the orientation):

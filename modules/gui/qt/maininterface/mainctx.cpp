@@ -58,6 +58,7 @@
 
 #include "dialogs/toolbar/controlbar_profile_model.hpp"
 #include "dialogs/help/help.hpp"
+#include "redesign/cpp/redesign.hpp"
 
 #include <QKeyEvent>
 
@@ -135,6 +136,8 @@ MainCtx::MainCtx(qt_intf_t *_p_intf)
     : p_intf(_p_intf)
     , m_csdButtonModel {std::make_unique<CSDButtonModel>(this, this)}
 {
+    m_redesign = redesign::isEnabled(VLC_OBJECT(p_intf));
+
     // If `playlist-autostart` is set, and there are initial files
     // we don't bother loading main display just to unload it
     // immediately after. Instead, we directly load the player

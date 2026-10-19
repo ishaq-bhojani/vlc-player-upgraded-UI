@@ -19,6 +19,7 @@ import QtQuick
 import QtQuick.Templates as T
 
 
+import VLC.MainInterface
 import VLC.Widgets as Widgets
 import VLC.Style
 import VLC.Player
@@ -29,16 +30,18 @@ Widgets.IconToolButton {
 
     enabled: !paintOnly && Player.isStarted
 
-    color: negativeTheme.fg.negative //red means recording
+    color: _recordColor //red means recording
     text: VLCIcons.record
     description: qsTr("record")
 
     AccessibleCompat.id: "recordButton"
 
+    // stock keeps the upstream pure red, the redesign takes the palette's negative colour
     readonly property ColorContext negativeContext: ColorContext {
         id: negativeTheme
         colorSet: ColorContext.View
     }
+    readonly property color _recordColor: MainCtx.redesign ? negativeTheme.fg.negative : "#FFFF0000"
 
     onClicked: Player.toggleRecord()
 
@@ -53,23 +56,23 @@ Widgets.IconToolButton {
             running: control.enabled && Player.recording
 
             ColorAnimation  {
-                from: negativeTheme.fg.negative
-                to: Qt.alpha(negativeTheme.fg.negative, 0.0) //transparent negative
+                from: control._recordColor
+                to: Qt.alpha(control._recordColor, 0.0) //use "red" transparent
                 //this is an animation and not a transisition, we explicitly want a long duration
                 duration: 1000
                 easing.type: Easing.InSine
             }
 
             ColorAnimation  {
-                from: Qt.alpha(negativeTheme.fg.negative, 0.0)
-                to: negativeTheme.fg.negative
+                from: Qt.alpha(control._recordColor, 0.0)
+                to: control._recordColor
                 //this is an animation and not a transisition, we explicitly want a long duration
                 duration: 1000
                 easing.type: Easing.OutSine
             }
 
             onStopped: {
-                color = negativeTheme.fg.negative
+                color = control._recordColor
             }
         }
         font: control.font
