@@ -409,6 +409,8 @@ qt_plugin_sources = files(
     'style/colorcontext.hpp',
     'style/systempalette.cpp',
     'style/systempalette.hpp',
+    'style/redesignpalette.cpp',
+    'style/redesignpalette.hpp',
     'style/vlcicons.cpp',
     'style/vlcicons.hpp',
     'style/defaultthemeproviders.hpp',
@@ -1449,6 +1451,22 @@ if qt6_dep.found()
             'link_with': [libvlccore, libvlc],
             'link_args': qt_link_args,
             'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+        }
+
+        vlc_tests += {
+            'name': 'test_qt_redesign_palette',
+            'sources': files(
+                'tests/test_redesign_palette.cpp',
+                'style/redesignpalette.hpp',
+                'style/redesignpalette.cpp'
+            ),
+            'moc_sources': files(
+                'tests/test_redesign_palette.cpp'
+            ),
+            'suite': ['qt'],
+            'include_directories' : qt_include_dir,
+            'link_args': qt_link_args,
+            'dependencies': [qt6_dep, qtest_qt6_dep],
         }
     endif
 

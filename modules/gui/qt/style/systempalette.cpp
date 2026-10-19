@@ -21,6 +21,8 @@
 #include <QSettings>
 #include <QFile>
 #include <maininterface/mainctx.hpp>
+#include "redesignpalette.hpp"
+#include "../redesign/cpp/redesign.hpp"
 #include <vlc_modules.h>
 #include <vlc_picture.h>
 
@@ -309,7 +311,13 @@ void SystemPalette::componentComplete()
         char* accentColor = var_InheritString(m_ctx->getIntf(), "qt-accent-color");
         assert(accentColor);
 
-        if (!strcmp(accentColor, "default"))
+        m_redesign = redesign::isEnabled(VLC_OBJECT(m_ctx->getIntf()));
+        if (m_redesign && strcmp(accentColor, "system"))
+        {
+            orange500 = redesign::parseAccent(accentColor, redesign::defaultAccent());
+            orange800 = orange500.lighter(150);
+        }
+        else if (!strcmp(accentColor, "default"))
         {
             // Use default
         }
@@ -469,8 +477,19 @@ QColor SystemPalette::getColor(ColorContext::ColorSet colorSet, ColorContext::Co
 }
 
 
+void SystemPalette::makeRedesignPalette(bool dark)
+{
+    m_isDark = dark;
+    m_colorMap.clear();
+    redesign::fillPalette([this](auto set, auto section, auto name, auto state, QColor color) {
+        setColor(set, section, name, state, color);
+    }, dark, redesign::accentShades(orange500));
+}
+
 void SystemPalette::makeLightPalette()
 {
+    if (m_redesign)
+        return makeRedesignPalette(false);
     m_isDark = false;
 
     typedef ColorContext C;
@@ -685,6 +704,8 @@ void SystemPalette::makeLightPalette()
 
 void SystemPalette::makeDarkPalette()
 {
+    if (m_redesign)
+        return makeRedesignPalette(true);
     m_isDark = true;
 
     m_colorMap.clear();
@@ -915,7 +936,9 @@ void SystemPalette::makeSystemPalette()
 
     m_colorMap.clear();
     int ret = palette->update();
-    if (ret != VLC_SUCCESS)
+    if (m_redesign)
+        makeRedesignPalette(palette->isThemeDark());
+    else if (ret != VLC_SUCCESS)
     {
         if (palette->isThemeDark())
             makeDarkPalette();

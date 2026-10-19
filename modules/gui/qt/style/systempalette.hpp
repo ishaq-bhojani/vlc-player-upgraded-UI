@@ -171,6 +171,7 @@ private:
     void makeLightPalette();
     void makeDarkPalette();
     void makeSystemPalette();
+    void makeRedesignPalette(bool dark);
 
 private:
     MainCtx* m_ctx = nullptr;
@@ -178,6 +179,7 @@ private:
     ColorSchemeModel::ColorScheme m_source = ColorSchemeModel::ColorScheme::Day;
     bool m_isDark = false;
     bool m_hasCSDImage = false;
+    bool m_redesign = false;
 
     std::unique_ptr<ExternalPaletteImpl> m_palettePriv;
 
