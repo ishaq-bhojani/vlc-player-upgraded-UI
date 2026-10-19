@@ -39,7 +39,12 @@
 #   warning  any other QML/Qt diagnostic (upstream's own noise, or identical in
 #            both runs); printed, not fatal.
 #
-# Summary line:  redesign: N errors, M warnings; stock: N errors, M warnings
+#   env      the two messages caused by the missing Qt 6 SVG image plugin in the
+#            image ("Error decoding: ....svg: Unsupported image format",
+#            "ImageHelper: svg image plugin is not found."): printed separately
+#            as "env:", counted in neither errors nor warnings.
+#
+# Summary line:  redesign: N errors, M warnings; stock: N errors, M warnings; env: R + S SVG-plugin lines
 #
 # Full logs are kept in the container only; the matching lines are printed.
 # Set QML_SMOKE_FULL_LOG=1 to print the complete logs as well.
@@ -146,6 +151,11 @@ DIAG_RE='generic (warning|error):|qrc:|\.qml:[0-9]+|^qml:'
 # The failure patterns of the brief.
 FAIL_RE='ReferenceError|TypeError|is not a type|Cannot assign|Unable to assign|module ".*" is not installed|Binding loop|unable to create main interface|no root item|unexpected type of qml root item|no suitable compositor|qml loading'
 OURS_RE='VLC/Redesign'
+# Environmental, never counted as warning or error, printed as "env:" lines:
+# the container image ships no Qt 6 SVG image plugin (only libqsvg for Qt 5), so
+# every SVG fails to decode here. Anchored to exactly the two messages Qt and
+# ImageHelper produce for that.
+ENV_RE='generic warning: \(default\) (qrc:[^ ]+:[0-9]+:[0-9]+: QML [^ ]+: )?Error decoding: [^ ]+\.svg: Unsupported image format$|generic warning: \(default\) ImageHelper: svg image plugin is not found\.$'
 
 # norm: strip what differs between runs (VLC object pointers).
 norm() { sed -E 's/^\[[0-9a-f]+\] //; s/0x[0-9a-f]+/0xPTR/g'; }
@@ -166,7 +176,9 @@ for name in redesign stock; do
         echo "!! run '$name': the Qt interface did not start (no 'using interface module \"qt\"' in the log)"
         echo "$name" >> "$ROOT/notstarted"
     fi
-    { grep -avE ' debug: ' "$log" | grep -aE "$DIAG_RE" | norm | sort -u; } > "$ROOT/$name.diag" || true
+    { grep -avE ' debug: ' "$log" | grep -aE "$DIAG_RE" | norm | sort -u; } > "$ROOT/$name.alldiag" || true
+    { grep -aE "$ENV_RE" "$ROOT/$name.alldiag" || true; } > "$ROOT/$name.env"
+    { grep -avE "$ENV_RE" "$ROOT/$name.alldiag" || true; } > "$ROOT/$name.diag"
 done
 
 # Redesign run. Error: the line names our code (VLC/Redesign), or it is a
@@ -195,6 +207,8 @@ for name in redesign stock; do
     cat "$ROOT/$name.errors"
     echo "---- $name: $(count "$ROOT/$name.warnings") warning line(s) ----"
     cat "$ROOT/$name.warnings"
+    echo "---- $name: env: $(count "$ROOT/$name.env") line(s) (no Qt 6 SVG plugin in the image, not counted) ----"
+    cat "$ROOT/$name.env"
     if [ -n "${QML_SMOKE_FULL_LOG:-}" ]; then
         echo "---- $name: full log ----"
         cat -v "$ROOT/$name.log"
@@ -214,6 +228,6 @@ for name in redesign stock; do
 done
 echo "(the container saw only: /vlc read-only, /build, its own /tmp; no network)"
 echo
-echo "redesign: $(count "$ROOT/redesign.errors") errors, $(count "$ROOT/redesign.warnings") warnings; stock: $(count "$ROOT/stock.errors") errors, $(count "$ROOT/stock.warnings") warnings"
+echo "redesign: $(count "$ROOT/redesign.errors") errors, $(count "$ROOT/redesign.warnings") warnings; stock: $(count "$ROOT/stock.errors") errors, $(count "$ROOT/stock.warnings") warnings; env: $(count "$ROOT/redesign.env") + $(count "$ROOT/stock.env") SVG-plugin lines"
 exit "$status"
 CONTAINER_EOF

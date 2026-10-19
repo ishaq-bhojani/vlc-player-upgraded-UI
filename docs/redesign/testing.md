@@ -133,7 +133,7 @@ the Mesa shader cache, `vlc-qt-interface.conf`).
 ### Reading the summary
 
 ```text
-redesign: 2 errors, 1 warnings; stock: 0 errors, 5 warnings
+redesign: 2 errors, 2 warnings; stock: 0 errors, 2 warnings; env: 2 + 3 SVG-plugin lines
 ```
 
 * **error** (exit status 1): a diagnostic that names our code
@@ -144,9 +144,12 @@ redesign: 2 errors, 1 warnings; stock: 0 errors, 5 warnings
   stock run does not have. In the stock run, the patterns above are errors too.
 * **warning**: any other QML/Qt diagnostic, printed so you can see it. Upstream's
   own noise, identical in both runs, lands here. Currently known and harmless in
-  this container: `propagateSizeHints()`, `unknown Qt platform: offscreen`, and
-  `Error decoding ... .svg: Unsupported image format` (the image has no Qt SVG
-  image plugin).
+  this container: `propagateSizeHints()` and `unknown Qt platform: offscreen`.
+* **env**: `Error decoding: ... .svg: Unsupported image format` and `ImageHelper:
+  svg image plugin is not found.` are printed as `env:` lines and counted in
+  neither errors nor warnings: the Linux image has no Qt 6 SVG image plugin (only
+  the Qt 5 one, which cannot be used), so every SVG fails to decode here. Real
+  SVG problems (bad file, wrong path) are invisible to this test.
 * **a run did not start** (exit status 2 when there are no errors): `vlc`
   crashed, or quit by itself before the N seconds were up (status 0 is not
   "ran until stopped"), or the log has no `using interface module "qt"`. The
