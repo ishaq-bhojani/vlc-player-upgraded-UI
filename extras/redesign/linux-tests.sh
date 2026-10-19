@@ -17,9 +17,15 @@
 #
 # Layout:
 #   source tree   bind-mounted read/write at /vlc (the build never writes there)
-#   build tree    docker named volume vlc-reborn-linux-build, mounted at /build
-#                 (/build/linux); a build on a bind-mounted NTFS directory is far
-#                 too slow. Reset with: docker volume rm vlc-reborn-linux-build
+#   build tree    docker named volume mounted at /build (/build/linux); a build
+#                 on a bind-mounted NTFS directory is far too slow. One volume
+#                 per source tree: vlc-reborn-linux-build-<10 hex of the sha1 of
+#                 the repository's Windows path>, so parallel git worktrees never
+#                 share (and never confuse) a build directory. Override with the
+#                 VLC_LINUX_VOLUME environment variable. Reset with
+#                 docker volume rm <name> (the name is printed on every run).
+#   concurrency   runs on the same volume are serialized (flock on /build/.lock
+#                 inside the volume); a second invocation waits for the first.
 #
 # The build directory is configured once (meson setup). Later runs reuse it and
 # need no explicit reconfigure: meson/ninja regenerate it by themselves when a
@@ -30,10 +36,9 @@
 set -euo pipefail
 
 IMAGE="registry.videolan.org/vlc-debian-unstable:20260611225331"
-VOLUME="vlc-reborn-linux-build"
 
 case "${1:-}" in
-    -h|--help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -42,6 +47,11 @@ if REPO_MOUNT="$(cd "$REPO" && pwd -W 2>/dev/null)"; then :; else REPO_MOUNT="$R
 # Git Bash would otherwise rewrite /vlc, /build, ... in docker arguments.
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL='*'
+
+# One build volume per source tree. ninja decides what is up to date from file
+# mtimes, so sharing a build directory between two checkouts would silently
+# reuse the other tree's objects.
+VOLUME="${VLC_LINUX_VOLUME:-vlc-reborn-linux-build-$(printf '%s' "$REPO_MOUNT" | sha1sum | cut -c1-10)}"
 
 # CRLF shell scripts / patches cannot be used in the Linux container;
 # .gitattributes forces LF.
@@ -60,7 +70,7 @@ docker volume create "$VOLUME" >/dev/null
 docker run --rm --user root -v "$VOLUME":/build "$IMAGE" \
     sh -c 'chown videolan:videolan /build && touch /build/.vlc-reborn'
 
-echo "==> Native Linux tests in $IMAGE (volume: $VOLUME)"
+echo "==> Native Linux tests in $IMAGE (volume: $VOLUME, source: $REPO_MOUNT)"
 # The script below runs in the container; test names arrive as $@.
 docker run --rm -i \
     -e VLC_TEST_TIMEOUT="${VLC_TEST_TIMEOUT:-60}" \
@@ -70,6 +80,14 @@ docker run --rm -i \
     "$IMAGE" \
     bash -s -- "$@" <<'CONTAINER_EOF'
 set -euo pipefail
+
+# Serialize runs on this volume (setup, compile and test all use /build/linux).
+# The lock is held by fd 9 until this container exits, also across the final exec.
+exec 9>/build/.lock
+if ! flock -n 9; then
+    echo "==> another linux-tests.sh run uses this build volume; waiting..."
+    flock 9
+fi
 
 B=/build/linux
 git config --global --add safe.directory /vlc   # meson/version scripts call git
