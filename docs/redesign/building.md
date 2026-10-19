@@ -119,8 +119,12 @@ The win64 binaries cannot run inside the Linux container, so
 `vlc-win64` on `PATH` (for `libvlc.dll` / `libvlccore.dll`) and `VLC_PLUGIN_PATH`
 set, and writes each Qt Test report to a temp file (stdout of the static Qt test
 executables is not captured on Windows). It also runs
-`qml_test.exe -input modules/gui/qt/tests/<file>.qml` for each `qml_tests` entry
-of `modules/gui/qt/meson.build` once a `qml_test.exe` exists.
+`qml_test.exe -input <file>.qml` for each `qml_tests` entry of
+`modules/gui/qt/meson.build` (upstream) and `modules/gui/qt/redesign/meson.build`
+(redesign; its `../tests/x.qml` paths are resolved relative to that file) once a
+`qml_test.exe` exists, and fails if `qml_test.exe` exists but no entry is found.
+`RUN_TESTS_LIST_QML=1 bash extras/redesign/run-tests.sh` only lists the
+discovered QML tests.
 
 It prints a final `N passed, M failed` line and exits non-zero on any failure.
 

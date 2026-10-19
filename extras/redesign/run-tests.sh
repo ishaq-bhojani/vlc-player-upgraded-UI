@@ -7,14 +7,15 @@
 # and copies them to build-win64/win64-meson/tests/. This script runs:
 #   * every test *.exe in that directory (test_qt_*, base_model_test, ...)
 #     except the EXCLUDED ones below;
-#   * qml_test.exe -input <repo>/modules/gui/qt/<file>.qml for each entry of the
-#     `qml_tests` dictionary in modules/gui/qt/meson.build (when qml_test.exe
+#   * qml_test.exe -input <file>.qml for each entry of the `qml_tests` dictionary
+#     in modules/gui/qt/meson.build and modules/gui/qt/redesign/meson.build (when qml_test.exe
 #     exists - see EXCLUDED).
 #
 # Prints "N passed, M failed" and exits non-zero if anything failed (or if no
 # test could be run at all).
 #
 # Usage: extras/redesign/run-tests.sh [name-substring]   (filter, optional)
+#        RUN_TESTS_LIST_QML=1 extras/redesign/run-tests.sh   (only list the QML tests found)
 
 set -uo pipefail
 
@@ -25,11 +26,33 @@ TESTS_DIR="$DIST/tests"
 FILTER="${1:-}"
 TEST_TIMEOUT="${TEST_TIMEOUT:-300}"
 
+# Prints the absolute (POSIX) path of every QML test file registered in a meson
+# file's `qml_tests = {` / `qml_tests += {` blocks. Paths in `files('...')` are
+# relative to the directory of that meson file ('tests/x.qml' or '../tests/x.qml').
+qml_tests_of() { # meson-file
+    local dir rel
+    dir="$(dirname "$1")"
+    [ -f "$1" ] || return 0
+    while IFS= read -r rel; do
+        echo "$(cd "$dir/$(dirname "$rel")" && pwd)/$(basename "$rel")"
+    done < <(sed -En "/^qml_tests (\+)?= \{/,/^\}/ s/^[[:space:]]*'[^']*':[[:space:]]*files\('([^']*)'\).*/\1/p" "$1")
+}
+
+# The upstream entries (tst_FSM) are in modules/gui/qt/meson.build, the redesign
+# ones in modules/gui/qt/redesign/meson.build; both are read.
+qml_test_files() {
+    qml_tests_of "$REPO/modules/gui/qt/meson.build"
+    qml_tests_of "$REPO/modules/gui/qt/redesign/meson.build"
+}
+
+# RUN_TESTS_LIST_QML=1 only prints the discovered QML tests (dry listing).
+if [ "${RUN_TESTS_LIST_QML:-}" = 1 ]; then qml_test_files; exit 0; fi
+
 # Tests that cannot be built/run in this setup (upstream code is not patched).
 # Format: "exe-name|reason". An excluded test is skipped; any *other* test that
 # dev-build.sh failed to build (tests/UNBUILT.txt) counts as a failure.
 EXCLUDED=(
-    # Its meson entry (modules/gui/qt/meson.build) has no `link_args`, and with
+    # Its meson entry (test_qt_navigation_model, modules/gui/qt/meson.build) has no `link_args`, and with
     # the static Qt of the win64 contribs the link then lacks the zlib/pcre2
     # symbols (undefined inflate*, pcre2_*_16) - it only works with a shared Qt.
     "test_qt_navigation_model.exe|does not link against the static win64 Qt contrib"
@@ -44,7 +67,7 @@ EXCLUDED=(
     "test_qt_renderer_manager.exe|needs vlc_static_modules, unsupported by the core on Windows"
     # Meson only defines the qml_test target when Qt6QuickTest is found, and the
     # prebuilt win64 Qt contrib does not ship it (upstream runs QML tests on a
-    # native Linux job only). Covers the qml_tests entries (tst_FSM).
+    # native Linux job only). Covers all qml_tests entries (tst_FSM, tst_MediaText, tst_ReplayLogic).
     "qml_test.exe|Qt6QuickTest is not part of the win64 Qt contrib"
 )
 
@@ -114,12 +137,16 @@ done
 
 QML_TEST="$TESTS_DIR/qml_test.exe"
 if [ -e "$QML_TEST" ] && ! in_list qml_test.exe "${EXCLUDED[@]}"; then
-    # qml_tests = { 'tst_FSM': files('tests/tst_FSM.qml'), ... }
-    while IFS= read -r rel; do
-        run_one "$(basename "$rel" .qml)" "$QML_TEST" -input "$(native_path "$REPO/modules/gui/qt/$rel")"
-    done < <(sed -n "/^qml_tests = {/,/^}/ s/^[[:space:]]*'[^']*':[[:space:]]*files('\([^']*\)').*/\1/p" "$REPO/modules/gui/qt/meson.build")
+    mapfile -t QML_FILES < <(qml_test_files)
+    if [ "${#QML_FILES[@]}" -eq 0 ]; then
+        echo "--- FAIL qml_tests (qml_test.exe exists but no qml_tests entry was found in the meson files)"
+        failed=$((failed + 1)); failures+=("qml_tests (none discovered)")
+    fi
+    for qml in "${QML_FILES[@]}"; do
+        run_one "$(basename "$qml" .qml)" "$QML_TEST" -input "$(native_path "$qml")"
+    done
 else
-    echo "=== SKIP tst_FSM ($(reason qml_test.exe))"
+    echo "=== SKIP QML tests ($(reason qml_test.exe))"
 fi
 
 rm -f "$RESULTS"
