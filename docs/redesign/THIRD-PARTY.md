@@ -11,6 +11,15 @@ installer must show these notices (Task 13 owns those texts).
 | yt-dlp, https://github.com/yt-dlp/yt-dlp | 2026.08.19 (`yt-dlp.exe`) | Unlicense (public domain); the Windows build bundles Python and other libraries under their own licences (listed in the release notes of yt-dlp) | yt-dlp contributors | **Not shipped.** Downloaded on first use after the user's consent into `<user data>/vlc-reborn/tools/`, pinned and SHA-256 verified (`modules/gui/qt/redesign/tools/tools.json`). Started as a separate process |
 | FFmpeg, https://github.com/yt-dlp/FFmpeg-Builds | autobuild-2026-10-17-20-33, FFmpeg N-127617-g94cba3150c, `win64-gpl` zip | **GPL** build (the `gpl` variant, GPL version 3 according to the FFmpeg-Builds README, not verified here; the autobuild releases of yt-dlp/FFmpeg-Builds publish only GPL builds, no LGPL ones: checked on the release page) | the FFmpeg developers | **Not shipped.** Downloaded on first use for downloads only, after consent, pinned and SHA-256 verified; only `bin/ffmpeg.exe` is extracted. Started as a separate process, never linked, so the GPL applies to that executable and not to VLC Reborn (VLC is GPL-2.0-or-later). The source of the build is the FFmpeg-Builds repository at the release tag |
 
+## Downloaded tools: what is verified
+
+`ToolManager` (`modules/gui/qt/redesign/cpp/toolmanager.hpp`, class comment) checks yt-dlp and ffmpeg this way:
+
+- Every download (the yt-dlp executable, the ffmpeg zip) must have the size and the SHA-256 of the manifest compiled into the application (`redesign/tools/tools.json`) before anything is extracted or moved into the tools folder.
+- `path()` answers only for a tool that a worker thread verified in the current session: yt-dlp is hashed again and compared with the manifest digest.
+- The publisher of the ffmpeg builds gives no digest of `ffmpeg.exe`, so the manifest has none (the field `exeSha256` is supported and used if it is added). The installed `ffmpeg.exe` is compared with a record (`ffmpeg.exe.verified`: digest and size of the bytes extracted from the verified archive). That record lives in the user profile, so it only protects against truncation and corruption: a process that can write the user's profile can replace the executable and the record together. This limitation is accepted: an attacker who runs as the same user and can write the profile is outside the threat model. The archive itself is always verified against the pinned digest.
+- Revoking the consent cancels running downloads but leaves installed tools in place; the code that starts a tool must check `consentGiven` first.
+
 ## Not yet cleared
 
 | Component | Status |

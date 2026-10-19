@@ -55,7 +55,7 @@ public:
             return false;
         }
 
-        // makes the blocking network calls of this thread interruptible by abortAll()
+        // makes the blocking network calls of this thread interruptible by abort() / abortAll()
         vlc_interrupt_t* ctx = vlc_interrupt_create();
         if (!ctx) {
             *error = QObject::tr("Out of memory.");
@@ -64,7 +64,7 @@ public:
         vlc_interrupt_t* previous = vlc_interrupt_set(ctx);
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_active.push_back(ctx);
+            m_active.push_back({&cancel, ctx});
         }
 
         bool ok = false;
@@ -77,18 +77,26 @@ public:
 
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_active.erase(std::remove(m_active.begin(), m_active.end(), ctx), m_active.end());
+            m_active.erase(std::remove_if(m_active.begin(), m_active.end(), [ctx](const Active& a) { return a.interrupt == ctx; }), m_active.end());
         }
         vlc_interrupt_set(previous);
         vlc_interrupt_destroy(ctx);
         return ok;
     }
 
+    void abort(std::atomic_bool& cancel) override
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (const Active& a : m_active)
+            if (a.cancel == &cancel)
+                vlc_interrupt_raise(a.interrupt);
+    }
+
     void abortAll() override
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        for (vlc_interrupt_t* ctx : m_active)
-            vlc_interrupt_raise(ctx);
+        for (const Active& a : m_active)
+            vlc_interrupt_raise(a.interrupt);
     }
 
 private:
@@ -105,6 +113,8 @@ private:
 
         uint64_t size = 0;
         const qint64 total = vlc_stream_GetSize(stream, &size) == VLC_SUCCESS ? qint64(size) : -1;
+        // the announced size is known: the caller can refuse the download before it reads anything
+        progress(0, total);
 
         char buffer[64 * 1024];
         qint64 done = 0;
@@ -145,7 +155,12 @@ private:
 
     vlc_object_t* m_obj;
     std::mutex m_mutex;
-    std::vector<vlc_interrupt_t*> m_active;
+    struct Active
+    {
+        const std::atomic_bool* cancel;
+        vlc_interrupt_t* interrupt;
+    };
+    std::vector<Active> m_active;
 };
 
 } // anonymous namespace
