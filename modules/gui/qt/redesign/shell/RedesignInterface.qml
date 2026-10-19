@@ -306,6 +306,9 @@ Item {
         target: shellStates
 
         function onStateChanged() {
+            // the track popup does not float over the library
+            if (shellStates.state === "browse")
+                trackPopup.close(false)
             Qt.callLater(root._focusState)
         }
 
@@ -779,8 +782,9 @@ Item {
 
                         visible: shellStates.bottomBarVisible
 
-                        // ShellActions.queueRequested, sidebarRequested and trackPopupRequested are
-                        // connected where their panels are (queue, watch sidebar, track popups)
+                        // ShellActions.queueRequested and sidebarRequested are connected where their
+                        // panels are (queue, watch sidebar); trackPopupRequested is connected below,
+                        // at the track popup
                     }
                 }
             }
@@ -822,6 +826,24 @@ Item {
 
                 anchors.fill: parent
                 enabled: false
+            }
+
+            // The subtitle, audio and video tracks, above the button of the control bar that opened
+            // them. It stays open while tracks are chosen and leaves with the player.
+            TrackPopup {
+                id: trackPopup
+
+                z: 15
+
+                anchors.fill: parent
+            }
+
+            Connections {
+                target: ShellActions
+
+                function onTrackPopupRequested(tab, anchor) {
+                    trackPopup.toggle(tab, anchor)
+                }
             }
 
             // The dialogs of VLC (questions, login, progress, errors): there must be one instance
