@@ -46,4 +46,18 @@ TestCase {
         // malformed escape must not throw
         compare(MediaText.titleText("", "", "https://x.org/100%.mp4"), "100%.mp4")
     }
+
+    function test_captionText() {
+        compare(MediaText.captionText("Song", "", "", ""), "Song")
+        compare(MediaText.captionText("Song", "", "", "  "), "Song")
+        compare(MediaText.captionText("Song", "", "", "Artist"), "Song - Artist")
+        compare(MediaText.captionText("", "", "file:///C:/Music/a%20b.mp3", ""), "a b.mp3")
+        compare(MediaText.captionText("", "", "", "Artist"), "Artist")
+        compare(MediaText.captionText("", "", "", ""), "")
+    }
+
+    function test_captionTextNoDuplicateArtist() {
+        compare(MediaText.captionText("", "", "file:///C:/Music/Artist%20-%20Song.mp3", "Artist"), "Artist - Song.mp3")
+        compare(MediaText.captionText("Artist - Song", "", "", "ARTIST"), "Artist - Song")
+    }
 }

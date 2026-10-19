@@ -44,15 +44,9 @@ Item {
     readonly property url artworkSource: hasArtwork ? VLCAccessImage.uri(Player.artwork)
                                                     : VLCStyle.noArtAlbumCover
 
-    // "<title> - <artist>"; just the title when there is no artist; the name or the file name
-    // (see MediaText) when there is no title
-    readonly property string caption: {
-        const title = MediaText.titleText(Player.title, Player.name, Player.url.toString())
-        const artist = (Player.artist || "").trim()
-        if (artist === "")
-            return title
-        return (title === "") ? artist : qsTr("%1 - %2").arg(title).arg(artist)
-    }
+    // "<title> - <artist>" (see MediaText.captionText)
+    readonly property string caption: MediaText.captionText(Player.title, Player.name,
+                                                            Player.url.toString(), Player.artist)
 
     // part of the smaller side of the view that the artwork takes
     readonly property real artworkFraction: 0.6
@@ -68,6 +62,11 @@ Item {
         Math.min(root.width, root.height) * root.artworkFraction,
         root.width - 2 * root._margin,
         root.height - captionLabel.implicitHeight - RedesignStyle.spacingL - 2 * root._margin))
+
+    // Decode size of the artwork: never 0 (which would decode the full image) and quantized, so
+    // that resizing the view does not decode the cover again (and re-trigger the blur) at each step
+    readonly property int _decodeSize: Math.max(64, Helpers.alignUp(
+        root.artworkSide * (MainCtx.effectiveDevicePixelRatio(Window.window) || 1.0), 64))
 
     // Settings
 
@@ -120,7 +119,7 @@ Item {
         width: (sar < dar) ? parent.width : parent.height * sar
         height: (sar < dar) ? parent.width / sar : parent.height
 
-        visible: available && root.hasArtwork && sourceTextureIsValid
+        visible: available && root.hasArtwork
 
         source: root.hasArtwork ? textureProviderIndirection : null
 
@@ -189,7 +188,7 @@ Item {
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         source: root.artworkSource
-        sourceSize: Qt.size(width * Screen.devicePixelRatio, height * Screen.devicePixelRatio)
+        sourceSize: Qt.size(root._decodeSize, root._decodeSize)
 
         onStatusChanged: {
             if (status === Image.Error)
@@ -197,7 +196,7 @@ Item {
         }
 
         Accessible.role: Accessible.Graphic
-        Accessible.name: root.caption
+        Accessible.name: root.caption || qsTr("Cover")
     }
 
     Text {
