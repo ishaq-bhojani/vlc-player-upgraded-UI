@@ -31,6 +31,7 @@ qt_cppargs += redesign_branding_cppargs
 
 moc_headers += files(
     'cpp/currentmediafavorite.hpp',
+    'cpp/mlrecentaudiomodel.hpp',
     'cpp/pinnavigation.hpp',
 )
 
@@ -51,6 +52,8 @@ qt_plugin_sources += files(
     'cpp/currentmediafavorite.hpp',
     'cpp/mlfavoritebackend.cpp',
     'cpp/mlfavoritebackend.hpp',
+    'cpp/mlrecentaudiomodel.cpp',
+    'cpp/mlrecentaudiomodel.hpp',
     'cpp/widgetpalette.cpp',
     'cpp/widgetpalette.hpp',
     '../style/redesignpalette.cpp',
@@ -87,6 +90,8 @@ qml_modules += {
         'player/controls/SubtitlePopupButton.qml',
         'player/controls/AudioPopupButton.qml',
         'player/controls/SidebarButton.qml',
+        'library/HomePage.qml',
+        'library/HomeSection.qml',
         'player/RedesignControlBar.qml',
         'player/ResumePrompt.qml',
         'shell/Rail.qml',

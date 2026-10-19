@@ -119,20 +119,25 @@ static void* MLGet( vlc_medialibrary_module_t*, int, va_list )
     return nullptr;
 }
 
-static int MLList( vlc_medialibrary_module_t*, int,
-                const vlc_ml_query_params_t*, va_list )
+static int MLList( vlc_medialibrary_module_t*, int query,
+                const vlc_ml_query_params_t* params, va_list args )
 {
+    if (testenv && testenv->mlList)
+        return testenv->mlList(query, params, args);
     return VLC_EGENERIC;
 }
 
-static int MLControl( vlc_medialibrary_module_t*, int, va_list )
+static int MLControl( vlc_medialibrary_module_t*, int query, va_list args )
 {
+    if (testenv && testenv->mlControl)
+        return testenv->mlControl(query, args);
     return VLC_EGENERIC;
 }
 
 static int MLOpen( vlc_object_t* obj )
 {
     auto* p_ml = reinterpret_cast<vlc_medialibrary_module_t*>( obj );
+    testenv->mlModule = p_ml;
     p_ml->pf_control = MLControl;
     p_ml->pf_get = MLGet;
     p_ml->pf_list = MLList;
@@ -142,6 +147,7 @@ static int MLOpen( vlc_object_t* obj )
 static void MLClose( vlc_object_t* obj )
 {
     VLC_UNUSED(obj);
+    testenv->mlModule = nullptr;
 }
 
 //module declaration
@@ -188,6 +194,12 @@ static const char * test_defaults_args[] = {
 };
 
 static const int test_defaults_nargs = ARRAY_SIZE(test_defaults_args);
+
+void VLCTestingEnv::sendMLEvent(const vlc_ml_event_t& event)
+{
+    if (mlModule && mlModule->cbs)
+        mlModule->cbs->pf_send_event(mlModule, &event);
+}
 
 bool VLCTestingEnv::init()
 {

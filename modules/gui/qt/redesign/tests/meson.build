@@ -178,3 +178,52 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+# MLRecentAudioModel against the stubbed medialibrary (a fake playback history,
+# see FakeHistory in tests/test_ml_recent_audio_model.cpp). Same sources as
+# test_qt_ml_model (modules/gui/qt/meson.build) plus the media/audio models.
+vlc_tests += {
+    'name': 'test_qt_ml_recent_audio_model',
+    'sources': files(
+        '../../tests/test_ml_recent_audio_model.cpp',
+        '../../tests/vlc_stub_modules.cpp',
+        '../cpp/mlrecentaudiomodel.hpp',
+        '../cpp/mlrecentaudiomodel.cpp',
+        '../../util/base_model.cpp',
+        '../../util/vlctick.cpp',
+        '../../medialibrary/mlbasemodel.cpp',
+        '../../medialibrary/medialib.cpp',
+        '../../medialibrary/mlthreadpool.cpp',
+        '../../medialibrary/mlmediamodel.cpp',
+        '../../medialibrary/mlaudiomodel.cpp',
+        '../../medialibrary/mlaudio.cpp',
+        '../../medialibrary/mlvideo.cpp',
+        '../../medialibrary/mlhelper.cpp',
+        '../../playlist/playlist_controller.cpp',
+        '../../playlist/playlist_item.cpp',
+    ),
+    'moc_sources': files(
+        '../../tests/test_ml_recent_audio_model.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/mlrecentaudiomodel.hpp',
+        '../../tests/vlc_stub_modules.cpp',
+        '../../util/base_model.hpp',
+        '../../util/listcache.hpp',
+        '../../util/locallistcacheloader.hpp',
+        '../../util/vlctick.hpp',
+        '../../medialibrary/mlqmltypes.hpp',
+        '../../medialibrary/mlbasemodel.hpp',
+        '../../medialibrary/mlmediamodel.hpp',
+        '../../medialibrary/mlaudiomodel.hpp',
+        '../../medialibrary/medialib.hpp',
+        '../../medialibrary/mlthreadpool.hpp',
+        '../../playlist/playlist_controller.hpp',
+        '../../playlist/playlist_item.hpp',
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore, libvlc],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

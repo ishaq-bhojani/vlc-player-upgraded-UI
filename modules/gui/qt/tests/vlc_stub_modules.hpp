@@ -32,7 +32,11 @@
 #include <vlc_services_discovery.h>
 #include <vlc_renderer_discovery.h>
 #include <vlc_interface.h>
+#include <vlc_media_library.h>
 #include <vlc_cxx_helpers.hpp>
+
+#include <cstdarg>
+#include <functional>
 
 #include "qt.hpp"
 
@@ -70,6 +74,21 @@ struct VLCTestingEnv
 
     //if set to false no render discovery will be found
     bool renderDiscoveryProbeEnabled = true;
+
+    //Stubbed medialibrary. By default every list/control query fails (empty
+    //library). A test can install handlers to serve data: they receive the
+    //query and the variadic arguments of vlc_ml_list / vlc_ml_control (read them
+    //with va_arg) and return VLC_SUCCESS, or VLC_EGENERIC when not handled.
+    //Handlers run on the ML thread. Reset them before the env is destroyed.
+    std::function<int(int query, const vlc_ml_query_params_t* params, va_list args)> mlList;
+    std::function<int(int query, va_list args)> mlControl;
+
+    //send a medialibrary event to the listeners (MediaLib, models), as the
+    //medialibrary module would. Valid after init.
+    void sendMLEvent(const vlc_ml_event_t& event);
+
+    //medialibrary module instance of the stub (valid while it is open)
+    vlc_medialibrary_module_t* mlModule = nullptr;
 };
 
 #endif /* QT_VLC_STUB_MODULES */

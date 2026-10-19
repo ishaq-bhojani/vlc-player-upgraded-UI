@@ -89,6 +89,7 @@
 #include "redesign/cpp/redesign.hpp"
 #include "redesign/cpp/currentmediafavorite.hpp"
 #include "redesign/cpp/mlfavoritebackend.hpp"
+#include "redesign/cpp/mlrecentaudiomodel.hpp"
 #include "mainctx.hpp"
 #include "redesign/cpp/pinnavigation.hpp"
 #ifdef _WIN32
@@ -507,6 +508,7 @@ void MainUI::registerQMLTypes()
 
         // @uri VLC.Redesign
         qmlRegisterType<CurrentMediaFavorite>(uri, versionMajor, versionMinor, "CurrentMediaFavorite");
+        qmlRegisterType<MLRecentAudioModel>(uri, versionMajor, versionMinor, "MLRecentAudioModel");
         qmlRegisterSingletonType<PinNavigation>(uri, versionMajor, versionMinor, "PinNavigation",
             [](QQmlEngine*, QJSEngine*) { return new PinNavigation; });
         if (m_mainCtx->hasMediaLibrary()) {
