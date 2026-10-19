@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Execution order:** tasks run in document order (Tasks 52–54 run after 37; 55–57 after 47).
+
 **Goal:** Ship "VLC Reborn", a Windows build of VLC 4 whose Qt UI implements the Figma redesign and the designer's intent (spec §11), released as v0.1 (re-skin), v0.2 (window & control bar), v0.3 (settings & dialogs), v0.4 (watch sidebar), v1.0 (polish) and v1.1 (extensions).
 
 **Architecture:** All new UI lives in a new QML module `VLC.Redesign` (`modules/gui/qt/redesign/`). New C++ goes in `redesign/cpp/`. It reuses VLC's existing C++ models and controllers. Upstream files are touched only at the seams listed in `docs/redesign/upstream-touchpoints.md`. The `qt-redesign` option (default `true`) gates every behaviour change; `false` must give the stock upstream UI.
@@ -26,7 +28,9 @@
 - Colours, spacing and radii in new QML come from `ColorContext` / `RedesignStyle`. No literal colours in `redesign/**/*.qml`.
 - Fork releases are versioned `4.0.0.<N>` internally (`VERSION_EXTRA = N`, monotonic). The public label is `vMAJOR.MINOR.PATCH` (v0.1.0 = N 1).
 - Every commit ends with: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-- Product name: `VLC Reborn`. Spec §11 (designer intent) overrides spec §4–§6 where they conflict.
+- Product name: `VLC Reborn`. Spec §11 (designer intent) overrides spec §4–§6 where they conflict; spec §12 adds the Pylon-harvest scope.
+- Files containing logic ported from Pylon start with the header `SPDX-License-Identifier: GPL-3.0-or-later` and the line `Derived from Pylon (github.com/MeowKusTrue/Pylon)`. For tasks listed in `docs/redesign/pylon-harvest.md` §A, read the matching entry before implementing; never copy the defects that document lists.
+- Any executable or archive downloaded at runtime is pinned (exact version URL) and SHA-256-verified before use.
 - The play button is never centred; the control bar is one thin row (spec §11.1).
 - Values marked PROVISIONAL in `docs/redesign/tokens.md` are used as-is until the owner replaces them.
 
@@ -1049,6 +1053,7 @@
 - `SubtitleAttacher`:
   - `Q_INVOKABLE bool attachToCurrent(const QUrl& sub)` calls `PlayerController::AddAssociatedMedia(SPU_ES, sub.toString(), true, true, false)` and returns `== VLC_SUCCESS`.
   - `Q_INVOKABLE bool persist(const QUrl& media, const QUrl& sub)`: looks up the ML media by MRL and calls `vlc_ml_media_add_external_mrl(ml, id, sub, VLC_ML_FILE_TYPE_SUBTITLE)`; false when the media is not in the library. `attachToCurrent` and `attachToPlaylist` call it for every pair, so the association survives future playback.
+  - **Re-attach at playback (spec §11.4):** `SubtitleAttacher` also listens to `Player.inputChanged`; for a media that is in the library, it reads its external subtitle files (`vlc_ml_get_media(ml, id)` → `p_files` entries of type `VLC_ML_FILE_TYPE_SUBTITLE`, on the ML thread) and adds each with `AddAssociatedMedia(SPU_ES, mrl, false, false, false)` unless already present. Upstream `MediaToInputItem` (`modules/misc/medialibrary/entities.cpp:545`) does not do this. Test: a C++ test with a fake ML lookup (inject a `std::function<QStringList(QString mrl)>`) asserts that the stored subtitles are attached once per input change and never twice.
   - `Q_INVOKABLE int attachToPlaylist(const QVariantList& pairs)` takes `pairs` as `[{index: int, subtitle: QUrl}]` over the main playlist. For each pair it calls `input_item_AddSlave(item, input_item_slave_New(url, SLAVE_TYPE_SPU, SLAVE_PRIORITY_USER))` on that playlist item's `input_item_t`, and returns the number attached.
 - `AddSubtitlesDialog` has three modes from the Figma frames:
   - **current file:** `attachToCurrent`;
@@ -1065,6 +1070,73 @@
 - [ ] **Step 3:** Implement both dialogs.
 - [ ] **Step 4:** Run it. Expected: PASS. Dev build: add an `.srt` to the playing video (subtitles show); stop and replay the same library video — the subtitle loads automatically; remap Play/Pause to `Ctrl+P` (it works after closing, and the old binding is cleared).
 - [ ] **Step 5:** Commit: `qt: add redesign subtitles and shortcuts dialogs`. Run the smoke checklist on a local build and fix the issues; the owner tags `v0.3.0`.
+
+### Task 52: Tool manager for yt-dlp and ffmpeg (consent, pinned, verified)
+
+**Files:**
+- Create: `modules/gui/qt/redesign/tools/tools.json` (qrc resource), `modules/gui/qt/redesign/cpp/toolmanager.hpp/.cpp`, `modules/gui/qt/redesign/dialogs/ToolConsentDialog.qml`
+- Test: `modules/gui/qt/tests/test_tool_manager.cpp`
+
+**Interfaces:**
+- `tools.json`: `{"version":1,"tools":[{"name":"yt-dlp","version":"<pinned>","url":"https://github.com/yt-dlp/yt-dlp/releases/download/<pinned>/yt-dlp.exe","sha256":"<64 hex>","exe":"yt-dlp.exe"},{"name":"ffmpeg","version":"<pinned>","url":"<pinned release-tag asset URL of a yt-dlp-recommended Windows ffmpeg build>","sha256":"<64 hex>","archive":"zip","exe":"ffmpeg.exe"}]}`. The implementer fills the pinned values from the projects' release pages and their published checksums, and records the source of each checksum in the commit message. URLs containing `/latest/` are rejected at load time.
+- Produces singleton `ToolManager : QObject` (C++):
+  - `Q_PROPERTY(bool consentGiven READ … WRITE … NOTIFY …)` persisted in config key `qt-reborn-tools-consent` (bool, added in qt.cpp, logged).
+  - `Q_INVOKABLE QString path(const QString& name) const` → absolute path of a verified tool, `""` if not installed/verified.
+  - `Q_INVOKABLE void ensure(const QString& name)` → if consent and not installed: download (QNetworkAccessManager, HTTPS only) to a temp file, verify SHA-256, extract `exe` from a zip when `archive` is set, move into `<config_GetUserDir(VLC_USERDATA_DIR)>/vlc-reborn/tools/<name>-<version>/`; signals `progress(QString name, qint64 done, qint64 total)`, `ready(QString name)`, `failed(QString name, QString reason)`.
+  - Static helpers for tests: `static bool verifySha256(const QString& file, const QByteArray& hexDigest)`, `static std::optional<ToolEntry> parseManifest(const QByteArray& json, QString* error)`.
+  - The network layer (`QNetworkAccessManager*`) is injectable for tests.
+- `ToolConsentDialog`: the consent text from spec §12.1 (sizes from the manifest; add `"size"` bytes per tool to the manifest), Allow / Not now; Allow sets `consentGiven` and calls `ensure`.
+
+- [ ] **Step 1: Write the failing tests:** `parseManifest` rejects a `/latest/` URL, a 63-char digest and a non-https URL; `verifySha256` true for a temp file with the known digest of `"abc"`, false after one byte changes; `ensure` with a fake QNAM whose payload digest mismatches → `failed` emitted, no file left in the tools dir; with a matching payload → `ready`, `path()` non-empty; without consent → `ensure` does nothing.
+- [ ] **Step 2:** Run `bash extras/redesign/linux-tests.sh test_qt_tool_manager`. Expected: FAIL.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run it and the full suite. Expected: PASS. Dev build: first web link → consent dialog; Allow → tools download and verify (watch the log); the tools folder contains only verified files.
+- [ ] **Step 5:** Commit: `qt: add verified tool manager for yt-dlp and ffmpeg`.
+
+### Task 53: Website playback through yt-dlp
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/webresolver.hpp/.cpp`
+- Modify: `modules/gui/qt/redesign/dialogs/OpenNetworkStreamDialog.qml`, `modules/gui/qt/redesign/shell/RedesignInterface.qml` (drop / Ctrl+V of links)
+- Test: `modules/gui/qt/tests/test_web_resolver.cpp`
+
+**Interfaces:**
+- Consumes: `ToolManager` (Task 52), `StreamUrl` (Task 36), `MainPlaylistController`.
+- Produces `WebResolver : QObject` (singleton):
+  - `static bool needsResolving(const QUrl& url)` → true for `http(s)` URLs whose path does not end in a known media or playlist extension (`.mp4 .mkv .webm .mov .avi .mp3 .m4a .aac .flac .ogg .opus .wav .m3u .m3u8 .pls .mpd .ts`, case-insensitive) and whose host is not `localhost`/an IP literal; false otherwise.
+  - `static QStringList resolveArgs(const QUrl& url, int maxHeight)` → `{"--ignore-config","-J","--no-warnings","-S","res:<maxHeight>,vcodec:avc1,acodec:m4a","--",url}` (exact list; `--flat-playlist` added by `playlistArgs`).
+  - `static ResolvedMedia parseJson(const QByteArray& json)` → `{ title, videoUrl, audioUrl (may be empty), headers (QMap), isPlaylist, entries[{title,url}] }` from yt-dlp's `-J` output (`requested_formats` → video+audio; else `url`; `_type == "playlist"` → entries).
+  - `Q_INVOKABLE void play(const QUrl& url, bool enqueueOnly)` → runs yt-dlp via `QProcess` with `resolveArgs`; on success single → appends `videoUrl` with `:input-slave=<audioUrl>` and `:http-referrer`/`:http-user-agent` options from headers, title meta set; playlist → appends each entry's page URL (resolved again when it starts, via an `inputChanged` hook that detects unresolved page URLs); signals `failed(QString)`.
+  - `maxHeight` from config key `qt-reborn-web-max-height` (int, default 1080; choices 480/720/1080/1440/2160).
+- Upstream VLC handling stays for direct media URLs (needsResolving == false).
+
+- [ ] **Step 1: Write the failing tests** (no network, no process): `needsResolving` table (watch page true; `.m3u8` false; `http://192.168.1.2/x` false; uppercase `.MP4` false); `resolveArgs(url,720)` equals the exact list; `parseJson` on three fixture JSONs saved under `modules/gui/qt/tests/fixtures/yt-dlp/` (single with separate audio, single combined, playlist with 3 entries) → expected fields.
+- [ ] **Step 2:** Run `bash extras/redesign/linux-tests.sh test_qt_web_resolver`. Expected: FAIL.
+- [ ] **Step 3:** Implement; wire the dialog (Play uses `WebResolver.play` when `needsResolving`), window drop and Ctrl+V.
+- [ ] **Step 4:** Run it and the full suite. Expected: PASS. Dev build (owner, with consent): a video page plays with sound at ≤ 1080p; a playlist link fills the Queue; a direct `.mp4` link still plays through VLC directly.
+- [ ] **Step 5:** Commit: `qt: play website links through yt-dlp`.
+
+### Task 54: Downloads with quality choice
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/downloadmanager.hpp/.cpp`, `modules/gui/qt/redesign/player/DownloadsSection.qml`, `modules/gui/qt/redesign/dialogs/DownloadDialog.qml`
+- Modify: `modules/gui/qt/redesign/player/QueuePanel.qml`, `modules/gui/qt/redesign/dialogs/OpenNetworkStreamDialog.qml`
+- Test: `modules/gui/qt/tests/test_download_manager.cpp`
+
+**Interfaces:**
+- Consumes: `ToolManager` (yt-dlp + ffmpeg), `WebResolver.needsResolving`.
+- Produces `DownloadManager : QAbstractListModel` (singleton), roles `title, url, quality, state ("queued"|"running"|"done"|"failed"|"canceled"), progress (0..1), file, error`:
+  - `static QStringList downloadArgs(const QUrl& url, const QString& quality, const QString& dir, const QString& ffmpegPath)` → base `{"--ignore-config","--newline","--no-warnings","--progress-template","download:%(progress._percent_str)s|%(progress._total_bytes_str)s","--ffmpeg-location",ffmpegPath,"-P",dir,"-o","%(title)s [%(id)s].%(ext)s"}` plus quality: Best `{"-S","res,vcodec:avc1,acodec:m4a","--merge-output-format","mp4"}`; 1080p/720p `{"-S","res:1080|720,vcodec:avc1,acodec:m4a","--merge-output-format","mp4"}`; Audio `{"-x","--audio-format","m4a"}`; then `{"--",url}`.
+  - `static std::optional<double> parseProgress(const QString& line)` → `"download: 42.5%|12.3MiB"` → 0.425; other lines → nullopt.
+  - `Q_INVOKABLE void start(const QUrl& url, const QString& quality)`, `cancel(int row)`, `openFolder(int row)`, `play(int row)`. At most 2 concurrent downloads; others queued.
+  - Download folder from config key `qt-reborn-download-dir` (default `%USERPROFILE%/Videos/VLC Reborn`, created on demand).
+- `DownloadDialog`: quality radio (Best, 1080p, 720p, Audio only), folder field with Browse, Download. `DownloadsSection` in the Queue panel lists the model with progress bars, Cancel, Play, Show in folder.
+
+- [ ] **Step 1: Write the failing tests:** `downloadArgs` exact lists for the 4 qualities; `parseProgress` for a valid line, `"[download] Destination: x"` (nullopt) and `" 100.0%|1.0GiB"`-style edge; concurrency: start 3 with a fake process factory → 2 running, 1 queued, finishing one starts the third; cancel → state "canceled" and the process killed.
+- [ ] **Step 2:** Run `bash extras/redesign/linux-tests.sh test_qt_download_manager`. Expected: FAIL.
+- [ ] **Step 3:** Implement (process factory injectable for tests).
+- [ ] **Step 4:** Run it and the full suite. Expected: PASS. Dev build (owner): download a video at 720p and as audio; progress shows; files land in the folder; Play opens them.
+- [ ] **Step 5:** Commit: `qt: add downloads with quality choice`.
 
 ## Release R4 — Watch sidebar (Months 13–17, ships v0.4.0)
 
@@ -1270,6 +1342,78 @@
 - [ ] **Step 1:** Implement.
 - [ ] **Step 2:** Dev build: an MP3 shows the waveform after the scan, and seeking by click and drag works. A network audio stream keeps the normal bar. Video files keep the normal bar.
 - [ ] **Step 3:** Commit: `qt: add waveform seek bar`. Run the smoke checklist on a local build; the owner tags `v0.4.0`.
+
+### Task 55: Skip Intro and Next Episode
+
+**Files:**
+- Create: `modules/gui/qt/redesign/util/BingeLogic.qml` (singleton), `modules/gui/qt/redesign/player/BingeBand.qml`
+- Create: `modules/gui/qt/redesign/cpp/nextepisode.hpp/.cpp`
+- Modify: `modules/gui/qt/redesign/player/ControlBar.qml` (host `BingeBand` beside `ResumePrompt`), `modules/gui/qt/redesign/cpp/presetstore.hpp/.cpp` (per-folder `introEndMs`)
+- Test: `modules/gui/qt/tests/tst_BingeLogic.qml`, `modules/gui/qt/tests/test_next_episode.cpp`
+
+**Interfaces:**
+- Consumes: `Player.chapters` (names, start/end), `Player.time`, `Player.length`, `PresetStore` (Task 42), `MainPlaylistController`.
+- `BingeLogic` (pure):
+  - `function isIntroChapter(name: string): bool` → trimmed, lower-cased; `=== "op"` or contains `"intro"` or `"opening"`.
+  - `function isCreditsChapter(name: string): bool` → `=== "ed"` or contains `"credits"` or `"ending"`.
+  - `function skipTarget(timeMs, chapters /*[{name,startMs,endMs}]*/, introEndMs /*-1 if none*/): int` → end of the current intro chapter, else `introEndMs` when `timeMs < introEndMs`, else `-1`.
+  - `function shouldOfferNext(timeMs, lengthMs, chapters, openedAlone): bool` → `openedAlone && (in a credits chapter || lengthMs - timeMs <= 30000)`.
+- `NextEpisode` (C++): `static QString nextSibling(const QString& filePath, const QStringList& videoExtensions)` → next file in the same directory by `QCollator` numeric, case-insensitive order; `""` at the end.
+- `BingeBand`: "Skip Intro" button (jumps to `skipTarget`), "Next episode: <name>" card with a 10 s countdown and Cancel; settings `qt-reborn-autoskip-intro` (bool, default false) and `qt-reborn-offer-next` (bool, default true). "Mark intro end here" action in the Playback tab stores `introEndMs` for the folder.
+
+- [ ] **Step 1: Write the failing tests:** `isIntroChapter("OP")` true, `("Opening Theme")` true, `("Topic")` false; `isCreditsChapter("ED")` true, `("Credits")` true, `("Edited")` false; `skipTarget` inside an intro chapter, before a folder mark, after it (−1); `shouldOfferNext` true in credits, true at length−20 s, false when not opened alone; `nextSibling` on a temp dir with `Ep 2.mkv, Ep 10.mkv, Ep 1.mkv, notes.txt` from `Ep 2.mkv` → `Ep 10.mkv`, from `Ep 10.mkv` → `""`.
+- [ ] **Step 2:** Run `bash extras/redesign/linux-tests.sh tst_BingeLogic test_qt_next_episode`. Expected: FAIL.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run them and the full suite. Expected: PASS. Dev build: an MKV with an "Intro" chapter shows Skip Intro; the last 30 s of an episode opened alone offers the next one.
+- [ ] **Step 5:** Commit: `qt: add skip intro and next episode`.
+
+### Task 56: Sidecar .lrc lyrics in the music view
+
+**Files:**
+- Create: `modules/gui/qt/redesign/cpp/lrcparser.hpp/.cpp`, `modules/gui/qt/redesign/player/LyricsPanel.qml`
+- Modify: `modules/gui/qt/redesign/player/MusicView.qml`
+- Test: `modules/gui/qt/tests/test_lrc_parser.cpp`
+
+**Interfaces:**
+- Produces:
+  ```cpp
+  struct LrcLine { qint64 timeMs; QString text; };
+  namespace redesign {
+  QVector<LrcLine> parseLrc(const QString& content);   // multiple [mm:ss.xx] stamps per line; [offset:+/-ms] applied (positive = earlier); [ar:]/[ti:]/[al:]/[by:] ignored; sorted by time; lines without stamps skipped
+  int lineIndexAt(const QVector<LrcLine>& lines, qint64 ms); // last line with timeMs <= ms, -1 before the first
+  }
+  class SidecarLyrics : public QObject { // QML type
+      Q_PROPERTY(QUrl media …)            // audio file URL; loads "<base>.lrc" (UTF-8, Latin-1 fallback) if present
+      Q_PROPERTY(QVariantList lines …)    // [{timeMs, text}]
+      Q_PROPERTY(bool available …)
+      Q_INVOKABLE int indexAt(qint64 ms) const;
+  };
+  ```
+- `LyricsPanel`: if `Player.hasLyrics` use upstream `Player.syltLyrics` / `Player.currentLyricIndex`; else if `SidecarLyrics.available` use its lines and `indexAt(Player.time)`; highlights and centres the current line. `.lrc` must not be auto-loaded as a subtitle for audio-only items (verify VLC's subtitle autodetect extensions; if `.lrc` is included, pass `:no-sub-autodetect-file` for audio items started from the redesign UI).
+
+- [ ] **Step 1: Write the failing tests:** two stamps on one line produce two entries; `[offset:500]` shifts every line 500 ms earlier; metadata tags ignored; `[01:02.50]` → 62500; `lineIndexAt` before first (−1), exact stamp, between stamps; Latin-1 file decodes.
+- [ ] **Step 2:** Run `bash extras/redesign/linux-tests.sh test_qt_lrc_parser`. Expected: FAIL.
+- [ ] **Step 3:** Implement and add the panel to the music view.
+- [ ] **Step 4:** Run it and the full suite. Expected: PASS. Dev build: an MP3 with a sidecar `.lrc` shows synced lines; an MP3 with embedded SYLT still uses those.
+- [ ] **Step 5:** Commit: `qt: show sidecar lrc lyrics`.
+
+### Task 57: Measured loudness (replay gain for untagged files)
+
+**Files:**
+- Modify: `modules/gui/qt/redesign/cpp/waveform.hpp/.cpp` (RMS + gain alongside peaks; cache format version bump)
+- Create: `modules/gui/qt/redesign/cpp/measuredgain.hpp/.cpp`
+- Test: extend `modules/gui/qt/tests/test_waveform.cpp`
+
+**Interfaces:**
+- Consumes: `WaveformProvider` and its decode pass (Task 46).
+- Produces: `float redesign::rmsDbfs(const int16_t* s, size_t n)`; `float redesign::measuredGainDb(float rmsDbfs)` → `clamp(-18 - rmsDbfs, -12, +4)`; the waveform cache stores `{version:2, peaks, gainDb}`.
+- Application: **Step 0 is a spike** — find how to apply a per-item gain in VLC 4 without core changes: preferred, set `REPLAYGAIN_TRACK_GAIN` on the input item (`input_item_AddInfo`/meta used by `src/audio_output/volume.c` replay-gain lookup) before playback; otherwise a per-input `:gain=` option (`audio_filter/gain.c`). Record the chosen mechanism in the commit message. Only when Settings → Audio → Replay gain mode is "Measured" (new choice in the redesign Audio page mapped to `audio-replay-gain-mode`=`track` plus the measured injection) and the file has no replay-gain tags; peak protection unchanged.
+
+- [ ] **Step 1: Write the failing tests:** `rmsDbfs` of a full-scale sine ≈ −3.01 dB (±0.05); silence → a floor value ≤ −90; `measuredGainDb(-30)` = +4 (clamped), `(-18)` = 0, `(-3)` = −12 (clamped); cache v1 file → treated as stale and recomputed; v2 round trip keeps gain.
+- [ ] **Step 2:** Run `bash extras/redesign/linux-tests.sh test_qt_waveform`. Expected: FAIL on the new cases.
+- [ ] **Step 3:** Spike (Step 0), then implement.
+- [ ] **Step 4:** Run it and the full suite. Expected: PASS. Dev build: two untagged tracks of very different loudness play at similar perceived volume in "Measured" mode.
+- [ ] **Step 5:** Commit: `qt: add measured loudness for untagged files`.
 
 ## Release R5 — Polish (Months 17–19, ships v1.0.0)
 

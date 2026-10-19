@@ -1,7 +1,7 @@
 # VLC Redesign — Design Spec
 
 - **Date:** 2026-10-16
-- **Status:** Approved 2026-10-16; **revision 2 (designer intent, §11) awaiting review**
+- **Status:** Approved 2026-10-16; revision 2 (§11) approved; **revision 3 (§12, additions from the Pylon harvest) approved in scope 2026-10-19**
 - **Product name:** VLC Reborn
 - **Design source:** Figma "VLC Redesign (Community)" — https://www.figma.com/design/eC0K7svcmp8c5LAM0PJiQo/VLC-Redesign--Community-?node-id=0-1
 - **Codebase:** VLC `4.0.0-dev` fork (`origin` = ishaq-bhojani/vlc-player-upgraded-UI, `upstream` = videolan/vlc)
@@ -219,7 +219,7 @@ Config-derived labels are already translated. New strings use `qtr()` and fall b
 
 ## 9. Timeline (part-time, about 15–20 h/week, includes about 20% buffer)
 
-Revision 2 adds the designer-intent scope from §11, which brings the full design to about **21 months**.
+Revision 2 adds the designer-intent scope from §11, which brings the full design to about **21 months**. Revision 3 (§12) adds about 2 months: yt-dlp playback and downloads in R3 (about +1 month) and the binge and music extras in R4 (about +1 month), so v1.0 lands around month 21 and v1.1 around month 23.
 
 | When | Milestone | Deliverables | Ships |
 |---|---|---|---|
@@ -326,3 +326,22 @@ A right-hand sidebar (shares the right edge with the Queue panel; one is open at
 ### 11.6 Not adopted
 - A centred play button: the designer explicitly rejects it.
 - Full user customisation beyond the existing Customize Player editor and profiles.
+
+## 12. Additions from the Pylon harvest (revision 3)
+
+Source: `docs/redesign/pylon-evaluation.md` and `docs/redesign/pylon-harvest.md`. Scope approved by the owner on 2026-10-19. Logic ported from Pylon (GPL-3.0) is marked in each file's header as "GPL-3.0-or-later; derived from Pylon (github.com/MeowKusTrue/Pylon)"; the distributed fork is therefore effectively GPL-3.0 (permitted: VLC's Qt interface is GPL-2.0-or-later). Pylon defects listed in the harvest are not copied.
+
+### 12.1 Website playback and downloads with yt-dlp (R3)
+- **Opt-in.** The first time a website link is opened or Download is pressed, a consent dialog explains: VLC Reborn will download yt-dlp (and ffmpeg for downloads) from their official GitHub releases into `<user data>/vlc-reborn/tools/` (sizes shown); the user is responsible for respecting each site's terms and copyright. Declining keeps the feature off; Settings → Network can enable it later.
+- **Pinned and verified tools.** A manifest compiled into the app (`modules/gui/qt/redesign/tools/tools.json`) lists, per tool, the exact version, the release-tag asset URL (never a "latest" URL) and its SHA-256. A download is verified before first use; a mismatch deletes the file and reports an error. Tools never self-update (`yt-dlp -U` is not used); new versions arrive with app updates. Processes are started with an argument list (no shell) and `--ignore-config`.
+- **Playback.** An `http(s)` link that is not a direct media/playlist file (by extension or content type) is resolved with yt-dlp (`-J`). Format sort `res,vcodec:avc1,acodec:m4a`, capped at the "Maximum web quality" setting (default 1080p). Separate audio is attached as an input slave. A playlist or channel link expands into the Queue (entries resolved when they start). Entry points: Open network stream dialog, dropping a link on the window, pasting with Ctrl+V.
+- **Download.** A Download button (Open network stream dialog; context menu of a web item in the Queue) with quality choice Best / 1080p / 720p / Audio only (m4a). Saves to the "Download folder" setting (default `%USERPROFILE%\Videos\VLC Reborn`); ffmpeg merges streams. Progress, cancel, "Play" and "Show in folder" appear in a Downloads section of the Queue panel.
+- **Not included:** browser-cookie import (off; may be offered later as an advanced setting with disclosure), song recognition (fpcalc/AcoustID).
+
+### 12.2 Binge pack (R4)
+- **Skip Intro.** When the current chapter's name is an intro token — exact, case-insensitive match for `op`, substring match for `intro`, `opening` — or the playback time is before a per-folder "intro ends at" mark (stored in the per-show preset store, §11.3), a "Skip Intro" button appears next to the play controls (same band as the resume prompt) and jumps to the chapter end / mark. "Auto-skip intros" setting, off by default.
+- **Next Episode.** When a local file was opened on its own (Queue holds only it), during an end-credits chapter (exact `ed`, substring `credits`, `ending`) or the last 30 s, a "Next episode: <name>" card with a 10 s countdown appears; Cancel dismisses it for this file. Next = the following video file in the same folder by natural sort (numeric-aware, case-insensitive). Setting "Offer next episode", on by default.
+
+### 12.3 Music extras (R4)
+- **Sidecar lyrics.** For audio items without embedded synced lyrics, a `<same base name>.lrc` next to the file is parsed (multiple timestamps per line, `[offset:+/-ms]`, metadata tags ignored) and shown in the redesign music view's lyrics panel, highlighting the current line. Embedded lyrics (upstream `Player.syltLyrics`) take precedence. `.lrc` files are never loaded as subtitles.
+- **Measured loudness.** The waveform pass (§11.3) also computes RMS loudness; the gain to reach −18 dBFS RMS, clamped to −12 … +4 dB, is cached with the waveform. With Settings → Audio → Replay gain = "Measured", items without replay-gain tags play with that gain (peak protection kept); tagged items keep their tags.
