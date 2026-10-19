@@ -147,3 +147,34 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+vlc_tests += {
+    'name': 'test_qt_redesign_reborn_profile',
+    'sources': files(
+        '../../tests/test_redesign_reborn_profile.cpp',
+        '../cpp/rebornprofile.hpp',
+        '../cpp/rebornprofile.cpp',
+        '../../dialogs/toolbar/controlbar_profile_model.hpp',
+        '../../dialogs/toolbar/controlbar_profile_model.cpp',
+        '../../dialogs/toolbar/controlbar_profile.hpp',
+        '../../dialogs/toolbar/controlbar_profile.cpp',
+        '../../player/player_controlbar_model.hpp',
+        '../../player/player_controlbar_model.cpp',
+        '../../player/control_list_model.hpp',
+        '../../player/control_list_model.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_redesign_reborn_profile.cpp'
+    ),
+    'moc_headers': files(
+        '../../dialogs/toolbar/controlbar_profile_model.hpp',
+        '../../dialogs/toolbar/controlbar_profile.hpp',
+        '../../player/player_controlbar_model.hpp',
+        '../../player/control_list_model.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

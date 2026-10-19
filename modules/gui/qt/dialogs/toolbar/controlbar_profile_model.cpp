@@ -24,6 +24,7 @@
 #include "controlbar_profile.hpp"
 #include "player/control_list_model.hpp"
 #include "player/player_controlbar_model.hpp"
+#include "redesign/cpp/rebornprofile.hpp"
 
 // NOTE: QSettings started to accept QAnyStringView with Qt 6.4,
 //       so instead of a QString(Literal), use QLatin1String(View):
@@ -31,7 +32,6 @@ constexpr QLatin1String SETTINGS_KEY_SELECTEDPROFILE {"SelectedProfile"};
 constexpr QLatin1String SETTINGS_ARRAYNAME_PROFILES {"Profiles"};
 constexpr QLatin1String SETTINGS_KEY_NAME {"Name"};
 constexpr QLatin1String SETTINGS_KEY_MODEL {"Model"};
-constexpr QLatin1String SETTINGS_KEY_REBORNSEEDED {"RebornSeeded"};
 
 constexpr QChar SETTINGS_CONTROL_SEPARATOR {','};
 constexpr QChar SETTINGS_CONFIGURATION_SEPARATOR {'|'};
@@ -233,75 +233,6 @@ decltype (ControlbarProfileModel::m_defaults)
                                     ControlListModel::STOP_BUTTON,
                                     ControlListModel::NEXT_BUTTON
                                 }, {}
-                            }
-                        }
-                    }
-                }
-            },
-            {
-                // redesign only (spec 11.1): one row, the seek bar fills the free width of the
-                // left group (a centre group does not grow in PlayerControlLayout)
-                Style::REBORN_STYLE,
-                N_("VLC Reborn"),
-                {
-                    {
-                        PlayerControlbarModel::Videoplayer,
-                        {
-                            {
-                                {
-                                    ControlListModel::PREVIOUS_BUTTON,
-                                    ControlListModel::PLAY_BUTTON,
-                                    ControlListModel::NEXT_BUTTON,
-                                    ControlListModel::REDESIGN_SEEKBAR
-                                }, {},
-                                {
-                                    ControlListModel::VOLUME,
-                                    ControlListModel::REDESIGN_SUBTITLE_POPUP,
-                                    ControlListModel::REDESIGN_AUDIO_POPUP,
-                                    ControlListModel::REDESIGN_SIDEBAR_BUTTON,
-                                    ControlListModel::PLAYLIST_BUTTON,
-                                    ControlListModel::FULLSCREEN_BUTTON
-                                }
-                            }
-                        }
-                    },
-                    {
-                        PlayerControlbarModel::Audioplayer,
-                        {
-                            {
-                                {
-                                    ControlListModel::PREVIOUS_BUTTON,
-                                    ControlListModel::PLAY_BUTTON,
-                                    ControlListModel::NEXT_BUTTON,
-                                    ControlListModel::REDESIGN_SEEKBAR
-                                }, {},
-                                {
-                                    ControlListModel::VOLUME,
-                                    ControlListModel::REDESIGN_SUBTITLE_POPUP,
-                                    ControlListModel::REDESIGN_AUDIO_POPUP,
-                                    ControlListModel::REDESIGN_SIDEBAR_BUTTON,
-                                    ControlListModel::PLAYLIST_BUTTON,
-                                    ControlListModel::FULLSCREEN_BUTTON
-                                }
-                            }
-                        }
-                    },
-                    {
-                        PlayerControlbarModel::Miniplayer,
-                        {
-                            {
-                                {
-                                    ControlListModel::ARTWORK_INFO
-                                },
-                                {
-                                    ControlListModel::PREVIOUS_BUTTON,
-                                    ControlListModel::PLAY_BUTTON,
-                                    ControlListModel::NEXT_BUTTON
-                                },
-                                {
-                                    ControlListModel::VOLUME,
-                                    ControlListModel::PLAYER_SWITCH_BUTTON
-                                }
                             }
                         }
                     }
@@ -530,7 +461,6 @@ decltype (ControlbarProfileModel::m_defaults)
 
 ControlbarProfileModel::ControlbarProfileModel(QSettings* settings, QObject *parent, bool redesign)
     : QAbstractListModel(parent),
-    m_redesign(redesign),
     m_settings(settings)
 {
     assert(m_settings);
@@ -550,24 +480,27 @@ ControlbarProfileModel::ControlbarProfileModel(QSettings* settings, QObject *par
     });
 
     // defer initialization reload:
-    QMetaObject::invokeMethod(this, [this] () {
+    QMetaObject::invokeMethod(this, [this, redesign] () {
         if (reload() == false)
         {
             // If initial reload fails, load the default profiles:
             insertDefaults();
         }
+
+        // the profile of the redesign (redesign/cpp/rebornprofile.cpp)
+        if (redesign)
+            redesign::ensureRebornProfile(this, m_settings);
         else
-            seedRebornProfile();
+            redesign::leaveRebornProfile(this);
     }, Qt::QueuedConnection);
 }
 
 void ControlbarProfileModel::insertDefaults()
 {
     // Add default profiles:
-    int selected = 0;
     for (const auto& i : m_defaults)
     {
-        if (i.id == Style::EMPTY_STYLE || (i.id == Style::REBORN_STYLE && !m_redesign))
+        if (i.id == Style::EMPTY_STYLE)
             continue;
 
         const auto ptrNewProfile = newProfile(qfut(i.name));
@@ -576,42 +509,9 @@ void ControlbarProfileModel::insertDefaults()
 
         ptrNewProfile->injectModel(i.modelData);
         ptrNewProfile->resetDirty(); // default profiles should not be dirty initially
-
-        if (i.id == Style::REBORN_STYLE)
-        {
-            selected = rowCount() - 1; // the default of the redesign
-            m_rebornSeeded = true;
-        }
     }
 
-    setSelectedProfile(selected);
-}
-
-void ControlbarProfileModel::seedRebornProfile()
-{
-    // profiles saved before the redesign was enabled: add the VLC Reborn profile once and select it,
-    // after that it is a profile like the others (the user may select another one or delete it)
-    if (!m_redesign || m_rebornSeeded)
-        return;
-
-    m_rebornSeeded = true;
-
-    for (const auto& i : m_defaults)
-    {
-        if (i.id != Style::REBORN_STYLE)
-            continue;
-
-        const auto ptrNewProfile = newProfile(qfut(i.name));
-        if (!ptrNewProfile)
-            break;
-
-        ptrNewProfile->injectModel(i.modelData);
-        ptrNewProfile->resetDirty();
-
-        setSelectedProfile(rowCount() - 1);
-        save(false);
-        break;
-    }
+    setSelectedProfile(0);
 }
 
 QString ControlbarProfileModel::generateUniqueName(const QString &name)
@@ -807,7 +707,6 @@ void ControlbarProfileModel::save(bool clearDirty) const
     m_settings->beginGroup(groupName);
     m_settings->remove(""); // clear the group before save
 
-    m_settings->setValue(SETTINGS_KEY_REBORNSEEDED, m_rebornSeeded);
     m_settings->setValue(SETTINGS_KEY_SELECTEDPROFILE, selectedProfile());
 
     m_settings->beginWriteArray(SETTINGS_ARRAYNAME_PROFILES);
@@ -862,8 +761,6 @@ bool ControlbarProfileModel::reload()
     const auto groupName = metaObject()->className();
 
     m_settings->beginGroup(groupName);
-
-    m_rebornSeeded = m_settings->value(SETTINGS_KEY_REBORNSEEDED, false).toBool();
 
     const int size = m_settings->beginReadArray(SETTINGS_ARRAYNAME_PROFILES);
 

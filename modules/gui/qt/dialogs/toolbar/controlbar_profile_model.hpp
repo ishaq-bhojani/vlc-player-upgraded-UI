@@ -35,7 +35,6 @@ class ControlbarProfileModel : public QAbstractListModel
     Q_PROPERTY(int count READ rowCount NOTIFY countChanged FINAL)
 
 public:
-    // `redesign`: the VLC Reborn profile is part of the defaults and selected on first run
     explicit ControlbarProfileModel(QSettings* settings, QObject *parent = nullptr, bool redesign = false);
 
     // Basic functionality:
@@ -52,8 +51,7 @@ public:
         MINIMALIST_STYLE,
         ONE_LINER_STYLE,
         SIMPLEST_STYLE,
-        CLASSIC_STYLE,
-        REBORN_STYLE // only with the redesign
+        CLASSIC_STYLE
     };
 
     // Editable:
@@ -112,9 +110,6 @@ private:
 
     int m_selectedProfile = -1;
 
-    bool m_redesign = false;
-    bool m_rebornSeeded = false; // the VLC Reborn profile was added once (then it is the user's)
-
     struct Profile {
         const Style id;
         const char* name;
@@ -125,7 +120,6 @@ private:
 
 private:
     void insertDefaults();
-    void seedRebornProfile();
 
     QString generateUniqueName(const QString& name);
 
