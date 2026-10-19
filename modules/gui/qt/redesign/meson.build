@@ -112,6 +112,7 @@ qml_modules += {
         'library/HomePage.qml',
         'library/HomeSection.qml',
         'util/OnceLatch.qml',
+        'util/StopDebounce.qml',
         'player/MiniPlayerCard.qml',
         'player/RedesignControlBar.qml',
         'player/MusicView.qml',
@@ -150,4 +151,5 @@ qml_tests += {
     'tst_CardCorner': files('../tests/tst_CardCorner.qml'),
     'tst_ControlChooser': files('../tests/tst_ControlChooser.qml'),
     'tst_OnceLatch': files('../tests/tst_OnceLatch.qml'),
+    'tst_StopDebounce': files('../tests/tst_StopDebounce.qml'),
 }

@@ -116,8 +116,20 @@ Item {
     // the library panel is not shown beside the video: it is an overlay, a click outside closes it
     readonly property bool _panelIsOverlay: shellStates.panelMode === "overlay"
 
-    // the media is playing or paused
-    readonly property bool _hasMedia: Player.playingState !== Player.PLAYING_STATE_STOPPED
+    // the player stopped for good: the STOPPED between two items of the playlist (STOPPING,
+    // STOPPED, STARTED) is not one, the shell must not flip to the library for it
+    readonly property bool _stopped: stopDebounce.stopped
+
+    // the media is playing or paused (or being replaced by the next item)
+    readonly property bool _hasMedia: !_stopped
+
+    StopDebounce {
+        id: stopDebounce
+
+        input: Player.playingState === Player.PLAYING_STATE_STOPPED
+
+        onSettledStopped: MainCtx.playerView = false
+    }
 
     // Settings
 
@@ -531,12 +543,6 @@ Item {
         Connections {
             target: Player
 
-            function onPlayingStateChanged() {
-                if (Player.playingState === Player.PLAYING_STATE_STOPPED) {
-                    MainCtx.playerView = false
-                }
-            }
-
             function onHasVideoOutputChanged() {
                 // a video starts: show it
                 if (Player.hasVideoOutput && MainCtx.hasEmbededVideo)
@@ -742,7 +748,7 @@ Item {
 
                             MiniPlayerCard {
                                 visible: (shellStates.state === "browse")
-                                         && (Player.playingState !== Player.PLAYING_STATE_STOPPED)
+                                         && root._hasMedia
 
                                 showsVideo: shellStates.miniPlayerShowsVideo
 
