@@ -54,8 +54,8 @@ import VLC.Redesign
  *
  * Besides the layout, the root provides what MainInterface.qml provides to its pages: the
  * window background, the interface metrics, the tooltips, the detached play queue window,
- * the global shortcuts, drag and drop of media, and the resize and shadow of a window with
- * client side decorations. The pages find `playlistWindowLoader` of this file by id.
+ * the global shortcuts, drag and drop of media, the two-finger swipe back, and the resize and
+ * shadow of a window with client side decorations. The pages find `playlistWindowLoader` of this file by id.
  */
 Item {
     id: root
@@ -164,9 +164,6 @@ Item {
         anchors.rightMargin: MainCtx.windowExtendedMargin
         anchors.bottomMargin: MainCtx.windowExtendedMargin
 
-        // If there is depth buffer, clipping is not necessary:
-        clip: _extendedFrameVisible && !windowShadow.hasDepthBuffer
-
         Binding {
             target: VLCStyle
             property: "appWidth"
@@ -188,6 +185,127 @@ Item {
         Window.onWindowChanged: {
             if (Window.window && !Qt.colorEqual(Window.window.color, "transparent")) {
                 Window.window.color = Qt.binding(function() { return theme.bg.primary })
+            }
+        }
+
+        // Two-finger swipe back (touchscreen, touchpad): copied from MainInterface.qml
+        // (historyDragHandler and goingBackIndicator), which has no component to reuse.
+        DragHandler {
+            id: historyDragHandler
+
+            acceptedDevices: PointerDevice.TouchScreen | PointerDevice.TouchPad
+
+            target: null
+
+            minimumPointCount: 2
+            maximumPointCount: 2
+
+            grabPermissions: PointerHandler.CanTakeOverFromAnything
+
+            yAxis.enabled: false
+
+            // Qt version check in disguise, only available starting with 6.5:
+            enabled: !!xAxis?.activeValueChanged
+
+            property double accumulatedDelta: 0.0
+
+            readonly property real threshold: 80.0
+
+            function onXAxisActiveValueChanged(delta) {
+                // We do not want to set enabled based on history condition, because the gesture should be captured
+                // regardless to prevent confusion:
+                if (History.previousEmpty && (MainCtx.effectiveMainInterfaceMode === MainCtx.MAININTERFACE_MODE_MAINDISPLAY))
+                    return
+
+                historyDragHandler.accumulatedDelta = Math.min(threshold, historyDragHandler.accumulatedDelta + delta)
+            }
+
+            Component.onCompleted: {
+                if (historyDragHandler?.xAxis?.activeValueChanged) {
+                    xAxis.activeValueChanged.connect(historyDragHandler, onXAxisActiveValueChanged)
+                }
+            }
+
+            onActiveChanged: {
+                if (!active) {
+                    if (historyDragHandler.accumulatedDelta >= threshold) {
+                        if (MainCtx.playerView)
+                            MainCtx.playerView = false
+                        else if (MainCtx.minimalView)
+                            MainCtx.minimalView = false
+                        else
+                            History.previous()
+                    }
+
+                    historyDragHandler.accumulatedDelta = 0.0
+                    accumulatedDelta = 0.0
+                }
+            }
+        }
+
+        // Going back indicator:
+        Rectangle {
+            id: goingBackIndicator
+
+            z: 100
+
+            anchors.verticalCenter: parent.verticalCenter
+
+            visible: (historyDragHandler.accumulatedDelta > 0.0)
+
+            scale: Math.min(Math.max(historyDragHandler.accumulatedDelta / historyDragHandler.threshold, 0.2), 1.0)
+
+            readonly property real margin: VLCStyle.dp(128, VLCStyle.scale)
+
+            x: (historyDragHandler.accumulatedDelta / historyDragHandler.threshold * margin)
+
+            implicitWidth: implicitHeight
+            implicitHeight: backArrowText.implicitHeight + VLCStyle.margin_small
+            radius: (width / 2)
+
+            border.width: 1
+            border.color: theme.accent
+            border.pixelAligned: (radius < Number.EPSILON)
+
+            color: (historyDragHandler.accumulatedDelta >= historyDragHandler.threshold) ? theme.accent
+                                                                                         : theme.bg.primary
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: VLCStyle.duration_short
+                }
+            }
+
+            Widgets.IconLabel {
+                id: backArrowText
+
+                anchors.centerIn: parent
+
+                text: VLCIcons.back
+
+                font.pixelSize: VLCStyle.fontSize_xxxlarge * 1.2
+
+                color: (historyDragHandler.accumulatedDelta >= historyDragHandler.threshold) ? theme.bg.primary
+                                                                                             : theme.accent
+            }
+
+            Widgets.RoundedRectangleShadow {
+                opacity: (historyDragHandler.accumulatedDelta >= historyDragHandler.threshold) ? 1.0
+                                                                                               : 0.0
+
+                color: theme.accent
+
+                blurRadius: VLCStyle.dp(8, VLCStyle.scale)
+
+                compensationFactor: 3.0
+
+                visible: (opacity > 0.0)
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: VLCStyle.duration_short
+                    }
+                }
             }
         }
 
@@ -298,139 +416,150 @@ Item {
             }
         }
 
-        // the stage and the panels fill the window; in the immersive state the title bar
-        // floats over them instead of pushing them down
-        ColumnLayout {
-            anchors {
-                left: parent.left
-                right: parent.right
-                bottom: parent.bottom
-                top: (titleBar.visible && (shellStates.state !== "immersive")) ? titleBar.bottom
-                                                                              : parent.top
-            }
+        // the content, clipped to the window when the shadow is not clipped by a depth test:
+        // the shadow is a child of `shell` and extends outside of it, so `shell` itself is not clipped
+        Item {
+            id: content
 
-            spacing: 0
+            anchors.fill: parent
 
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+            // If there is depth buffer, clipping is not necessary:
+            clip: _extendedFrameVisible && !windowShadow.hasDepthBuffer
+
+            // the stage and the panels fill the window; in the immersive state the title bar
+            // floats over them instead of pushing them down
+            ColumnLayout {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                    top: (titleBar.visible && (shellStates.state !== "immersive")) ? titleBar.bottom
+                                                                                  : parent.top
+                }
 
                 spacing: 0
 
-                Rail {
-                    id: rail
-
-                    Layout.fillHeight: true
-                    Layout.alignment: Qt.AlignTop
-
-                    visible: shellStates.state !== "immersive"
-                }
-
-                // slot of the library panel (resizable drawer beside the stage)
-                Item {
-                    id: libraryPanelSlot
-
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: 0
-
-                    visible: shellStates.panelMode === "docked"
-                }
-
-                // the stage: for now the pages of the stock interface
-                Item {
-                    id: stage
-
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
-                    Loader {
-                        id: stageLoader
+                    spacing: 0
 
-                        anchors.fill: parent
+                    Rail {
+                        id: rail
 
-                        focus: true
+                        Layout.fillHeight: true
+                        Layout.alignment: Qt.AlignTop
 
-                        source: {
-                            // priority applies accross modes
-                            // minimal > player > medialib
-                            // MEDIALIB_MODE flag should always be set
+                        visible: shellStates.state !== "immersive"
+                    }
 
-                            switch (MainCtx.effectiveMainInterfaceMode) {
-                            case MainCtx.MAININTERFACE_MODE_MINIMAL:
-                                return "qrc:///qt/qml/VLC/Player/MinimalView.qml"
-                            case MainCtx.MAININTERFACE_MODE_PLAYER:
-                                return "qrc:///qt/qml/VLC/Player/Player.qml"
-                            default:
-                                console.error("unexpected interface mode", MainCtx.effectiveMainInterfaceMode)
-                            case MainCtx.MAININTERFACE_MODE_MAINDISPLAY:
-                                return "qrc:///qt/qml/VLC/MainInterface/MainDisplay.qml"
+                    // slot of the library panel (resizable drawer beside the stage)
+                    Item {
+                        id: libraryPanelSlot
+
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: 0
+
+                        visible: shellStates.panelMode === "docked"
+                    }
+
+                    // the stage: for now the pages of the stock interface
+                    Item {
+                        id: stage
+
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        Loader {
+                            id: stageLoader
+
+                            anchors.fill: parent
+
+                            focus: true
+
+                            source: {
+                                // priority applies accross modes
+                                // minimal > player > medialib
+                                // MEDIALIB_MODE flag should always be set
+
+                                switch (MainCtx.effectiveMainInterfaceMode) {
+                                case MainCtx.MAININTERFACE_MODE_MINIMAL:
+                                    return "qrc:///qt/qml/VLC/Player/MinimalView.qml"
+                                case MainCtx.MAININTERFACE_MODE_PLAYER:
+                                    return "qrc:///qt/qml/VLC/Player/Player.qml"
+                                default:
+                                    console.error("unexpected interface mode", MainCtx.effectiveMainInterfaceMode)
+                                case MainCtx.MAININTERFACE_MODE_MAINDISPLAY:
+                                    return "qrc:///qt/qml/VLC/MainInterface/MainDisplay.qml"
+                                }
                             }
                         }
                     }
-                }
 
-                // slot of the right panel (queue, watch sidebar)
-                Item {
-                    id: rightPanelSlot
+                    // slot of the right panel (queue, watch sidebar)
+                    Item {
+                        id: rightPanelSlot
 
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: 0
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: 0
 
-                    visible: false
-                }
-            }
-
-            // the control bar: a row below the panels; in the immersive state it takes no room
-            // and floats over the stage instead
-            Item {
-                id: controlBarSlot
-
-                Layout.fillWidth: true
-                Layout.preferredHeight: (shellStates.bottomBarVisible && (shellStates.state !== "immersive")) ? controlBar.implicitHeight
-                                                                                                              : 0
-
-                RedesignControlBar {
-                    id: controlBar
-
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        bottom: parent.bottom
+                        visible: false
                     }
+                }
 
-                    visible: shellStates.bottomBarVisible
+                // the control bar: a row below the panels; in the immersive state it takes no room
+                // and floats over the stage instead
+                Item {
+                    id: controlBarSlot
 
-                    // ShellActions.queueRequested, sidebarRequested and trackPopupRequested are
-                    // connected where their panels are (queue, watch sidebar, track popups)
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: (shellStates.bottomBarVisible && (shellStates.state !== "immersive")) ? controlBar.implicitHeight
+                                                                                                                  : 0
+
+                    RedesignControlBar {
+                        id: controlBar
+
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                        }
+
+                        visible: shellStates.bottomBarVisible
+
+                        // ShellActions.queueRequested, sidebarRequested and trackPopupRequested are
+                        // connected where their panels are (queue, watch sidebar, track popups)
+                    }
                 }
             }
-        }
 
-        TitleBar {
-            id: titleBar
+            TitleBar {
+                id: titleBar
 
-            z: 10
+                z: 10
 
-            anchors {
-                left: parent.left
-                right: parent.right
-                top: parent.top
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                }
+
+                visible: shellStates.topBarVisible
+
+                pageTitle: root.pageTitle
+                libraryPanelOpen: root.libraryPanelOpen
+
+                onLibraryToggleRequested: root.libraryPanelOpen = !root.libraryPanelOpen
+
+                onLibraryRequested: (folderUrl) => {
+                    root.libraryFolderUrl = folderUrl
+                    root.libraryPanelOpen = true
+                }
+
+                // the menu itself comes with the menu task, nothing opens yet
+                onMenuRequested: (globalPos) => {}
             }
-
-            visible: shellStates.topBarVisible
-
-            pageTitle: root.pageTitle
-            libraryPanelOpen: root.libraryPanelOpen
-
-            onLibraryToggleRequested: root.libraryPanelOpen = !root.libraryPanelOpen
-
-            onLibraryRequested: (folderUrl) => {
-                root.libraryFolderUrl = folderUrl
-                root.libraryPanelOpen = true
-            }
-
-            // the menu itself comes with the menu task, nothing opens yet
-            onMenuRequested: (globalPos) => {}
         }
 
         Loader {
