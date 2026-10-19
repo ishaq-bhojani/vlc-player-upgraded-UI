@@ -86,6 +86,8 @@
 #endif
 
 #include "videosurface.hpp"
+#include "redesign/cpp/currentmediafavorite.hpp"
+#include "redesign/cpp/mlfavoritebackend.hpp"
 #include "mainctx.hpp"
 #ifdef _WIN32
 #include "mainctx_win32.hpp"
@@ -496,11 +498,28 @@ void MainUI::registerQMLTypes()
         qmlProtectModule(uri, versionMajor);
     }
 
+    {
+        const char* uri = "VLC.Redesign";
+        const int versionMajor = 1;
+        const int versionMinor = 0;
+
+        // @uri VLC.Redesign
+        qmlRegisterType<CurrentMediaFavorite>(uri, versionMajor, versionMinor, "CurrentMediaFavorite");
+        if (m_mainCtx->hasMediaLibrary())
+            CurrentMediaFavorite::setDefaultBackendFactory([ml = m_mainCtx->getMediaLibrary()] {
+                return std::make_unique<MLFavoriteBackend>(ml);
+            });
+
+        qmlRegisterModule(uri, versionMajor, versionMinor);
+        qmlProtectModule(uri, versionMajor);
+    }
+
     g_qmlTypesAreRegistered = true;
 }
 
 void MainUI::clearQMLTypes()
 {
+    CurrentMediaFavorite::setDefaultBackendFactory({});
     qmlClearTypeRegistrations();
     g_qmlTypesAreRegistered = false;
 }

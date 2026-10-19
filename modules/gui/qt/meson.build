@@ -124,6 +124,7 @@ moc_headers = files(
     'player/player_controlbar_model.hpp',
     'player/control_list_model.hpp',
     'player/control_list_filter.hpp',
+    'redesign/cpp/currentmediafavorite.hpp',
     'playlist/playlist_controller.hpp',
     'playlist/playlist_item.hpp',
     'playlist/playlist_model.hpp',
@@ -201,6 +202,10 @@ qt_plugin_sources = files(
     'qt.hpp',
     'redesign/cpp/redesign.cpp',
     'redesign/cpp/redesign.hpp',
+    'redesign/cpp/currentmediafavorite.cpp',
+    'redesign/cpp/currentmediafavorite.hpp',
+    'redesign/cpp/mlfavoritebackend.cpp',
+    'redesign/cpp/mlfavoritebackend.hpp',
     'redesign/cpp/widgetpalette.cpp',
     'redesign/cpp/widgetpalette.hpp',
     'plugins.hpp',
@@ -971,6 +976,7 @@ qml_modules += {
         'redesign/player/controls/FolderLabelWidget.qml',
         'redesign/player/controls/PlaylistLabelWidget.qml',
         'redesign/player/controls/ReplayButton.qml',
+        'redesign/player/controls/FavoriteButton.qml',
     ),
     'singletons': files(
         'redesign/theme/RedesignStyle.qml',
@@ -1486,6 +1492,25 @@ if qt6_dep.found()
             ),
             'moc_sources': files(
                 'tests/test_redesign_palette.cpp'
+            ),
+            'suite': ['qt'],
+            'include_directories' : qt_include_dir,
+            'link_args': qt_link_args,
+            'dependencies': [qt6_dep, qtest_qt6_dep],
+        }
+
+        vlc_tests += {
+            'name': 'test_qt_current_media_favorite',
+            'sources': files(
+                'tests/test_current_media_favorite.cpp',
+                'redesign/cpp/currentmediafavorite.hpp',
+                'redesign/cpp/currentmediafavorite.cpp'
+            ),
+            'moc_sources': files(
+                'tests/test_current_media_favorite.cpp'
+            ),
+            'moc_headers': files(
+                'redesign/cpp/currentmediafavorite.hpp'
             ),
             'suite': ['qt'],
             'include_directories' : qt_include_dir,
