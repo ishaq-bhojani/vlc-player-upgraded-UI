@@ -166,6 +166,28 @@ private slots:
         QCOMPARE(state.setCalls, 0);
     }
 
+    void streamMrlIsUnavailableWithoutLookup()
+    {
+        FakeState state; // knows the streams on purpose: the scheme alone must rule them out
+        state.media["https://example.com/a.mp4"] = false;
+        state.media["rtsp://example.com/live"] = false;
+        CurrentMediaFavorite fav;
+        fav.setBackend(std::make_unique<FakeBackend>(&state));
+
+        fav.setMrl("https://example.com/a.mp4");
+        QVERIFY(!fav.available());
+        fav.setMrl("rtsp://example.com/live");
+        QVERIFY(!fav.available());
+        QCOMPARE(state.lookupCalls, 0);
+
+        fav.toggle();
+        QCOMPARE(state.setCalls, 0);
+
+        fav.setMrl("FILE:///a.mp4"); // the scheme is case insensitive; not in the library => still unavailable
+        QCOMPARE(state.lookupCalls, 1);
+        QVERIFY(!fav.available());
+    }
+
     void noBackendIsUnavailable()
     {
         CurrentMediaFavorite fav; // no default factory installed

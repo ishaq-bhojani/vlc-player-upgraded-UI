@@ -21,6 +21,8 @@
 
 #include "currentmediafavorite.hpp"
 
+#include <QUrl>
+
 namespace
 {
 CurrentMediaFavorite::BackendFactory& defaultFactory()
@@ -74,6 +76,10 @@ void CurrentMediaFavorite::refresh()
     setState(false, false);
 
     if (!m_backend || m_mrl.isEmpty())
+        return;
+
+    // only local files can be in the library as such; streams (http, rtsp, ...) never are
+    if (QUrl(m_mrl).scheme().compare(QLatin1String("file"), Qt::CaseInsensitive) != 0)
         return;
 
     m_backend->lookup(m_mrl, [this, generation](std::optional<bool> favorite)
