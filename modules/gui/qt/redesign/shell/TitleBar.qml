@@ -58,7 +58,15 @@ FocusScope {
     readonly property bool showCSD: MainCtx.clientSideDecoration
                                     && (MainCtx.intfMainWindow.visibility !== Window.FullScreen)
 
+    // the menu button was reached with the keyboard (it shows its focus ring)
+    readonly property bool menuButtonKeyboardFocus: menuButton.visualFocus
+
     // Functions
+
+    // gives the keyboard focus to the menu button (after its menu closed)
+    function focusMenuButton() {
+        menuButton.forceActiveFocus(Qt.TabFocusReason)
+    }
 
     // the URL of the folder of a file:// URL, "" for any other URL
     function _parentUrl(url: string): string {

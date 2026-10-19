@@ -131,6 +131,7 @@ qml_modules += {
         'shell/Rail.qml',
         'shell/RedesignMenu.qml',
         'shell/RedesignMenuItem.qml',
+        'shell/RedesignMenuSeparator.qml',
         'shell/RedesignInterface.qml',
         'shell/TitleBar.qml',
         'shell/RailModel.qml',

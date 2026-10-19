@@ -21,6 +21,7 @@ import QtQuick.Templates as T
 
 import VLC.MainInterface
 import VLC.Style
+import VLC.Widgets as Widgets
 import VLC.Redesign
 
 /**
@@ -38,6 +39,9 @@ T.MenuItem {
                             implicitContentWidth + leftPadding + rightPadding)
     implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset,
                              implicitContentHeight + topPadding + bottomPadding)
+
+    // an entry that opens a submenu follows it: disabled while the submenu has nothing to offer
+    enabled: subMenu ? subMenu.enabled : true
 
     leftPadding: RedesignStyle.spacingM
     rightPadding: RedesignStyle.spacingM
@@ -78,18 +82,19 @@ T.MenuItem {
             verticalAlignment: Text.AlignVCenter
 
             font.pixelSize: VLCStyle.fontSize_normal
+            // the palette dims it while the entry is disabled
             color: theme.fg.primary
         }
 
         // a submenu
-        Text {
+        Widgets.IconLabel {
             visible: control.subMenu !== null
 
-            text: "›"
-            verticalAlignment: Text.AlignVCenter
+            // points to the end of the line: to the left in a right to left layout
+            text: control.mirrored ? VLCIcons.ic_fluent_chevron_left_24 : VLCIcons.ic_fluent_chevron_right_24
 
-            font.pixelSize: VLCStyle.fontSize_normal
-            color: theme.fg.secondary
+            font.pixelSize: VLCStyle.icon_normal
+            color: control.enabled ? theme.fg.secondary : theme.fg.primary
         }
     }
 }

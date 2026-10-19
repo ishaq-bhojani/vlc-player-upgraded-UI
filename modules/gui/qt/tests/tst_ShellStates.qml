@@ -226,4 +226,33 @@ TestCase {
         shell.uiHidden = false
         compare(shell.bottomBarVisible, true)
     }
+
+    // an open menu keeps the title bar (it opens under its button)
+    function test_keepTopBar() {
+        const shell = createShell({ playerView: true, fullscreen: true })
+        compare(shell.state, "immersive")
+        compare(shell.keepTopBar, false)
+        compare(shell.topBarVisible, false)
+
+        shell.keepTopBar = true
+        compare(shell.topBarVisible, true)
+        // only the top bar
+        compare(shell.bottomBarVisible, false)
+
+        shell.keepTopBar = false
+        compare(shell.topBarVisible, false)
+    }
+
+    // the user hid the interface: nothing keeps the bar
+    function test_keepTopBarNeverWithUiHidden() {
+        const shell = createShell({ playerView: true, fullscreen: true, keepTopBar: true })
+        compare(shell.topBarVisible, true)
+        shell.uiHidden = true
+        compare(shell.topBarVisible, false)
+
+        shell.uiHidden = false
+        compare(shell.topBarVisible, true)
+        shell.keepTopBar = false
+        compare(shell.topBarVisible, false)
+    }
 }

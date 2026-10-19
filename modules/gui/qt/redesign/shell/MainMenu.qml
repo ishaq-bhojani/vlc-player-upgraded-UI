@@ -17,7 +17,6 @@
  *****************************************************************************/
 import QtQuick
 import QtQml
-import QtQuick.Templates as T
 
 import VLC.MainInterface
 import VLC.Style
@@ -36,22 +35,29 @@ import VLC.Redesign
  *   Keyboard shortcuts, Settings, Help >  (Help, About, Messages)
  *
  * Each entry opens the dialog of VLC (DialogsProvider), the same one as the matching entry of the
- * classic menu. The recent media come from the media library (see MainMenuRecent.qml), without a
- * media library the entry is disabled and says so.
- *
- * The menu closes when the window loses the focus (see `openAtGlobal` for opening it), and before
- * an entry opens its dialog, so it never stays over it.
+ * classic menu. The recent media come from the media library (see MainMenuRecent.qml). As in the
+ * classic menu, the entry is there only with a media library and with the "save-recentplay"
+ * setting on, which is read each time the menu opens (see `openAtGlobal`). The menu closes when
+ * the window loses the focus, and before an entry opens its dialog, so it never stays over it.
  */
 RedesignMenu {
     id: root
 
     // Properties
 
+    accessibleName: qsTr("Main menu")
+
+    // whether the setting "save-recentplay" is on, read when the menu opens
+    property bool recentSetting: true
+
+    // the entry of the recent media is shown
+    readonly property bool recentAvailable: MainCtx.mediaLibraryAvailable && recentSetting
+
     // the recent media: loaded only with a media library, by name, because the file names types
     // that are not registered without one (see the comment of MainMenuRecent.qml). It is a property
     // and not a child because an item child of a menu is an entry of it.
     readonly property Loader recentSource: Loader {
-        active: MainCtx.mediaLibraryAvailable
+        active: root.recentAvailable
 
         source: "MainMenuRecent.qml"
     }
@@ -63,6 +69,11 @@ RedesignMenu {
 
     // Opens the menu where the point (in global coordinates) is, e.g. under the menu button.
     function openAtGlobal(globalPos) {
+        // a change of the setting while the menu was closed is honoured
+        const setting = RedesignSettings.item("save-recentplay")
+        root.recentSetting = setting ? !!setting.value : true
+        _syncRecentEntry()
+
         const pos = (parent ? parent.mapFromGlobal(globalPos.x, globalPos.y) : globalPos)
         popup(pos.x, pos.y)
     }
@@ -73,7 +84,30 @@ RedesignMenu {
         Qt.callLater(action)
     }
 
-    // Settings
+    // The entry of the recent media is a menu that is taken out of this one when it is not
+    // available, and put back where it was.
+    property int _recentIndex: -1
+
+    function _syncRecentEntry() {
+        let at = -1
+        for (let i = 0; i < count; ++i) {
+            if (itemAt(i).subMenu === recentMenu) {
+                at = i
+                break
+            }
+        }
+
+        if (recentAvailable && at < 0 && _recentIndex >= 0) {
+            insertMenu(_recentIndex, recentMenu)
+        } else if (!recentAvailable && at >= 0) {
+            _recentIndex = at
+            takeMenu(at)
+        }
+    }
+
+    onRecentAvailableChanged: _syncRecentEntry()
+
+    Component.onCompleted: _syncRecentEntry()
 
     // Events
 
@@ -96,32 +130,15 @@ RedesignMenu {
 
             text: MediaText.titleText(model.title, model.fileName, model.mrl)
 
-            onTriggered: root._launch(() => root.recentSource.item.play(model.id))
+            onTriggered: {
+                // the id before the menu closes: the model may change under it
+                const mediaId = model.id
+                root._launch(() => root.recentSource.item?.play(mediaId))
+            }
         }
 
         onObjectAdded: (index, object) => recentMenu.insertItem(index, object)
         onObjectRemoved: (index, object) => recentMenu.removeItem(object)
-    }
-
-    component Separator: T.MenuSeparator {
-        implicitWidth: contentItem.implicitWidth
-        implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding
-
-        topPadding: RedesignStyle.spacingXS
-        bottomPadding: RedesignStyle.spacingXS
-
-        readonly property ColorContext colorContext: ColorContext {
-            id: separatorTheme
-
-            palette: VLCStyle.palette
-            colorSet: ColorContext.MenuBar
-        }
-
-        contentItem: Rectangle {
-            implicitHeight: 1
-
-            color: separatorTheme.separator
-        }
     }
 
     // Children
@@ -161,18 +178,17 @@ RedesignMenu {
     RedesignMenu {
         id: recentMenu
 
-        title: MainCtx.mediaLibraryAvailable ? qsTr("Recent media")
-                                             : qsTr("Recent media (media library is off)")
+        title: qsTr("Recent media")
 
-        // nothing to open: no media library, or an empty history
+        // nothing to open (yet, or any more): the entry is dimmed (RedesignMenuItem follows it)
         enabled: root.recentCount > 0
 
-        Separator {}
+        RedesignMenuSeparator {}
 
         RedesignMenuItem {
             text: qsTr("Clear")
 
-            onTriggered: root.recentSource.item.clear()
+            onTriggered: root.recentSource.item?.clear()
         }
     }
 
@@ -188,7 +204,7 @@ RedesignMenu {
         onTriggered: root._launch(() => DialogsProvider.openAndStreamingDialogs())
     }
 
-    Separator {}
+    RedesignMenuSeparator {}
 
     RedesignMenuItem {
         text: qsTr("Keyboard shortcuts")

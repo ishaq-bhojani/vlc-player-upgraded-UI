@@ -33,15 +33,27 @@ import VLC.Redesign
 T.Menu {
     id: control
 
+    // Properties
+
+    // the name of the menu for the assistive technologies, the title of a submenu by default
+    property string accessibleName: title
+
+    // the room of the popup: the height of the window, less the margins that keep it inside
+    readonly property real _maxHeight: (contentItem && contentItem.Window.window)
+                                       ? (contentItem.Window.window.height - topMargin - bottomMargin)
+                                       : Number.POSITIVE_INFINITY
+
     // Settings
 
-    margins: 0
+    margins: RedesignStyle.spacingS
     padding: RedesignStyle.spacingXS
 
     implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset,
                             contentWidth + leftPadding + rightPadding)
-    implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset,
-                             contentHeight + topPadding + bottomPadding)
+    // a menu taller than the window scrolls
+    implicitHeight: Math.min(Math.max(implicitBackgroundHeight + topInset + bottomInset,
+                                      contentHeight + topPadding + bottomPadding),
+                             _maxHeight)
 
     // used for the entries made from a model, and for the entry of a submenu
     delegate: RedesignMenuItem {}
@@ -60,9 +72,11 @@ T.Menu {
 
         model: control.contentModel
         currentIndex: control.currentIndex
-        interactive: Window.window ? ((contentHeight + control.topPadding + control.bottomPadding) > Window.window.height)
-                                   : false
+        interactive: contentHeight > height
         clip: true
+
+        Accessible.role: Accessible.PopupMenu
+        Accessible.name: control.accessibleName
     }
 
     background: Rectangle {

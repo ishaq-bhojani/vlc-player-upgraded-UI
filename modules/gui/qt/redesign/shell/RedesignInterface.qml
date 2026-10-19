@@ -207,6 +207,33 @@ Item {
             root.browsePanelOpen = !root.browsePanelOpen
     }
 
+    // the main menu was opened from the keyboard (with the menu button focused)
+    property bool _menuFromKeyboard: false
+
+    // Where the keyboard goes when the main menu closed: back to the menu button if it was opened from
+    // it with the keyboard, else where the state wants it. Not when the window lost the focus (the
+    // menu launched a dialog) or when something else took the focus meanwhile.
+    function _restoreFocusAfterMenu() {
+        const win = MainCtx.intfMainWindow
+        if (!win.active)
+            return
+
+        // nothing has the focus, or it is in a popup (the menu, a submenu: they live in the overlay)
+        const focused = win.activeFocusItem
+        if (focused && (focused !== win.contentItem)) {
+            let inPopup = false
+            for (let item = focused; item && !inPopup; item = item.parent)
+                inPopup = (item.parent === root.Overlay.overlay)
+            if (!inPopup)
+                return
+        }
+
+        if (root._menuFromKeyboard && titleBar.visible)
+            titleBar.focusMenuButton()
+        else
+            root._focusState()
+    }
+
     // shows the bars of the immersive state for a moment
     function _showBars() {
         shellStates.recentKeyActivity = true
@@ -272,6 +299,8 @@ Item {
         pointerNearBottom: pointer.hovered && !Player.isInteractive && (pointer.point.position.y > (root.height - MainCtx.dp(80)))
         // the track popup is placed above a button of the bottom bar: the bar stays while it is open
         keepBottomBar: trackPopup.opened
+        // the main menu opens under the menu button of the title bar: the bar stays while it is open
+        keepTopBar: mainMenu.opened
     }
 
     HoverHandler {
@@ -821,18 +850,22 @@ Item {
                     libraryPanel.openAt(folderUrl)
                 }
 
-                onMenuRequested: (globalPos) => mainMenu.openAtGlobal(globalPos)
+                onMenuRequested: (globalPos) => {
+                    // opened with the keyboard: the focus goes back to the button when it closes
+                    root._menuFromKeyboard = titleBar.menuButtonKeyboardFocus
+                    mainMenu.openAtGlobal(globalPos)
+                }
             }
 
             // --- Menus (host lines of the menus; the main menu opened by the title bar) ---
 
             // The main menu, in place of the menu bar of the classic interface. It closes when the shell
-            // changes state (a menu does not follow the bars it was opened from), and the keyboard goes
-            // back to where the state wants it.
+            // changes state (a menu does not follow the bars it was opened from). It keeps the title bar
+            // while it is open (shellStates.keepTopBar), and the keyboard goes back to where it was.
             MainMenu {
                 id: mainMenu
 
-                onClosed: Qt.callLater(root._focusState)
+                onClosed: Qt.callLater(root._restoreFocusAfterMenu)
             }
 
             Connections {
