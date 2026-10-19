@@ -32,7 +32,7 @@ GridView {
     clip: true
 
     T.ScrollBar.vertical: Widgets.ScrollBarExt { }
-    model: PlayerControlbarControls.controlList.length
+    model: PlayerControlbarControls.editorControlList.length
 
     currentIndex: -1
     highlightFollowsCurrentItem: false
@@ -150,7 +150,7 @@ GridView {
 
         drag.smoothed: false
 
-        readonly property int mIndex: PlayerControlbarControls.controlList[model.index].id
+        readonly property int mIndex: PlayerControlbarControls.editorControlList[model.index].id
 
         readonly property ColorContext colorContext: ColorContext {
             colorSet: ColorContext.Item
@@ -160,7 +160,7 @@ GridView {
             if (drag.active) {
                 root.controlDragStarted(mIndex)
 
-                buttonDragItem.text = PlayerControlbarControls.controlList[model.index].label
+                buttonDragItem.text = PlayerControlbarControls.editorControlList[model.index].label
                 buttonDragItem.Drag.source = this
                 buttonDragItem.Drag.start()
 
@@ -203,7 +203,7 @@ GridView {
                     Layout.alignment: Qt.AlignHCenter
 
                     color: colorContext.fg.primary
-                    text: PlayerControlbarControls.controlList[model.index].label
+                    text: PlayerControlbarControls.editorControlList[model.index].label
                 }
 
                 Widgets.ListSubtitleLabel {
@@ -213,7 +213,7 @@ GridView {
                     color: colorContext.fg.secondary
                     elide: Text.ElideNone
                     fontSizeMode: Text.Fit
-                    text: PlayerControlbarControls.controlList[model.index].text
+                    text: PlayerControlbarControls.editorControlList[model.index].text
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
                 }

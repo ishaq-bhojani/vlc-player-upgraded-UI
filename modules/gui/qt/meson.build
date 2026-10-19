@@ -975,12 +975,14 @@ qml_modules += {
     'singletons': files(
         'redesign/theme/RedesignStyle.qml',
         'redesign/util/MediaText.qml',
+        'redesign/util/ReplayLogic.qml',
     ),
 }
 
 qml_tests = {
     'tst_FSM': files('tests/tst_FSM.qml'),
     'tst_MediaText': files('tests/tst_MediaText.qml'),
+    'tst_ReplayLogic': files('tests/tst_ReplayLogic.qml'),
 }
 
 qmllibs = []

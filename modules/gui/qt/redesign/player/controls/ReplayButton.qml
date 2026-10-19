@@ -25,14 +25,30 @@ import VLC.Util
 
 // Restarts the current media from the beginning and makes sure it plays.
 Widgets.IconToolButton {
-    enabled: Player.isStarted
+    // also usable once playback has ended: the player is not started then, but the playlist
+    // still has a current item
+    enabled: Player.isStarted || (!MainPlaylistController.empty && MainPlaylistController.currentIndex >= 0)
 
     text: VLCIcons.history // stands in for rd_replay
     description: qsTr("Replay")
 
     onClicked: {
-        Player.jumpToPos(0.0)
-        MainPlaylistController.play()
+        // MainPlaylistController.play() does nothing while the player is started (paused
+        // included), so a started player is rewound and resumed explicitly. A player that is
+        // not started (stopped, or playback ended) restarts the current media from the beginning.
+        switch (ReplayLogic.replayAction(Player.isStarted,
+                                         Player.playingState === Player.PLAYING_STATE_PAUSED)) {
+        case "seekResume":
+            Player.jumpToPos(0.0)
+            MainPlaylistController.togglePlayPause()
+            break
+        case "seek":
+            Player.jumpToPos(0.0)
+            break
+        case "start":
+            MainPlaylistController.play()
+            break
+        }
     }
 
     AccessibleCompat.id: "replayButton"

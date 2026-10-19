@@ -72,13 +72,17 @@ QtObject {
         { id: ControlListModel.ARTWORK_INFO, file: "ArtworkInfoWidget.qml", label: VLCIcons.info, text: qsTr("Artwork Info") },
         { id: ControlListModel.PLAYBACK_SPEED_BUTTON, file: "PlaybackSpeedButton.qml", label: "1x", text: qsTr("Playback Speed") },
         { id: ControlListModel.HIGH_RESOLUTION_TIME_WIDGET, file: "HighResolutionTimeWidget.qml", label: VLCIcons.time, text: qsTr("High Resolution Time") },
-        { id: ControlListModel.REDESIGN_DIVIDER, source: redesignPath + "DividerWidget.qml", label: VLCIcons.space, text: qsTr("Divider") },
-        { id: ControlListModel.REDESIGN_TITLE_LABEL, source: redesignPath + "TitleLabelWidget.qml", label: VLCIcons.info, text: qsTr("Title") },
-        { id: ControlListModel.REDESIGN_ARTIST_LABEL, source: redesignPath + "ArtistLabelWidget.qml", label: VLCIcons.profile_new, text: qsTr("Artist") },
-        { id: ControlListModel.REDESIGN_FOLDER_LABEL, source: redesignPath + "FolderLabelWidget.qml", label: VLCIcons.ic_fluent_folder_open_24_regular, text: qsTr("Folder") },
-        { id: ControlListModel.REDESIGN_PLAYLIST_LABEL, source: redesignPath + "PlaylistLabelWidget.qml", label: VLCIcons.playlist, text: qsTr("Play Queue Position") },
-        { id: ControlListModel.REDESIGN_REPLAY_BUTTON, source: redesignPath + "ReplayButton.qml", label: VLCIcons.history, text: qsTr("Replay") }
+        { id: ControlListModel.REDESIGN_DIVIDER, source: redesignPath + "DividerWidget.qml", label: VLCIcons.space, text: qsTr("Divider"), redesign: true },
+        { id: ControlListModel.REDESIGN_TITLE_LABEL, source: redesignPath + "TitleLabelWidget.qml", label: VLCIcons.info, text: qsTr("Title"), redesign: true },
+        { id: ControlListModel.REDESIGN_ARTIST_LABEL, source: redesignPath + "ArtistLabelWidget.qml", label: VLCIcons.profile_new, text: qsTr("Artist"), redesign: true },
+        { id: ControlListModel.REDESIGN_FOLDER_LABEL, source: redesignPath + "FolderLabelWidget.qml", label: VLCIcons.ic_fluent_folder_open_24_regular, text: qsTr("Folder"), redesign: true },
+        { id: ControlListModel.REDESIGN_PLAYLIST_LABEL, source: redesignPath + "PlaylistLabelWidget.qml", label: VLCIcons.playlist, text: qsTr("Play Queue Position"), redesign: true },
+        { id: ControlListModel.REDESIGN_REPLAY_BUTTON, source: redesignPath + "ReplayButton.qml", label: VLCIcons.history, text: qsTr("Replay"), redesign: true }
     ]
+
+    // the Customize Player palette: entries of the redesign only show up with qt-redesign (saved
+    // profiles that contain them still render through control())
+    readonly property var editorControlList: controlList.filter(function(e) { return !e.redesign || MainCtx.redesign })
 
     function control(id) {
         const entry = controlList.find( function(e) { return ( e.id === id ) } )
