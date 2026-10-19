@@ -959,7 +959,6 @@ FocusScope {
         pinControls: MainCtx.pinVideoControls
 
         showCSD: MainCtx.clientSideDecoration && (MainCtx.intfMainWindow.visibility !== Window.FullScreen)
-                 && !MainCtx.redesign // the redesign title bar has the window buttons
         showToolbar: MainCtx.hasToolbarMenu && (MainCtx.intfMainWindow.visibility !== Window.FullScreen)
         playlistVisible: playlistVisibility.isPlaylistVisible
 

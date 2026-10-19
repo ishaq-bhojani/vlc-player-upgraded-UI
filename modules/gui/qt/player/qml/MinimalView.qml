@@ -30,7 +30,6 @@ FocusScope {
     property bool _showCSD: MainCtx.clientSideDecoration
                             && (MainCtx.intfMainWindow.visibility !== Window.FullScreen)
                             && (!MainCtx.hasEmbededVideo || _csdOnVideo)
-                            && !MainCtx.redesign // the redesign title bar has the window buttons
     property bool _csdOnVideo: true
 
     readonly property ColorContext colorContext: ColorContext {

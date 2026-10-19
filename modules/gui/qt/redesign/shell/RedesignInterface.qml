@@ -44,29 +44,29 @@ import VLC.Redesign
  * instead of MainInterface.qml (see redesign::rootQmlUrl).
  *
  *   TitleBar
- *   Rail | library panel | Stage | right panel
+ *   Rail | LibraryPanel | Stage | right panel
  *   control bar
  *
- * ShellStates selects what is shown (browse, watch or immersive). The Stage still hosts
- * the pages of the stock interface (MainDisplay, Player, MinimalView) that bring their own
- * dialogs, control bar and panels, it is replaced by the redesign views later. The
- * library panel, right panel and control bar are slots without content for now.
+ * ShellStates selects what is shown (browse, watch or immersive): the Stage shows the video in
+ * watch and immersive, the page of the library in browse; the LibraryPanel is a header strip in
+ * browse and a drawer beside the video in watch (an overlay when the video can not be placed
+ * around it); the MiniPlayerCard shows the playing media over the library in browse. The page
+ * of the library is one item that moves between the panel and the Stage. The right panel is a
+ * slot without content for now.
  *
- * Besides the layout, the root provides what MainInterface.qml provides to its pages: the
- * window background, the interface metrics, the tooltips, the detached play queue window,
- * the global shortcuts, drag and drop of media, the two-finger swipe back, and the resize and
- * shadow of a window with client side decorations. The pages find `playlistWindowLoader` of this file by id.
+ * Besides the layout, the root provides what MainInterface.qml and MainDisplay.qml provide to
+ * their pages: the window background, the interface metrics, the tooltips, the detached play
+ * queue window, the dialogs, the notifications, the global shortcuts, the hotkeys, drag and drop
+ * of media, the two-finger swipe back, the history navigation of the pages and the resize and
+ * shadow of a window with client side decorations.
  */
 Item {
     id: root
 
     // Properties
 
-    // whether the library panel is requested (browse: docked beside the stage)
+    // whether the library panel is requested (browse: the header strip, watch: docked or overlay)
     property bool libraryPanelOpen: true
-
-    // the folder the library was last asked to show (file:// URL), for the library panel
-    property string libraryFolderUrl
 
     // title shown while no media with a folder is playing: the label of the current rail entry
     readonly property string pageTitle: {
@@ -86,6 +86,32 @@ Item {
     // pages of the media library, they only exist with a media library
     readonly property var _mediaLibraryPages: ["home", "video", "music"]
 
+    // The pages of the library, same entries as MainDisplay.qml (without the settings of the
+    // media library folders). Home is the redesign page, it reads History.viewPath itself to
+    // switch to the whole history ("recent"); without a media library it is the stock page.
+    readonly property var pageModel: [
+        {
+            name: "home",
+            component: MainCtx.mediaLibraryAvailable ? homePage : null,
+            url: "qrc:///qt/qml/VLC/MainInterface/NoMedialibHome.qml"
+        }, {
+            name: "video",
+            url: "qrc:///qt/qml/VLC/MediaLibrary/VideoDisplay.qml"
+        }, {
+            name: "music",
+            url: "qrc:///qt/qml/VLC/MediaLibrary/MusicDisplay.qml"
+        }, {
+            name: "network",
+            url: "qrc:///qt/qml/VLC/Network/BrowseDisplay.qml"
+        }, {
+            name: "discover",
+            url: "qrc:///qt/qml/VLC/Network/DiscoverDisplay.qml"
+        }
+    ]
+
+    // the library panel is not shown beside the video: it is an overlay, a click outside closes it
+    readonly property bool _panelIsOverlay: shellStates.panelMode === "overlay"
+
     // Settings
 
     Accessible.role: Accessible.Client
@@ -94,36 +120,62 @@ Item {
 
     // Functions
 
+    // Loads the page of History (the navigation of the pages: MainDisplay does the same).
+    function loadCurrentHistoryView(focusReason) {
+        libraryPages.loadView(History.viewPath, History.viewProp, focusReason)
+        contextSaver.restore(History.viewPath)
+    }
+
     // Shows the page of the rail the interface starts on, when History has none (or one that
-    // needs the media library, which is not available). Called when the pages are loaded,
-    // as MainDisplay sets "home" on its own first load.
+    // needs the media library, which is not available).
     function _showStartPage() {
         const path = History.viewPath
         const needsLibrary = path.length > 0 && _mediaLibraryPages.includes(path[0])
-        if (path.length > 0 && !(needsLibrary && !MainCtx.mediaLibraryAvailable))
-            return
-
-        const start = rail.model.defaultPath()
-        const page = stageLoader.item
-        if (History.previousEmpty && page && (typeof page.loadCurrentHistoryView === "function")) {
+        if (path.length === 0 || (needsLibrary && !MainCtx.mediaLibraryAvailable)) {
             // nothing to go back to: replace the page instead of stacking one on it
-            History.update(start)
-            page.loadCurrentHistoryView(Qt.OtherFocusReason)
-        } else {
-            History.push(start)
+            if (History.previousEmpty)
+                History.update(rail.model.defaultPath())
+            else
+                History.push(rail.model.defaultPath())
         }
+        loadCurrentHistoryView(Qt.OtherFocusReason)
+    }
+
+    // gives the keyboard to the part of the window the state is about
+    function _focusState() {
+        if (shellStates.state === "browse")
+            libraryHost.forceActiveFocus()
+        else
+            stage.forceActiveFocus()
     }
 
     // Events
 
-    Component.onCompleted: Qt.callLater(_showStartPage)
+    Component.onCompleted: {
+        _showStartPage()
+        Qt.callLater(_focusState)
+    }
 
-    // key presses show the bars of the immersive state
+    // The keys no item took: the search shortcut, else a hotkey. The video does not take the keyboard
+    // focus, so in the watch and immersive states every key ends up here, which also keeps the bars of
+    // the immersive state up while the keyboard is used. (The window does not turn the keys into
+    // hotkeys by itself: that is MainCtx.preferHotkeys, which stays off.)
     Keys.onPressed: (event) => {
         shellStates.recentKeyActivity = true
         keyActivityTimer.restart()
-        // only observed here
-        event.accepted = false
+
+        if ((event.key === Qt.Key_Escape) && root._panelIsOverlay) {
+            // the overlay closes first
+            root.libraryPanelOpen = false
+        } else if (KeyHelper.matchSearch(event)) {
+            MainCtx.search.askShow()
+        } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+            event.accepted = false
+            return
+        } else {
+            MainCtx.sendHotkey(event.key, event.modifiers)
+        }
+        event.accepted = true
     }
 
     Timer {
@@ -153,6 +205,66 @@ Item {
 
     HoverHandler {
         id: pointer
+    }
+
+    // remembers the sort of each page
+    ModelSortSettingHandler {
+        id: contextSaver
+    }
+
+    Connections {
+        target: MainCtx.sort
+
+        function onCriteriaChanged(criteria) {
+            contextSaver.save(History.viewPath)
+        }
+
+        function onOrderChanged(order) {
+            contextSaver.save(History.viewPath)
+        }
+    }
+
+    Connections {
+        target: History
+
+        function onNavigate(focusReason) {
+            root.loadCurrentHistoryView(focusReason)
+
+            // a page asked for while watching is shown beside the video
+            if (shellStates.state === "watch")
+                root.libraryPanelOpen = true
+        }
+    }
+
+    Connections {
+        target: shellStates
+
+        function onStateChanged() {
+            // Without a way to place the video around the library (see ShellStates.miniPlayerShowsVideo)
+            // the video would have no surface in the browse state: it stops, like the stock interface does
+            if ((shellStates.state === "browse") && !MainCtx.canShowVideoPIP && MainCtx.hasEmbededVideo)
+                MainPlaylistController.stop()
+
+            root._focusState()
+        }
+
+        function onPanelModeChanged() {
+            if (root._panelIsOverlay)
+                libraryHost.forceActiveFocus()
+        }
+    }
+
+    Component {
+        id: homePage
+
+        HomePage {
+            // The page reads History.viewPath itself ("home", "recent"): there is nothing to load
+            // for a sub path, the loader only has to focus it.
+            function loadView(path, properties, focusReason) {
+                if (focusReason !== Qt.OtherFocusReason)
+                    setCurrentItemFocus(focusReason)
+            }
+        }
     }
 
     Item {
@@ -344,7 +456,7 @@ Item {
             }
         }
 
-        // the play queue in its own window, the pages use it to find the list for drag and drop
+        // the play queue in its own window (when it is not docked)
         Loader {
             id: playlistWindowLoader
 
@@ -360,6 +472,12 @@ Item {
                 if (Player.playingState === Player.PLAYING_STATE_STOPPED) {
                     MainCtx.playerView = false
                 }
+            }
+
+            function onHasVideoOutputChanged() {
+                // a video starts: show it
+                if (Player.hasVideoOutput && MainCtx.hasEmbededVideo)
+                    MainCtx.playerView = true
             }
         }
 
@@ -454,45 +572,116 @@ Item {
                         visible: shellStates.state !== "immersive"
                     }
 
-                    // slot of the library panel (resizable drawer beside the stage)
+                    // the library panel, the stage and the mini player card
                     Item {
-                        id: libraryPanelSlot
-
-                        Layout.fillHeight: true
-                        Layout.preferredWidth: 0
-
-                        visible: shellStates.panelMode === "docked"
-                    }
-
-                    // the stage: for now the pages of the stock interface
-                    Item {
-                        id: stage
+                        id: body
 
                         Layout.fillWidth: true
                         Layout.fillHeight: true
 
-                        Loader {
-                            id: stageLoader
+                        Stage {
+                            id: stage
 
-                            anchors.fill: parent
+                            anchors {
+                                left: (libraryPanel.mode === "docked") ? libraryPanel.right : parent.left
+                                top: (libraryPanel.mode === "strip") ? libraryPanel.bottom : parent.top
+                                right: parent.right
+                                bottom: parent.bottom
+                            }
 
-                            focus: true
+                            shellState: shellStates.state
+                        }
 
-                            source: {
-                                // priority applies accross modes
-                                // minimal > player > medialib
-                                // MEDIALIB_MODE flag should always be set
+                        // the library over the video: a click outside of the panel closes it
+                        MouseArea {
+                            anchors.fill: stage
 
-                                switch (MainCtx.effectiveMainInterfaceMode) {
-                                case MainCtx.MAININTERFACE_MODE_MINIMAL:
-                                    return "qrc:///qt/qml/VLC/Player/MinimalView.qml"
-                                case MainCtx.MAININTERFACE_MODE_PLAYER:
-                                    return "qrc:///qt/qml/VLC/Player/Player.qml"
-                                default:
-                                    console.error("unexpected interface mode", MainCtx.effectiveMainInterfaceMode)
-                                case MainCtx.MAININTERFACE_MODE_MAINDISPLAY:
-                                    return "qrc:///qt/qml/VLC/MainInterface/MainDisplay.qml"
-                                }
+                            z: 1
+
+                            visible: root._panelIsOverlay
+
+                            onClicked: root.libraryPanelOpen = false
+
+                            ColorContext {
+                                id: scrimTheme
+
+                                colorSet: ColorContext.Window
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+
+                                color: scrimTheme.bg.primary
+                                opacity: 0.6
+                            }
+                        }
+
+                        LibraryPanel {
+                            id: libraryPanel
+
+                            z: 2
+
+                            anchors {
+                                left: parent.left
+                                top: parent.top
+                            }
+
+                            height: strip ? implicitHeight : parent.height
+
+                            mode: (shellStates.panelMode === "hidden") ? "hidden"
+                                                                       : (shellStates.state === "browse") ? "strip"
+                                                                                                          : shellStates.panelMode
+                            title: root.pageTitle
+
+                            onBrowseRequested: MainCtx.playerView = false
+                        }
+
+                        // The pages of the library. It is one item: the panel shows it beside the video,
+                        // the stage in the browse state, the pages keep their state when it moves.
+                        FocusScope {
+                            id: libraryHost
+
+                            parent: (shellStates.state === "browse") ? stage.pageSlot : libraryPanel.body
+                            // (no anchors: they would point to the old parent while it changes)
+                            width: parent.width
+                            height: parent.height
+
+                            Navigation.cancelAction: function() {
+                                if (root._panelIsOverlay)
+                                    root.libraryPanelOpen = false
+                                else if (shellStates.state === "browse")
+                                    History.previous(Qt.BacktabFocusReason)
+                                else
+                                    stage.forceActiveFocus()
+                            }
+
+                            Widgets.PageLoader {
+                                id: libraryPages
+
+                                anchors.fill: parent
+
+                                focus: true
+
+                                pageModel: root.pageModel
+
+                                Navigation.parentItem: libraryHost
+                            }
+                        }
+
+                        Item {
+                            id: cardArea
+
+                            anchors.fill: stage
+
+                            z: 3
+
+                            MiniPlayerCard {
+                                visible: (shellStates.state === "browse")
+                                         && (Player.playingState !== Player.PLAYING_STATE_STOPPED)
+
+                                showsVideo: shellStates.miniPlayerShowsVideo
+
+                                onActivated: MainCtx.playerView = true
                             }
                         }
                     }
@@ -553,12 +742,52 @@ Item {
                 onLibraryToggleRequested: root.libraryPanelOpen = !root.libraryPanelOpen
 
                 onLibraryRequested: (folderUrl) => {
-                    root.libraryFolderUrl = folderUrl
                     root.libraryPanelOpen = true
+                    libraryPanel.openAt(folderUrl)
                 }
 
                 // the menu itself comes with the menu task, nothing opens yet
                 onMenuRequested: (globalPos) => {}
+            }
+
+            // The stock control-bar control LangButton (a profile may contain it) opens its tracks menu in
+            // the item with this id (`rootPlayer` in the stock player), above `positionSliderY`.
+            Item {
+                id: g_mainDisplay
+
+                readonly property real positionSliderY: content.height - controlBar.height
+
+                anchors.fill: parent
+                enabled: false
+            }
+
+            // The dialogs of VLC (questions, login, progress, errors): there must be one instance
+            // (it provides the models of the dialogs to the core), above the control bar.
+            Dialogs {
+                z: 20
+
+                bgContent: shell
+
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                    bottom: parent.bottom
+                    bottomMargin: controlBarSlot.height
+                }
+            }
+
+            Widgets.FloatingNotification {
+                z: 21
+
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                    bottomMargin: controlBarSlot.height + VLCStyle.margin_large
+                    leftMargin: VLCStyle.margin_large
+                    rightMargin: VLCStyle.margin_large
+                }
             }
         }
 
