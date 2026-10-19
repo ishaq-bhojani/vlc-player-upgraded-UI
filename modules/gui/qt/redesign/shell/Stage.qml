@@ -206,8 +206,8 @@ FocusScope {
         onClicked: root.showBarsRequested()
     }
 
-    // The music view: the artwork of the playing media and its title. The full music view
-    // (large cover, lyrics) replaces it.
+    // The music view (player/MusicView.qml): shown while the media is shown (watch, immersive)
+    // and has no video.
     Loader {
         id: musicLoader
 
@@ -215,51 +215,6 @@ FocusScope {
 
         active: root.showsMedia && !MainCtx.hasEmbededVideo
 
-        sourceComponent: Item {
-            Rectangle {
-                anchors.fill: parent
-
-                color: theme.bg.primary
-            }
-
-            ColumnLayout {
-                anchors.centerIn: parent
-
-                width: Math.min(parent.width - 2 * RedesignStyle.spacingXL, VLCStyle.dp(480, VLCStyle.scale))
-                spacing: RedesignStyle.spacingL
-
-                Image {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: Math.min(parent.width, root.height / 2)
-                    Layout.preferredHeight: Layout.preferredWidth
-
-                    asynchronous: true
-                    fillMode: Image.PreserveAspectCrop
-                    source: (Player.artwork && Player.artwork.toString()) ? Player.artwork
-                                                                          : VLCStyle.noArtAlbumCover
-                    sourceSize: Qt.size(width * 2, height * 2)
-                }
-
-                Text {
-                    Layout.fillWidth: true
-
-                    horizontalAlignment: Text.AlignHCenter
-                    elide: Text.ElideRight
-                    text: Player.title
-                    font.pixelSize: VLCStyle.fontSize_xlarge
-                    color: theme.fg.primary
-                }
-
-                Text {
-                    Layout.fillWidth: true
-
-                    horizontalAlignment: Text.AlignHCenter
-                    elide: Text.ElideRight
-                    text: Player.artist
-                    font.pixelSize: VLCStyle.fontSize_large
-                    color: theme.fg.secondary
-                }
-            }
-        }
+        sourceComponent: MusicView {}
     }
 }

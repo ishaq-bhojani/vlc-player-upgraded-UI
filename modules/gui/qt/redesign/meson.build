@@ -107,6 +107,7 @@ qml_modules += {
         'util/OnceLatch.qml',
         'player/MiniPlayerCard.qml',
         'player/RedesignControlBar.qml',
+        'player/MusicView.qml',
         'player/ResumePrompt.qml',
         'shell/LibraryPanel.qml',
         'shell/Rail.qml',
