@@ -193,8 +193,9 @@ T.Pane {
                 layer.samples: 4
 
                 readonly property int columnCount: Math.max(1, Math.round(width))
-                readonly property real columnWidth: width / columnCount
                 readonly property var columns: ConeMath.silhouetteColumns(width, height, columnCount)
+                // from the same array the delegates index, so the two can never disagree
+                readonly property real columnWidth: width / Math.max(1, columns.length)
 
                 readonly property real volumeX: width * Math.min(root._volume / root._maxVolume, 1)
                 readonly property real fullX: width * root._fullPosition
@@ -218,7 +219,7 @@ T.Pane {
                 }
 
                 Repeater {
-                    model: coneBody.columnCount
+                    model: coneBody.columns.length
 
                     delegate: Rectangle {
                         required property int index
