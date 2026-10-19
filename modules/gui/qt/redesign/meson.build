@@ -57,6 +57,7 @@ qml_modules += {
         'player/controls/PlaylistLabelWidget.qml',
         'player/controls/ReplayButton.qml',
         'player/controls/FavoriteButton.qml',
+        'shell/ShellStates.qml',
     ),
     'singletons': files(
         'theme/RedesignStyle.qml',
@@ -68,4 +69,5 @@ qml_modules += {
 qml_tests += {
     'tst_MediaText': files('../tests/tst_MediaText.qml'),
     'tst_ReplayLogic': files('../tests/tst_ReplayLogic.qml'),
+    'tst_ShellStates': files('../tests/tst_ShellStates.qml'),
 }
