@@ -171,7 +171,6 @@ private:
     void makeLightPalette();
     void makeDarkPalette();
     void makeSystemPalette();
-    void makeRedesignPalette(bool dark);
 
 private:
     MainCtx* m_ctx = nullptr;
@@ -180,7 +179,7 @@ private:
     bool m_isDark = false;
     bool m_hasCSDImage = false;
     bool m_redesign = false;
-    bool m_providerColors = false; // the colours come from a theme provider
+    bool m_providerColors = false; // colours come from a theme provider (High Contrast...)
 
     std::unique_ptr<ExternalPaletteImpl> m_palettePriv;
 

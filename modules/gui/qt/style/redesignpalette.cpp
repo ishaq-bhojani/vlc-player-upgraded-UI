@@ -25,6 +25,9 @@
 #include <array>
 #include <cmath>
 
+#include <QGuiApplication>
+#include <QPalette>
+
 namespace redesign
 {
 
@@ -342,6 +345,21 @@ QColor parseAccent(const char* value, QColor fallback)
         return fallback;
     c.setAlpha(255);
     return c;
+}
+
+void accentFromSetting(const char* value, QColor& base, QColor& light)
+{
+    base = QColor();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+    if (value && !qstrcmp(value, "system")) {
+        // qGuiApp would be a bad cast when only a QCoreApplication exists
+        if (auto app = qobject_cast<QGuiApplication*>(QCoreApplication::instance()))
+            base = app->palette().color(QPalette::Normal, QPalette::Accent);
+    }
+#endif
+    if (!base.isValid())
+        base = parseAccent(value, defaultAccent());
+    light = base.lighter(150);
 }
 
 double contrastRatio(QColor a, QColor b)

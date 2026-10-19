@@ -19,6 +19,7 @@
 # include <config.h>
 #endif
 
+#include <QApplication>
 #include <QHash>
 #include <QTest>
 
@@ -60,6 +61,29 @@ class TestRedesignWidgetPalette : public QObject
     Q_OBJECT
 
 private slots:
+    // Must stay the only test calling applyWidgetPalette(): the restore point
+    // is captured by its first call in the process.
+    void applyThenEmptyRestoresTheOriginalPalette()
+    {
+        const QPalette before = QApplication::palette();
+
+        // no installFusionStyle() first: the saved-style path
+        redesign::applyWidgetPalette(makeLookup(true));
+        QCOMPARE(QApplication::palette().color(QPalette::Highlight),
+                 makeLookup(true)(C::ButtonAccent, C::Bg, C::Primary, C::Normal));
+        QVERIFY(QApplication::palette() != before);
+
+        redesign::applyWidgetPalette(redesign::ColorLookup());
+        QVERIFY(QApplication::palette() == before);
+
+        // and applying again after a restore works
+        redesign::applyWidgetPalette(makeLookup(false));
+        QCOMPARE(QApplication::palette().color(QPalette::Window),
+                 makeLookup(false)(C::Window, C::Bg, C::Primary, C::Normal));
+        redesign::applyWidgetPalette(redesign::ColorLookup());
+        QVERIFY(QApplication::palette() == before);
+    }
+
     void roleMapping_data()
     {
         QTest::addColumn<bool>("dark");
@@ -134,5 +158,5 @@ private slots:
     }
 };
 
-QTEST_GUILESS_MAIN(TestRedesignWidgetPalette)
+QTEST_MAIN(TestRedesignWidgetPalette)
 #include "test_redesign_widget_palette.moc"

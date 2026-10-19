@@ -21,9 +21,7 @@
 #include <QSettings>
 #include <QFile>
 #include <maininterface/mainctx.hpp>
-#include "redesignpalette.hpp"
-#include "../redesign/cpp/redesign.hpp"
-#include "../redesign/cpp/widgetpalette.hpp"
+#include "../redesign/cpp/systempaletteglue.hpp"
 #include <vlc_modules.h>
 #include <vlc_picture.h>
 
@@ -313,11 +311,8 @@ void SystemPalette::componentComplete()
         assert(accentColor);
 
         m_redesign = redesign::isEnabled(VLC_OBJECT(m_ctx->getIntf()));
-        if (m_redesign && strcmp(accentColor, "system"))
-        {
-            orange500 = redesign::parseAccent(accentColor, redesign::defaultAccent());
-            orange800 = orange500.lighter(150);
-        }
+        if (m_redesign)
+            redesign::accentFromSetting(accentColor, orange500, orange800);
         else if (!strcmp(accentColor, "default"))
         {
             // Use default
@@ -337,10 +332,6 @@ void SystemPalette::componentComplete()
             orange500 = QColor(accentColor);
             orange800 = orange500.lighter(150);
         }
-
-        // Qt < 6.6 has no "system" accent: it reaches the last branch above as an invalid colour
-        if (m_redesign && !orange500.isValid())
-            orange500 = redesign::defaultAccent();
 
         free(accentColor);
     }
@@ -424,12 +415,8 @@ void SystemPalette::updatePalette()
             this, &SystemPalette::CSDMetricsChanged);
     }
     emit paletteChanged();
-
-    // Theme the QWidgets dialogs and native menus with the palette of the main
-    // window, except when a theme provider (e.g. High Contrast) owns the colours.
-    if (m_redesign && objectName() == QLatin1String("themePalette"))
-        redesign::applyWidgetPalette(m_providerColors ? redesign::ColorLookup()
-                                                      : redesign::ColorLookup([this](auto... args) { return getColor(args...); }));
+    if (m_redesign)
+        redesign::syncWidgetPalette(*this, m_providerColors); // QWidgets dialogs and menus
 
     bool hasCSDImage = m_palettePriv && m_palettePriv->hasCSDImages();
     if (m_hasCSDImage != hasCSDImage)
@@ -489,24 +476,14 @@ QColor SystemPalette::getColor(ColorContext::ColorSet colorSet, ColorContext::Co
 }
 
 
-void SystemPalette::makeRedesignPalette(bool dark)
-{
-    m_isDark = dark;
-    m_colorMap.clear();
-    redesign::fillPalette([this](auto set, auto section, auto name, auto state, QColor color) {
-        setColor(set, section, name, state, color);
-    }, dark, redesign::accentShades(orange500));
-}
-
 void SystemPalette::makeLightPalette()
 {
-    if (m_redesign)
-        return makeRedesignPalette(false);
     m_isDark = false;
 
     typedef ColorContext C;
 
     m_colorMap.clear();
+    if (m_redesign) return redesign::fillSystemPalette(*this, false, orange500);
 
     //base set
     {
@@ -716,11 +693,10 @@ void SystemPalette::makeLightPalette()
 
 void SystemPalette::makeDarkPalette()
 {
-    if (m_redesign)
-        return makeRedesignPalette(true);
     m_isDark = true;
 
     m_colorMap.clear();
+    if (m_redesign) return redesign::fillSystemPalette(*this, true, orange500);
 
     typedef ColorContext C;
 

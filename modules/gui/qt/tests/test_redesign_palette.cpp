@@ -89,6 +89,24 @@ private slots:
         QCOMPARE(f.colors.value(key(C::ButtonAccent, C::Bg, C::Primary, C::Normal)), redesign::defaultAccent());
     }
 
+    void accentFromSettingResolves()
+    {
+        QColor base, light;
+        redesign::accentFromSetting("#00ff00", base, light);
+        QCOMPARE(base, QColor("#00ff00"));
+        QCOMPARE(light, QColor("#00ff00").lighter(150));
+        redesign::accentFromSetting("default", base, light);
+        QCOMPARE(base, redesign::defaultAccent());
+        QCOMPARE(light, redesign::defaultAccent().lighter(150));
+        redesign::accentFromSetting("banana", base, light);
+        QCOMPARE(base, redesign::defaultAccent());
+        // "system" without a QGuiApplication (this test is guiless), or on Qt < 6.6
+        redesign::accentFromSetting("system", base, light);
+        QCOMPARE(base, redesign::defaultAccent());
+        redesign::accentFromSetting(nullptr, base, light);
+        QCOMPARE(base, redesign::defaultAccent());
+    }
+
     void swatchesAreNine()
     {
         QCOMPARE(redesign::accentSwatches().size(), 9);

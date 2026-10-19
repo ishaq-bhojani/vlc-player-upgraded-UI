@@ -89,7 +89,12 @@ QPalette toWidgetPalette(const ColorLookup& lookup)
 
 void applyWidgetPalette(const ColorLookup& lookup)
 {
-    QApplication::setPalette(lookup ? toWidgetPalette(lookup) : originalPalette());
+    // Remember the system palette before the first setPalette(), whatever the
+    // call order (a style saved by the user skips installFusionStyle()).
+    const QPalette& original = originalPalette();
+    const QPalette next = lookup ? toWidgetPalette(lookup) : original;
+    if (QApplication::palette() != next)
+        QApplication::setPalette(next);
 }
 
 bool installFusionStyle()
