@@ -23,6 +23,7 @@
 #include <maininterface/mainctx.hpp>
 #include "redesignpalette.hpp"
 #include "../redesign/cpp/redesign.hpp"
+#include "../redesign/cpp/widgetpalette.hpp"
 #include <vlc_modules.h>
 #include <vlc_picture.h>
 
@@ -397,6 +398,7 @@ void SystemPalette::setCtx(MainCtx* ctx)
 void SystemPalette::updatePalette()
 {
     m_palettePriv.reset();
+    m_providerColors = false;
     switch(m_source)
     {
     case ColorSchemeModel::System:
@@ -422,6 +424,12 @@ void SystemPalette::updatePalette()
             this, &SystemPalette::CSDMetricsChanged);
     }
     emit paletteChanged();
+
+    // Theme the QWidgets dialogs and native menus with the palette of the main
+    // window, except when a theme provider (e.g. High Contrast) owns the colours.
+    if (m_redesign && objectName() == QLatin1String("themePalette"))
+        redesign::applyWidgetPalette(m_providerColors ? redesign::ColorLookup()
+                                                      : redesign::ColorLookup([this](auto... args) { return getColor(args...); }));
 
     bool hasCSDImage = m_palettePriv && m_palettePriv->hasCSDImages();
     if (m_hasCSDImage != hasCSDImage)
@@ -950,6 +958,7 @@ void SystemPalette::makeSystemPalette()
     else
     {
         m_isDark = palette->isThemeDark();
+        m_providerColors = true;
     }
 
     m_palettePriv = std::move(palette);

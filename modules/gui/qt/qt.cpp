@@ -97,6 +97,7 @@ extern "C" char **environ;
 #endif
 #include "style/defaultthemeproviders.hpp"
 #include "redesign/cpp/redesign.hpp"
+#include "redesign/cpp/widgetpalette.hpp"
 #include "dialogs/extensions/extensions_manager.hpp" /* Extensions manager */
 #include "dialogs/help/help.hpp"     /* Launch Update */
 #include "util/dismiss_popup_event_filter.hpp"
@@ -1469,6 +1470,12 @@ static void *Thread( void *obj )
             // try the style at every start:
             getSettings()->remove( QTSTYLE_KEY );
         }
+    }
+    else if ( redesign::isEnabled( VLC_OBJECT( p_intf ) ) )
+    {
+        // Fusion follows the QPalette that SystemPalette installs
+        // (redesign::applyWidgetPalette)
+        redesign::installFusionStyle();
     }
 #undef QTSTYLE_KEY
 

@@ -180,6 +180,7 @@ private:
     bool m_isDark = false;
     bool m_hasCSDImage = false;
     bool m_redesign = false;
+    bool m_providerColors = false; // the colours come from a theme provider
 
     std::unique_ptr<ExternalPaletteImpl> m_palettePriv;
 

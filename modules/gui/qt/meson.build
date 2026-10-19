@@ -201,6 +201,8 @@ qt_plugin_sources = files(
     'qt.hpp',
     'redesign/cpp/redesign.cpp',
     'redesign/cpp/redesign.hpp',
+    'redesign/cpp/widgetpalette.cpp',
+    'redesign/cpp/widgetpalette.hpp',
     'plugins.hpp',
     'dialogs/bookmarks/bookmarks.cpp',
     'dialogs/bookmarks/bookmarks.hpp',
@@ -1469,6 +1471,24 @@ if qt6_dep.found()
             ),
             'moc_sources': files(
                 'tests/test_redesign_palette.cpp'
+            ),
+            'suite': ['qt'],
+            'include_directories' : qt_include_dir,
+            'link_args': qt_link_args,
+            'dependencies': [qt6_dep, qtest_qt6_dep],
+        }
+
+        vlc_tests += {
+            'name': 'test_qt_redesign_widget_palette',
+            'sources': files(
+                'tests/test_redesign_widget_palette.cpp',
+                'redesign/cpp/widgetpalette.hpp',
+                'redesign/cpp/widgetpalette.cpp',
+                'style/redesignpalette.hpp',
+                'style/redesignpalette.cpp'
+            ),
+            'moc_sources': files(
+                'tests/test_redesign_widget_palette.cpp'
             ),
             'suite': ['qt'],
             'include_directories' : qt_include_dir,
