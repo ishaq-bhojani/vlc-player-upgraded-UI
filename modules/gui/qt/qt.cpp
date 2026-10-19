@@ -96,6 +96,7 @@ extern "C" char **environ;
 # include "maininterface/mainctx.hpp"   /* MainCtx creation */
 #endif
 #include "style/defaultthemeproviders.hpp"
+#include "redesign/cpp/redesign.hpp"
 #include "dialogs/extensions/extensions_manager.hpp" /* Extensions manager */
 #include "dialogs/help/help.hpp"     /* Launch Update */
 #include "util/dismiss_popup_event_filter.hpp"
@@ -916,6 +917,9 @@ static void *Thread( void *obj )
     /* Start the QApplication here */
     QApplication app( argc, argv );
     app.setProperty("initialStyle", app.style()->name());
+
+    if ( redesign::isEnabled( VLC_OBJECT( p_intf ) ) && !redesign::installAppFont() )
+        msg_Warn( p_intf, "failed to install the redesign font, keeping the system font" );
 
     {
         // Install custom translator:

@@ -1093,6 +1093,13 @@ if qt6_dep.found()
         dependencies: qt6_dep,
         rcc_extra_arguments: qt_rcc_extra_arguments)
 
+    # fonts of the redesign (:/redesign/fonts), compiled into the plugin
+    redesign_qrc = qt6.preprocess(
+        qresources: files('redesign/assets/redesign_assets.qrc'),
+        include_directories: qt_include_dir,
+        dependencies: qt6_dep,
+        rcc_extra_arguments: qt_rcc_extra_arguments)
+
     qt_sources = files('qt.cpp')
 
     subdir('shaders')
@@ -1286,7 +1293,7 @@ if qt6_dep.found()
 
     vlc_modules += {
         'name' : 'qt',
-        'sources' : [qt6pre_files, qt6pre_qrc, shader_targets, shaders_processed, qt_sources, qt_plugin_sources],
+        'sources' : [qt6pre_files, qt6pre_qrc, redesign_qrc, shader_targets, shaders_processed, qt_sources, qt_plugin_sources],
         'extra_files' : [shader_files],
         'dependencies' : [qt_extra_deps, qt6_dep, corefoundation_dep],
         'include_directories' : qt_include_dir,
@@ -1465,6 +1472,23 @@ if qt6_dep.found()
             ),
             'suite': ['qt'],
             'include_directories' : qt_include_dir,
+            'link_args': qt_link_args,
+            'dependencies': [qt6_dep, qtest_qt6_dep],
+        }
+
+        vlc_tests += {
+            'name': 'test_qt_redesign_font',
+            'sources': [files(
+                'tests/test_redesign_font.cpp',
+                'redesign/cpp/redesign.hpp',
+                'redesign/cpp/redesign.cpp'
+            ), redesign_qrc],
+            'moc_sources': files(
+                'tests/test_redesign_font.cpp'
+            ),
+            'suite': ['qt'],
+            'include_directories' : qt_include_dir,
+            'link_with': [libvlccore],
             'link_args': qt_link_args,
             'dependencies': [qt6_dep, qtest_qt6_dep],
         }

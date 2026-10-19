@@ -20,6 +20,9 @@
 
 #include <vlc_common.h>
 
+#include <QString>
+#include <QStringList>
+
 namespace redesign
 {
 
@@ -28,6 +31,22 @@ namespace redesign
  * option, true by default). Every redesign behaviour is gated by this.
  */
 bool isEnabled(vlc_object_t* obj);
+
+/**
+ * Loads the bundled redesign font (Inter Regular, Medium and SemiBold from
+ * the ":/redesign/fonts" resources) and makes it the application font, keeping
+ * the size of the current application font. Needs a QGuiApplication.
+ *
+ * Returns false (after logging) and leaves the application font untouched if
+ * any file fails to load or does not provide the expected family.
+ */
+bool installAppFont();
+
+/**
+ * Same as installAppFont(), for the given font files and family. Exposed so
+ * the failure path can be tested.
+ */
+bool installAppFont(const QStringList& fontFiles, const QString& family);
 
 } // namespace redesign
 
