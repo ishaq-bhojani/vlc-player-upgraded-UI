@@ -21,7 +21,7 @@
 - Upstream files may be edited only if listed in `docs/redesign/upstream-touchpoints.md`. Every task that edits one adds a row (file, lines, purpose) in the same commit.
 - An upstream-file edit larger than ~30 lines must become a new file under `modules/gui/qt/redesign/` instead.
 - `qt-redesign=false` must always load `qrc:/qt/qml/VLC/MainInterface/MainInterface.qml` with upstream palettes and the upstream first-run wizard.
-- New QML files register in the single `VLC.Redesign` block appended to `modules/gui/qt/meson.build`. New C++ files go in the Qt plugin sources there too.
+- Build registration (since Task 11b): new redesign QML files, C++ sources and qrc entries go in `modules/gui/qt/redesign/meson.build`; new redesign C++/QML tests go in `modules/gui/qt/redesign/tests/meson.build`. Wherever a task below says to modify `modules/gui/qt/meson.build` for a redesign registration, edit those files instead; VideoLAN's `modules/gui/qt/meson.build` is not touched again.
 - New user-visible strings use `qtr()` (C++) / `qsTr()` (QML); English is the fallback.
 - No setting appears in the UI unless it maps to a real VLC config key or `EffectsController` call listed in `docs/redesign/settings-map.md`.
 - Text on accent backgrounds must reach a WCAG contrast ratio ≥ 4.5:1.
