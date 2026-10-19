@@ -46,6 +46,8 @@ qt_plugin_sources += files(
     'cpp/pinnavigation.cpp',
     'cpp/pinnavigationnetwork.cpp',
     'cpp/pinnavigation.hpp',
+    'cpp/qmlregistration.cpp',
+    'cpp/qmlregistration.hpp',
     'cpp/rebornprofile.cpp',
     'cpp/rebornprofile.hpp',
     'cpp/redesign.cpp',
