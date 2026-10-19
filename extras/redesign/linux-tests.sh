@@ -35,40 +35,13 @@
 
 set -euo pipefail
 
-IMAGE="registry.videolan.org/vlc-debian-unstable:20260611225331"
+source "$(dirname "${BASH_SOURCE[0]}")/linux-common.sh"   # IMAGE, REPO, REPO_MOUNT, VOLUME
 
 case "${1:-}" in
     -h|--help) sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# Docker Desktop wants a Windows-form path for bind mounts when run from Git Bash.
-if REPO_MOUNT="$(cd "$REPO" && pwd -W 2>/dev/null)"; then :; else REPO_MOUNT="$REPO"; fi
-# Git Bash would otherwise rewrite /vlc, /build, ... in docker arguments.
-export MSYS_NO_PATHCONV=1
-export MSYS2_ARG_CONV_EXCL='*'
-
-# One build volume per source tree. ninja decides what is up to date from file
-# mtimes, so sharing a build directory between two checkouts would silently
-# reuse the other tree's objects.
-VOLUME="${VLC_LINUX_VOLUME:-vlc-reborn-linux-build-$(printf '%s' "$REPO_MOUNT" | sha1sum | cut -c1-10)}"
-
-# CRLF shell scripts / patches cannot be used in the Linux container;
-# .gitattributes forces LF.
-# (tr, not grep: Git Bash's grep drops the CR from its pattern.)
-if [ -n "$(head -c 200 "$REPO/buildsystem/gen-vlc-about.py" | tr -dc '\r')" ]; then
-    echo "linux-tests.sh: the working tree has CRLF line endings (core.autocrlf)." >&2
-    echo "Make sure .gitattributes is present, then re-checkout:" >&2
-    echo "  git rm --cached -r -q . && git reset --hard" >&2
-    exit 1
-fi
-
-docker volume create "$VOLUME" >/dev/null
-# A fresh volume is root-owned, but the image builds as the unprivileged
-# "videolan" user. (The marker file makes the volume non-empty, otherwise Docker
-# re-copies the image's root-owned /build over the chown on the next mount.)
-docker run --rm --user root -v "$VOLUME":/build "$IMAGE" \
-    sh -c 'chown videolan:videolan /build && touch /build/.vlc-reborn'
+linux_prepare_volume linux-tests.sh
 
 echo "==> Native Linux tests in $IMAGE (volume: $VOLUME, source: $REPO_MOUNT)"
 # The script below runs in the container; test names arrive as $@.
@@ -81,30 +54,8 @@ docker run --rm -i \
     bash -s -- "$@" <<'CONTAINER_EOF'
 set -euo pipefail
 
-# Serialize runs on this volume (setup, compile and test all use /build/linux).
-# The lock is held by fd 9 until this container exits, also across the final exec.
-exec 9>/build/.lock
-if ! flock -n 9; then
-    echo "==> another linux-tests.sh run uses this build volume; waiting..."
-    flock 9
-fi
-
-B=/build/linux
-git config --global --add safe.directory /vlc   # meson/version scripts call git
-
-# --- configure (first run only) ----------------------------------------------
-# Options of upstream's native meson CI job (debian-meson in
-# extras/ci/gitlab-ci.yml) minus coverage; -Dqt=enabled turns a missing Qt
-# into an error instead of silently building without the GUI and its tests.
-if [ ! -f "$B/build.ninja" ]; then
-    echo "==> meson setup (first run)"
-    rm -rf "$B"
-    meson setup "$B" /vlc -Dextra_checks=true -Dqt=enabled
-fi
-
-# --- build -------------------------------------------------------------------
-echo "==> meson compile"
-meson compile -C "$B"
+source /vlc/extras/redesign/linux-container-common.sh   # B, linux_lock_configure_compile
+linux_lock_configure_compile linux-tests.sh
 
 # --- test --------------------------------------------------------------------
 echo "==> meson test"
