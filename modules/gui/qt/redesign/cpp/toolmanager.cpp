@@ -174,6 +174,7 @@ ToolManager::ToolManager(const QString& toolsRoot, const QList<ToolEntry>& tools
     , m_fetcher(std::move(fetcher))
     , m_settings(settings)
 {
+    Q_ASSERT(m_fetcher); // abortJob() and ensure() still cope with a null one
     if (!m_settings)
         m_settings = new QSettings(this); // child of this: deleted with it
 
@@ -210,12 +211,12 @@ void ToolManager::setConsentGiven(bool given)
     m_settings->sync();
 
     if (!given) {
-        // no download goes on without the consent; what is installed stays
+        // no download goes on without the consent; what is installed stays, and a verification
+        // needs no consent
         m_pendingEnsure.clear();
-        for (auto& [name, job] : m_jobs) {
-            job->cancel = true;
-            m_fetcher->abort(job->cancel);
-        }
+        for (auto& [name, job] : m_jobs)
+            if (job->download)
+                abortJob(*job);
     }
     emit consentGivenChanged();
 }
@@ -295,7 +296,7 @@ void ToolManager::ensure(const QString& name)
             m_pendingEnsure.insert(name);
         return;
     }
-    if (!isHttps(entry->url)) {
+    if (!isHttps(entry->url) || !m_fetcher) {
         emit failed(name, tr("The download address of %1 is not an https address.").arg(name));
         return;
     }
@@ -368,8 +369,14 @@ void ToolManager::cancel(const QString& name)
     if (it == m_jobs.end())
         return;
     m_pendingEnsure.remove(name);
-    it->second->cancel = true;
-    m_fetcher->abort(it->second->cancel);
+    abortJob(*it->second);
+}
+
+void ToolManager::abortJob(Job& job)
+{
+    job.cancel = true;
+    if (m_fetcher)
+        m_fetcher->abort(job.cancel);
 }
 
 void ToolManager::finish(const QString& name, const Outcome& outcome)
@@ -412,7 +419,9 @@ ToolManager::Outcome ToolManager::work(const ToolEntry& entry, const QString& to
 
     if (QFileInfo(exe).isFile() && verifyInstalled(entry, exe, cancel)) {
         outcome.stamp = stampOf(exe);
-        outcome.ok = outcome.stamp.size >= 0;
+        outcome.ok = outcome.stamp.size >= 0 && !cancel; // a cancellation after the last check counts
+        if (cancel)
+            outcome.error = tr("The download was cancelled.");
         return outcome;
     }
     if (cancel) {
@@ -430,6 +439,10 @@ ToolManager::Outcome ToolManager::work(const ToolEntry& entry, const QString& to
     outcome.ok = outcome.stamp.size >= 0;
     if (!outcome.ok)
         outcome.error = tr("The tool cannot be found after the installation.");
+    else if (cancel) { // e.g. the consent was revoked after the last check of install()
+        outcome.ok = false;
+        outcome.error = tr("The download was cancelled.");
+    }
     return outcome;
 }
 
@@ -579,8 +592,14 @@ bool ToolManager::install(const ToolEntry& entry, const QString& toolsRoot, Tool
         return false;
     }
     if (!renameWithRetries(stage, finalDir)) {
-        if (hadOld)
-            QDir().rename(aside, finalDir);
+        if (hadOld && !renameWithRetries(aside, finalDir)) {
+            // the old installation is deleted with the temporary directory: say so, the next
+            // ensure() installs the tool again
+            qWarning() << "tool manager: cannot move" << entry.name << "into place nor restore the previous installation in"
+                       << finalDir;
+            *error = tr("%1 could not be installed and the previous installation could not be restored.").arg(entry.name);
+            return false;
+        }
         *error = tr("The tool cannot be moved into place.");
         return false;
     }

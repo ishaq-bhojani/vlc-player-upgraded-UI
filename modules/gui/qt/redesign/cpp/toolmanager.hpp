@@ -134,7 +134,8 @@ public:
     ~ToolManager() override;
 
     bool consentGiven() const;
-    //! false cancels the running jobs (failed follows); installed files are left in place
+    //! false cancels the running downloads (failed follows); installed files are left in place and
+    //! running verifications (which need no consent) go on
     void setConsentGiven(bool given);
 
     //! absolute path of the tool when it is installed and was verified in this session (see the
@@ -163,7 +164,8 @@ public:
      */
     Q_INVOKABLE void verifyAsync(const QString& name);
 
-    //! stops the running job of the tool (only that one), failed follows
+    //! stops the running job of the tool (only that one): failed follows for a download,
+    //! verified(name, false) for a verification
     Q_INVOKABLE void cancel(const QString& name);
 
     //! the pinned manifest of the build (:/redesign/tools/tools.json); empty and logged on error
@@ -224,6 +226,7 @@ private:
     static FileStamp stampOf(const QString& file);
     bool isVerified(const ToolEntry& entry) const;
     void start(const ToolEntry& entry, bool download);
+    void abortJob(Job& job);
     void finish(const QString& name, const Outcome& outcome);
     static Outcome work(const ToolEntry& entry, const QString& toolsRoot, ToolFetcher* fetcher,
                         const std::function<void(qint64, qint64)>& progress,

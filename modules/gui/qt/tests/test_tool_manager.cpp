@@ -837,6 +837,10 @@ private slots:
         QTest::newRow("symlink only") << QStringList{QStringLiteral("link:x/bin/tool.exe")} << QString();
         QTest::newRow("symlink plus file") << QStringList{QStringLiteral("link:x/bin/tool.exe"), QStringLiteral("y/tool.exe")}
                                            << QStringLiteral("y/tool.exe");
+        QTest::newRow("absolute path") << QStringList{QStringLiteral("/x/tool.exe")} << QString();
+        QTest::newRow("backslash") << QStringList{QStringLiteral("bin\\tool.exe")} << QString();
+        QTest::newRow("drive with slash") << QStringList{QStringLiteral("c:/tool.exe")} << QString();
+        QTest::newRow("drive without slash") << QStringList{QStringLiteral("C:tool.exe")} << QString();
         QTest::newRow("name that only ends like the exe") << QStringList{QStringLiteral("a/bin/mytool.exe")} << QString();
     }
 
@@ -932,6 +936,23 @@ private slots:
         QVERIFY(!manager->consentGiven());
         QVERIFY(manager->path(QStringLiteral("tool")).isEmpty());
         QVERIFY(filesBelow(userDir()).isEmpty());
+    }
+
+    //! a verification needs no consent: revoking it does not stop one that is running
+    void revoking_the_consent_does_not_cancel_a_verification()
+    {
+        auto state = std::make_shared<FakeState>();
+        state->payload = QByteArray(16 << 20, 'v'); // long enough to hash for a moment
+        const ToolEntry entry = entryFor(state->payload);
+        installWithFirstManager(entry, state);
+
+        auto fresh = makeManager({entry}, state);
+        QSignalSpy verified(fresh.get(), &ToolManager::verified);
+        fresh->verifyAsync(QStringLiteral("tool"));
+        fresh->setConsentGiven(false);
+        QTRY_COMPARE_WITH_TIMEOUT(verified.count(), 1, 10000);
+        QVERIFY(verified.first().at(1).toBool());
+        QCOMPARE(fresh->path(QStringLiteral("tool")), installedExe());
     }
 
     void revoking_the_consent_keeps_the_installed_files()
