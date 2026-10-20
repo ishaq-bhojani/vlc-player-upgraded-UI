@@ -1148,6 +1148,17 @@ Item {
         Loader {
             asynchronous: true
             source: "qrc:///qt/qml/VLC/Menus/GlobalShortcuts.qml"
+
+            // Ctrl+P opens the Settings modal (DialogHost.qml): the stock shortcut of the same key is
+            // turned off, or the two would be ambiguous and neither would fire.
+            // UPSTREAM COUPLING (docs/redesign/upstream-touchpoints.md): it looks for the Shortcut of
+            // GlobalShortcuts.qml that has this key; without a match nothing is changed.
+            onLoaded: {
+                for (const child of item.data) {
+                    if (child.portableText === "Ctrl+P")
+                        child.enabled = false
+                }
+            }
         }
 
         Loader {

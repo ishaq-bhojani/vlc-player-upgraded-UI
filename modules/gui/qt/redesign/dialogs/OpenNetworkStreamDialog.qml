@@ -20,7 +20,6 @@ import QtQuick.Layouts
 
 import VLC.MainInterface
 import VLC.Playlist
-import VLC.Dialogs
 import VLC.Style
 import VLC.Util
 import VLC.Widgets as Widgets
@@ -39,7 +38,7 @@ import VLC.Redesign
  *
  * It does not host itself anywhere: DialogHost.qml creates it and opens it.
  */
-ModalDialog {
+RedesignModalDialog {
     id: root
 
     // Properties
@@ -72,112 +71,86 @@ ModalDialog {
     // Settings
 
     title: qsTr("Open network stream")
+    bodyWidth: VLCStyle.dp(480, VLCStyle.scale)
 
     // the field gets the keyboard each time the dialog opens
     onAboutToShow: urlField.forceActiveFocus()
 
     // Children
 
-    contentItem: ColumnLayout {
-        implicitWidth: VLCStyle.dp(480, VLCStyle.scale)
+    Text {
+        Layout.fillWidth: true
 
-        // a popup is not under the ColorContext of the window: the content and the footer have
-        // their own, or the controls in them get no palette (and are drawn magenta)
-        readonly property ColorContext colorContext: ColorContext {
-            palette: VLCStyle.palette
-            colorSet: ColorContext.Window
+        text: qsTr("Enter the address of a stream or of a file on the network.")
+
+        color: root.colorContext.fg.secondary
+        font.pixelSize: VLCStyle.fontSize_small
+        wrapMode: Text.WordWrap
+    }
+
+    Widgets.TextFieldExt {
+        id: urlField
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: VLCStyle.dp(36, VLCStyle.scale)
+
+        focus: true
+        selectByMouse: true
+        inputMethodHints: Qt.ImhUrlCharactersOnly | Qt.ImhNoPredictiveText
+
+        radius: RedesignStyle.radiusM
+
+        placeholderText: qsTr("https://example.org/stream.m3u8")
+
+        Accessible.role: Accessible.EditableText
+        Accessible.name: qsTr("Stream address")
+        Accessible.description: qsTr("The address to play, for example https://example.org/stream.m3u8")
+
+        // A pasted block of text plays its first line: the field keeps that line only.
+        onTextEdited: {
+            if (/[\r\n\u2028\u2029]/.test(urlField.text))
+                urlField.text = StreamUrl.firstLine(urlField.text)
         }
 
-        // a popup is not an Item: the dialog is described by its content
-        Accessible.role: Accessible.Dialog
-        Accessible.name: root.title
+        // Enter plays, only when there is something to play
+        onAccepted: root.playText()
+    }
 
-        spacing: VLCStyle.margin_small
+    // the recent addresses: only with a media library
+    Loader {
+        id: recentLoader
 
-        Text {
-            Layout.fillWidth: true
+        Layout.fillWidth: true
 
-            text: qsTr("Enter the address of a stream or of a file on the network.")
+        active: MainCtx.mediaLibraryAvailable
 
-            color: root.colorContext.fg.secondary
-            font.pixelSize: VLCStyle.fontSize_small
-            wrapMode: Text.WordWrap
+        // by name: the file names types of the media library (see RecentStreams.qml)
+        source: "RecentStreams.qml"
+
+        // nothing to show while the library has no address
+        visible: status === Loader.Ready && (item?.count ?? 0) > 0
+    }
+
+    Connections {
+        target: recentLoader.item
+
+        // a click puts the address in the field (the keys stay in the list), a double click or
+        // Enter plays it
+        function onSelected(address) {
+            urlField.text = address
         }
 
-        Widgets.TextFieldExt {
-            id: urlField
-
-            Layout.fillWidth: true
-            Layout.preferredHeight: VLCStyle.dp(36, VLCStyle.scale)
-
-            focus: true
-            selectByMouse: true
-            inputMethodHints: Qt.ImhUrlCharactersOnly | Qt.ImhNoPredictiveText
-
-            radius: RedesignStyle.radiusM
-
-            placeholderText: qsTr("https://example.org/stream.m3u8")
-
-            Accessible.role: Accessible.EditableText
-            Accessible.name: qsTr("Stream address")
-            Accessible.description: qsTr("The address to play, for example https://example.org/stream.m3u8")
-
-            // A pasted block of text plays its first line: the field keeps that line only.
-            onTextEdited: {
-                if (/[\r\n\u2028\u2029]/.test(urlField.text))
-                    urlField.text = StreamUrl.firstLine(urlField.text)
-            }
-
-            // Enter plays, only when there is something to play
-            onAccepted: root.playText()
-        }
-
-        // the recent addresses: only with a media library
-        Loader {
-            id: recentLoader
-
-            Layout.fillWidth: true
-
-            active: MainCtx.mediaLibraryAvailable
-
-            // by name: the file names types of the media library (see RecentStreams.qml)
-            source: "RecentStreams.qml"
-
-            // nothing to show while the library has no address
-            visible: status === Loader.Ready && (item?.count ?? 0) > 0
-        }
-
-        Connections {
-            target: recentLoader.item
-
-            // a click puts the address in the field (the keys stay in the list), a double click or
-            // Enter plays it
-            function onSelected(address) {
-                urlField.text = address
-            }
-
-            function onActivated(address) {
-                root.submit(StreamUrl.normalize(address))
-            }
+        function onActivated(address) {
+            root.submit(StreamUrl.normalize(address))
         }
     }
 
-    footer: RowLayout {
-        spacing: VLCStyle.margin_small
-
-        // the footer is not under the content: its own context (see the content)
-        readonly property ColorContext colorContext: ColorContext {
-            palette: VLCStyle.palette
-            colorSet: ColorContext.Window
-        }
-
-        Item { Layout.fillWidth: true }
-
+    footerItems: [
         Widgets.ButtonExt {
             text: qsTr("Cancel")
 
             onClicked: root.close()
-        }
+        },
 
         Widgets.ButtonExt {
             id: playButton
@@ -193,5 +166,5 @@ ModalDialog {
 
             onClicked: root.playText()
         }
-    }
+    ]
 }

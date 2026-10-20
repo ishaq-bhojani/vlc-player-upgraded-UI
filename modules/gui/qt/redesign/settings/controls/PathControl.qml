@@ -27,7 +27,9 @@ import VLC.Redesign
  * button).
  *
  * The path can be typed: it is reported by `edited` when the user validates it (Enter) or leaves
- * the field, if it differs from `value`. Picking a path in a file dialog is not done here (the
+ * the field, if it differs from `value`. Escape gives the stored value back when there is
+ * something to give back, and then does not close the Settings modal; with nothing typed it is left
+ * to the modal, which closes. Picking a path in a file dialog is not done here (the
  * dialog helpers are C++ widgets, there is no QML dialog in the static Qt build): the Browse
  * button, visible only if `canBrowse`, emits `browseRequested` and whoever hosts the control
  * opens the dialog and stores the path.
@@ -87,6 +89,12 @@ FocusScope {
             Accessible.name: root.label
             Accessible.description: root.description
 
+            //! the text typed differs from the stored value (there is an edit to take back)
+            readonly property bool pendingEdit: field.text !== ((root.value === undefined || root.value === null) ? "" : String(root.value))
+
+            //! the press of Escape was used to take back an edit: its release is ours too
+            property bool escapeTaken: false
+
             function showValue() {
                 field.text = Qt.binding(() => (root.value === undefined || root.value === null) ? "" : String(root.value))
             }
@@ -98,9 +106,28 @@ FocusScope {
                 showValue()
             }
 
+            // The modal closes on the release of Escape: when the press took an edit back, the
+            // release has to be taken too, or it would reach the popup and close the whole modal.
             Keys.onEscapePressed: (event) => {
+                if (!field.pendingEdit) {
+                    event.accepted = false
+                    return
+                }
                 showValue()
+                field.escapeTaken = true
                 event.accepted = true
+            }
+
+            Keys.onReleased: (event) => {
+                if (event.key === Qt.Key_Escape && field.escapeTaken && !event.isAutoRepeat) {
+                    field.escapeTaken = false
+                    event.accepted = true
+                }
+            }
+
+            onActiveFocusChanged: {
+                if (!activeFocus)
+                    field.escapeTaken = false
             }
         }
 

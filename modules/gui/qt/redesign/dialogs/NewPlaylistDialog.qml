@@ -20,7 +20,6 @@ import QtQuick.Layouts
 
 import VLC.MainInterface
 import VLC.MediaLibrary
-import VLC.Dialogs
 import VLC.Style
 import VLC.Util
 import VLC.Widgets as Widgets
@@ -38,7 +37,7 @@ import VLC.Redesign
  * The creation is asynchronous (the library thread), and the model has to live until it has
  * finished: `pending` tells the host when the dialog may be destroyed.
  */
-ModalDialog {
+RedesignModalDialog {
     id: root
 
     // Properties
@@ -67,6 +66,7 @@ ModalDialog {
     // Settings
 
     title: qsTr("New playlist")
+    bodyWidth: VLCStyle.dp(380, VLCStyle.scale)
 
     // the field gets the keyboard each time the dialog opens, and starts empty
     onAboutToShow: {
@@ -82,71 +82,44 @@ ModalDialog {
         ml: MediaLib
     }
 
-    contentItem: ColumnLayout {
-        implicitWidth: VLCStyle.dp(380, VLCStyle.scale)
+    Text {
+        Layout.fillWidth: true
 
-        // a popup is not under the ColorContext of the window: the content and the footer have
-        // their own, or the controls in them get no palette (and are drawn magenta)
-        readonly property ColorContext colorContext: ColorContext {
-            palette: VLCStyle.palette
-            colorSet: ColorContext.Window
-        }
+        text: (root.initialItems?.length ?? 0) > 0
+              ? qsTr("Name of the playlist that will hold the %n selected item(s).", "", root.initialItems.length)
+              : qsTr("Name of the new playlist.")
 
-        // a popup is not an Item: the dialog is described by its content
-        Accessible.role: Accessible.Dialog
-        Accessible.name: root.title
-
-        spacing: VLCStyle.margin_small
-
-        Text {
-            Layout.fillWidth: true
-
-            text: (root.initialItems?.length ?? 0) > 0
-                  ? qsTr("Name of the playlist that will hold the %n selected item(s).", "", root.initialItems.length)
-                  : qsTr("Name of the new playlist.")
-
-            color: root.colorContext.fg.secondary
-            font.pixelSize: VLCStyle.fontSize_small
-            wrapMode: Text.WordWrap
-        }
-
-        Widgets.TextFieldExt {
-            id: nameField
-
-            Layout.fillWidth: true
-            Layout.preferredHeight: VLCStyle.dp(36, VLCStyle.scale)
-
-            focus: true
-            selectByMouse: true
-
-            radius: RedesignStyle.radiusM
-
-            placeholderText: qsTr("Playlist name")
-
-            Accessible.role: Accessible.EditableText
-            Accessible.name: qsTr("Playlist name")
-
-            // Enter creates, only when there is a name
-            onAccepted: root.create()
-        }
+        color: root.colorContext.fg.secondary
+        font.pixelSize: VLCStyle.fontSize_small
+        wrapMode: Text.WordWrap
     }
 
-    footer: RowLayout {
-        spacing: VLCStyle.margin_small
+    Widgets.TextFieldExt {
+        id: nameField
 
-        // the footer is not under the content: its own context (see the content)
-        readonly property ColorContext colorContext: ColorContext {
-            palette: VLCStyle.palette
-            colorSet: ColorContext.Window
-        }
+        Layout.fillWidth: true
+        Layout.preferredHeight: VLCStyle.dp(36, VLCStyle.scale)
 
-        Item { Layout.fillWidth: true }
+        focus: true
+        selectByMouse: true
 
+        radius: RedesignStyle.radiusM
+
+        placeholderText: qsTr("Playlist name")
+
+        Accessible.role: Accessible.EditableText
+        Accessible.name: qsTr("Playlist name")
+
+        // Enter creates, only when there is a name
+        onAccepted: root.create()
+    }
+
+    footerItems: [
         Widgets.ButtonExt {
             text: qsTr("Cancel")
 
             onClicked: root.close()
-        }
+        },
 
         Widgets.ButtonExt {
             text: qsTr("Create")
@@ -160,5 +133,5 @@ ModalDialog {
 
             onClicked: root.create()
         }
-    }
+    ]
 }

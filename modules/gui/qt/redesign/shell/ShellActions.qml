@@ -37,6 +37,10 @@ QtObject {
     // open the "Open network stream" dialog (the main menu of the title bar)
     signal networkStreamRequested()
 
+    // open the Settings modal on `page` (an id of SettingsData.pages, "shortcuts" for the keyboard
+    // shortcuts of Controls; "" for the page shown last)
+    signal settingsRequested(string page)
+
     // open the "New playlist" dialog, which puts the media of `mediaIds` (a list of media library
     // ids, [] for an empty playlist) into the playlist it creates. It needs the media library.
     signal newPlaylistRequested(var mediaIds)

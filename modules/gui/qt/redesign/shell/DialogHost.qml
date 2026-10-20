@@ -29,6 +29,10 @@ import VLC.Redesign
  *
  *   networkStreamRequested()      -> OpenNetworkStreamDialog
  *   newPlaylistRequested(ids)     -> NewPlaylistDialog (media library only)
+ *   settingsRequested(page)       -> SettingsModal (also Ctrl+P, see the Shortcut below)
+ *
+ * The dialogs are based on RedesignModalDialog (a palette for what is in a popup); SettingsModal
+ * is not a dialog but its popup has the same need and does it itself.
  *
  * The dialogs that name types of the media library are loaded by name and only when
  * MainCtx.mediaLibraryAvailable (the types are not registered without one, and a file that names
@@ -58,7 +62,7 @@ Item {
     property Item backdrop: null
 
     //! a dialog is open (or still being closed)
-    readonly property bool active: _networkStreamOpen || _newPlaylistOpen
+    readonly property bool active: _networkStreamOpen || _newPlaylistOpen || _settingsOpen
 
     // the media of the playlist being created
     property var _newPlaylistItems: []
@@ -68,6 +72,11 @@ Item {
     property bool _networkStreamLoaded: false
     property bool _newPlaylistOpen: false
     property bool _newPlaylistLoaded: false
+    property bool _settingsOpen: false
+    property bool _settingsLoaded: false
+
+    // the page the Settings modal opens on
+    property string _settingsPage: ""
 
     // Signals
 
@@ -108,6 +117,18 @@ Item {
         }
     }
 
+    //! `page`: an id of SettingsData.pages, "shortcuts" or "" (see SettingsModal.open)
+    function openSettings(page) {
+        if (active)
+            return
+        _settingsPage = page ?? ""
+        _settingsOpen = true
+        if (settingsLoader.item)
+            settingsLoader.item.open(_settingsPage)
+        else
+            _settingsLoaded = true // onLoaded shows it
+    }
+
     function _show(dialog) {
         dialog.rootWindow = root.backdrop
         dialog.open()
@@ -119,6 +140,13 @@ Item {
         Qt.callLater(() => {
             if (!root._networkStreamOpen)
                 root._networkStreamLoaded = false
+        })
+    }
+
+    function _settingsRelease() {
+        Qt.callLater(() => {
+            if (!root._settingsOpen)
+                root._settingsLoaded = false
         })
     }
 
@@ -146,6 +174,21 @@ Item {
         function onNewPlaylistRequested(mediaIds) {
             root.openNewPlaylist(mediaIds)
         }
+
+        function onSettingsRequested(page) {
+            root.openSettings(page)
+        }
+    }
+
+    // Ctrl+P opens the Settings modal. The stock shortcut of the same key (GlobalShortcuts.qml,
+    // loaded by the shell) is turned off by the shell, or the two would be ambiguous and neither
+    // would fire. Like the stock ones it follows MainCtx.useGlobalShortcuts.
+    Shortcut {
+        sequence: "Ctrl+P"
+        context: Qt.ApplicationShortcut
+        enabled: MainCtx.useGlobalShortcuts
+
+        onActivated: root.openSettings("")
     }
 
     // Children
@@ -173,6 +216,33 @@ Item {
         function onClosed() {
             root._networkStreamOpen = false
             root._networkStreamRelease()
+            root.closed()
+        }
+    }
+
+    Loader {
+        id: settingsLoader
+
+        active: root._settingsLoaded
+
+        source: "SettingsModal.qml"
+
+        onLoaded: item.open(root._settingsPage)
+
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                root._settingsOpen = false
+                root._settingsLoaded = false
+            }
+        }
+    }
+
+    Connections {
+        target: settingsLoader.item
+
+        function onClosed() {
+            root._settingsOpen = false
+            root._settingsRelease()
             root.closed()
         }
     }

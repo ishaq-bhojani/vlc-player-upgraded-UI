@@ -71,13 +71,17 @@ Item {
 
     /**
      * Shows the modal on a page (an id of SettingsData.pages; the page shown last when empty or
-     * unknown), scrolled to the row `rowId` when it is given.
+     * unknown), scrolled to the row `rowId` when it is given. "shortcuts" shows the keyboard
+     * shortcuts, the sub-page of Controls.
      */
     function open(pageId: var, rowId: var) {
         sidebar.clearSearch()
-        if (pageId !== undefined && pageId !== null && SettingsData.pageIds.includes(pageId))
+        const shortcuts = pageId === "shortcuts"
+        if (shortcuts)
+            page = "controls"
+        else if (pageId !== undefined && pageId !== null && SettingsData.pageIds.includes(pageId))
             page = pageId
-        shortcutsOpen = false
+        shortcutsOpen = shortcuts
         popup.open()
         if (rowId)
             Qt.callLater(() => pageLoader.item?.scrollTo(rowId))
@@ -142,15 +146,13 @@ Item {
 
         closePolicy: T.Popup.CloseOnEscape
 
-        onOpened: sidebar.focusList()
-        onClosed: root.closed()
-
-        readonly property ColorContext colorContext: ColorContext {
-            id: theme
-
-            palette: VLCStyle.palette
-            colorSet: ColorContext.Window
+        onOpened: {
+            if (root.shortcutsOpen && shortcutsLoader.item)
+                shortcutsLoader.item.forceActiveFocus()
+            else
+                sidebar.focusList()
         }
+        onClosed: root.closed()
 
         enter: Transition {
             OpacityAnimator { from: 0.0; to: 1.0; duration: VLCStyle.duration_short }
@@ -176,6 +178,18 @@ Item {
         contentItem: ColumnLayout {
             spacing: 0
 
+            // A popup is not an Item of the window: its content is not under the ColorContext of the
+            // window, and the controls of the pages would get no palette (magenta). A ColorContext
+            // that is a child of the popup does not help either (the palette lookup walks the parent
+            // Items, and a popup is not one), so the content has its own. The background and the
+            // overlay, which are not in the content, use it by its id.
+            readonly property ColorContext colorContext: ColorContext {
+                id: theme
+
+                palette: VLCStyle.palette
+                colorSet: ColorContext.Window
+            }
+
             Accessible.role: Accessible.Dialog
             Accessible.name: qsTr("Settings")
 
@@ -189,7 +203,9 @@ Item {
                     id: sidebar
 
                     Layout.fillHeight: true
-                    Layout.preferredWidth: implicitWidth
+                    // a narrow window: the sidebar keeps a third of the modal at most, the page
+                    // needs the rest (the sidebar is 220 dp wide, in a modal of 1040 dp at most)
+                    Layout.preferredWidth: Math.min(implicitWidth, popup.width / 3)
                     Layout.margins: RedesignStyle.spacingL
 
                     currentPage: root.shortcutsOpen ? "controls" : root.page

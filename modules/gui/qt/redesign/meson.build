@@ -162,6 +162,7 @@ qml_modules += {
         'settings/pages/PerformancePage.qml',
         'settings/pages/RecordingPage.qml',
         'settings/pages/ExtensionsPage.qml',
+        'dialogs/RedesignModalDialog.qml',
         'dialogs/ToolConsentDialog.qml',
         'dialogs/NewPlaylistDialog.qml',
         'dialogs/OpenNetworkStreamDialog.qml',

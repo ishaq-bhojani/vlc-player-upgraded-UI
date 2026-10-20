@@ -18,7 +18,6 @@
 import QtQuick
 import QtQuick.Layouts
 
-import VLC.Dialogs
 import VLC.Style
 import VLC.Util
 import VLC.Widgets as Widgets
@@ -35,7 +34,7 @@ import VLC.Redesign
  * The owner opens it with open() the first time a website link is played or Download is pressed.
  * It does not host itself anywhere: the shell that plays web links creates it.
  */
-ModalDialog {
+RedesignModalDialog {
     id: root
 
     // Properties
@@ -83,67 +82,58 @@ ModalDialog {
     // Settings
 
     title: qsTr("Download helper tools?")
+    bodyWidth: VLCStyle.dp(420, VLCStyle.scale)
 
     // Esc counts as "Not now"
     onRejected: declined()
 
     // Children
 
-    contentItem: ColumnLayout {
-        implicitWidth: VLCStyle.dp(420, VLCStyle.scale)
+    Text {
+        Layout.fillWidth: true
 
-        spacing: VLCStyle.margin_small
+        text: qsTr("To play and download videos from websites, VLC Reborn downloads %1 from their official GitHub releases into your user data folder (vlc-reborn/tools). The files are checked against a fixed checksum before they are used.").arg(root.tools.join(qsTr(" and ")))
+
+        color: root.colorContext.fg.primary
+        font.pixelSize: VLCStyle.fontSize_normal
+        wrapMode: Text.WordWrap
+    }
+
+    Repeater {
+        model: root.tools
 
         Text {
-            Layout.fillWidth: true
+            required property string modelData
 
-            text: qsTr("To play and download videos from websites, VLC Reborn downloads %1 from their official GitHub releases into your user data folder (vlc-reborn/tools). The files are checked against a fixed checksum before they are used.").arg(root.tools.join(qsTr(" and ")))
+            Layout.fillWidth: true
+            Layout.leftMargin: VLCStyle.margin_normal
+
+            text: "• " + root.toolLine(modelData)
 
             color: root.colorContext.fg.primary
             font.pixelSize: VLCStyle.fontSize_normal
-            wrapMode: Text.WordWrap
-        }
-
-        Repeater {
-            model: root.tools
-
-            Text {
-                required property string modelData
-
-                Layout.fillWidth: true
-                Layout.leftMargin: VLCStyle.margin_normal
-
-                text: "• " + root.toolLine(modelData)
-
-                color: root.colorContext.fg.primary
-                font.pixelSize: VLCStyle.fontSize_normal
-                font.bold: true
-            }
-        }
-
-        Text {
-            Layout.fillWidth: true
-
-            text: qsTr("You are responsible for respecting the terms of each website and copyright law. If you decline, the feature stays off; you can turn it on later in Settings, Network.")
-
-            color: root.colorContext.fg.secondary
-            font.pixelSize: VLCStyle.fontSize_small
-            wrapMode: Text.WordWrap
+            font.bold: true
         }
     }
 
-    footer: RowLayout {
-        spacing: VLCStyle.margin_small
+    Text {
+        Layout.fillWidth: true
 
-        Item { Layout.fillWidth: true }
+        text: qsTr("You are responsible for respecting the terms of each website and copyright law. If you decline, the feature stays off; you can turn it on later in Settings, Network.")
 
+        color: root.colorContext.fg.secondary
+        font.pixelSize: VLCStyle.fontSize_small
+        wrapMode: Text.WordWrap
+    }
+
+    footerItems: [
         Widgets.ButtonExt {
             id: notNowButton
 
             text: qsTr("Not now")
 
             onClicked: root.decline()
-        }
+        },
 
         Widgets.ButtonExt {
             id: allowButton
@@ -157,5 +147,5 @@ ModalDialog {
 
             onClicked: root.allow()
         }
-    }
+    ]
 }

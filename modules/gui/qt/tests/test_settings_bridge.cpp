@@ -82,6 +82,43 @@ private slots:
         QCOMPARE(key(Qt::Key_Kana_Lock, Qt::ControlModifier), QString());
     }
 
+    void localFileUrlDrivePaths()
+    {
+        SettingsBridge bridge(nullptr);
+        QCOMPARE(bridge.localFileUrl("C:\\Music\\Albums"), QString("file:///C:/Music/Albums"));
+        QCOMPARE(bridge.localFileUrl("C:/My Music"), QString("file:///C:/My%20Music"));
+        QCOMPARE(bridge.localFileUrl("c:\\"), QString("file:///c:/"));
+    }
+
+    void localFileUrlPosixPaths()
+    {
+        SettingsBridge bridge(nullptr);
+        QCOMPARE(bridge.localFileUrl("/home/me/Music"), QString("file:///home/me/Music"));
+        QCOMPARE(bridge.localFileUrl("/a#b"), QString("file:///a%23b"));
+        QCOMPARE(bridge.localFileUrl("  /home/me  "), QString("file:///home/me"));
+    }
+
+    void localFileUrlNetworkPaths()
+    {
+        SettingsBridge bridge(nullptr);
+        // UNC: the server is the host of the URL, not a path segment
+        QCOMPARE(bridge.localFileUrl("\\\\server\\share"), QString("file://server/share"));
+        QCOMPARE(bridge.localFileUrl("\\\\server\\share\\My Music\\a#b"),
+                 QString("file://server/share/My%20Music/a%23b"));
+        QCOMPARE(bridge.localFileUrl("//server/share/Music"), QString("file://server/share/Music"));
+        // only the server: no path
+        QCOMPARE(bridge.localFileUrl("\\\\server"), QString("file://server"));
+    }
+
+    void localFileUrlKeepsUrlsAndEmpty()
+    {
+        SettingsBridge bridge(nullptr);
+        QCOMPARE(bridge.localFileUrl("file:///home/me"), QString("file:///home/me"));
+        QCOMPARE(bridge.localFileUrl("smb://host/share"), QString("smb://host/share"));
+        QCOMPARE(bridge.localFileUrl(""), QString());
+        QCOMPARE(bridge.localFileUrl("   "), QString());
+    }
+
     void colorSchemeKinds()
     {
         ColorSchemeModel model;

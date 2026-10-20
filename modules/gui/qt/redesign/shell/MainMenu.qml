@@ -36,7 +36,8 @@ import VLC.Redesign
  *   Keyboard shortcuts, Settings, Help >  (Help, About, Messages)
  *
  * Each entry opens the dialog of VLC (DialogsProvider), the same one as the matching entry of the
- * classic menu; "Network stream" asks the shell for its own dialog (ShellActions, DialogHost.qml).
+ * classic menu; "Network stream", "Keyboard shortcuts" and "Settings" ask the shell for its own
+ * dialog (ShellActions, DialogHost.qml).
  * The recent media come from the media library (see MainMenuRecent.qml). As in the
  * classic menu, the entry is there only with a media library and with the "save-recentplay"
  * setting on, which is read each time the menu opens (see `openAtGlobal`). The menu closes when
@@ -220,15 +221,14 @@ RedesignMenu {
     RedesignMenuItem {
         text: qsTr("Keyboard shortcuts")
 
-        // KeyboardShortcutsDialog replaces it when it exists: the preferences have the hotkeys
-        onTriggered: root._launch(() => DialogsProvider.prefsDialog())
+        // the keyboard shortcuts of the Settings modal (Controls)
+        onTriggered: root._launch(() => ShellActions.settingsRequested("shortcuts"))
     }
 
     RedesignMenuItem {
         text: qsTr("Settings")
 
-        // SettingsModal replaces it when it exists
-        onTriggered: root._launch(() => DialogsProvider.prefsDialog())
+        onTriggered: root._launch(() => ShellActions.settingsRequested(""))
     }
 
     RedesignMenu {

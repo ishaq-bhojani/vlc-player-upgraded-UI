@@ -20,6 +20,8 @@ now, and what is dropped or deferred (with the task that owns it).
 | Player top bar / control bar auto hide FSM | `ShellStates` (pointer within 80 px of an edge, key activity) |
 | Back button of the player (stops a video that has no surface without PIP) | `leaveToBrowse()` (title bar button, panel "Browse the library", back gesture) |
 | MiniPlayer, PIPPlayer | `RedesignControlBar` (Task 22), `MiniPlayerCard` |
+| Preferences (`DialogsProvider.prefsDialog()`): Ctrl+P, main menu "Settings" and "Keyboard shortcuts" | the Settings modal (`settings/SettingsModal.qml`), hosted by `shell/DialogHost.qml` like the other dialogs: `ShellActions.settingsRequested(page)` (`""` = the page shown last, `"shortcuts"` = the keyboard shortcuts of Controls) opens it, `closed()` gives the keyboard back; one modal at a time. Ctrl+P is a `Shortcut` of `DialogHost`, and the root turns the stock Ctrl+P of `GlobalShortcuts.qml` off (two shortcuts of the same key are ambiguous and neither fires). The C++ entry points (`prefsDialog()` from the system tray, "Advanced..." of the modal) keep the stock QWidgets dialog | Task 34b |
+| Modal dialogs (`OpenNetworkStreamDialog`, `NewPlaylistDialog`, `ToolConsentDialog`) | based on `dialogs/RedesignModalDialog.qml`: a popup is not under the `ColorContext` of the window, so the body and the footer each have their own and the dialog only writes its body (default property) and its buttons (`footerItems`). `SettingsModal` is a bare popup with the same need and has the context in its content. The "Save" of the play queue (`QueuePanel`) opens the shell's New playlist dialog (`ShellActions.newPlaylistRequested`) | Task 34b |
 
 ## Dropped or deferred
 

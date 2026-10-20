@@ -363,9 +363,11 @@ QtObject {
     // Functions
 
     /**
-     * The file:// URL of a local path ("C:\Music", "C:/Music", "/home/me/Music"); the folder
-     * model of the media library wants a URL. Each part is percent-encoded. A string that
-     * already is a URL is kept, an empty string gives "".
+     * The file:// URL of a local path ("C:\Music", "C:/Music", "/home/me/Music", "\\server\share");
+     * the folder model of the media library wants a URL. The conversion is QUrl::fromLocalFile's
+     * (SettingsBridge.localFileUrl, which the C++ tests cover): each part is percent-encoded and a
+     * network path keeps its server as the host of the URL. A string that already is a URL is kept,
+     * an empty string gives "".
      */
     function localUrl(path: string): string {
         const text = String(path ?? "").trim()
@@ -373,10 +375,7 @@ QtObject {
             return ""
         if (/^[a-zA-Z][a-zA-Z0-9+.-]+:\/\//.test(text))
             return text
-        const slashes = text.replace(/[\\]/g, "/")
-        const drive = /^[a-zA-Z]:/.test(slashes) ? slashes.slice(0, 2) : ""
-        const encoded = slashes.slice(drive.length).split("/").map(encodeURIComponent).join("/")
-        return "file://" + (drive.length > 0 ? "/" + drive : "") + (encoded.startsWith("/") ? encoded : "/" + encoded)
+        return SettingsBridge.localFileUrl(text)
     }
 
     //! the page object of an id, undefined if there is none

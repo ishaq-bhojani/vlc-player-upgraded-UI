@@ -27,6 +27,8 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QKeyEvent>
+#include <QRegularExpression>
+#include <QUrl>
 #include <QVariantMap>
 #include <QWindow>
 
@@ -120,6 +122,24 @@ QString runDialog(QFileDialog& dialog, QWindow* parent)
 }
 
 } // namespace
+
+QString SettingsBridge::localFileUrl(const QString& path) const
+{
+    const QString text = path.trimmed();
+    if (text.isEmpty())
+        return QString();
+
+    // "scheme://": already a URL (a single letter is a drive, "C://x" is a path)
+    static const QRegularExpression urlScheme(QStringLiteral("^[a-zA-Z][a-zA-Z0-9+.-]+://"));
+    if (urlScheme.match(text).hasMatch())
+        return text;
+
+    // fromLocalFile only turns the native separators into slashes, and the native ones are those of
+    // the host: the path of the user (Windows) is converted here, whatever the host is
+    QString slashes = text;
+    slashes.replace(QLatin1Char('\\'), QLatin1Char('/'));
+    return QUrl::fromLocalFile(slashes).toString(QUrl::FullyEncoded);
+}
 
 QString SettingsBridge::pickFolder(const QString& title, const QString& startDir) const
 {

@@ -28,7 +28,8 @@ import VLC.Redesign
  * 0 or NaN). The number typed is reported by `edited` when the user validates it (Enter) or
  * leaves the field, clamped to the bounds, and only if it differs from `value`; text that is
  * not a number is dropped. Up and Down step by `stepSize` and report at once. Escape gives the
- * stored value back.
+ * stored value back when there is something to give back, and then does not close the Settings
+ * modal; with nothing typed it is left to the modal, which closes.
  */
 Widgets.TextFieldExt {
     id: root
@@ -60,6 +61,12 @@ Widgets.TextFieldExt {
 
     //! the user entered `newValue`
     signal edited(var newValue)
+
+    //! the text typed differs from the stored value (there is an edit to take back)
+    readonly property bool _pendingEdit: root.text !== root._format(root.value)
+
+    //! the press of Escape was used to take back an edit: its release is ours too
+    property bool _escapeTaken: false
 
     // Functions
 
@@ -121,9 +128,28 @@ Widgets.TextFieldExt {
             _report(parsed)
     }
 
+    // The modal closes on the release of Escape: when the press took an edit back, the release has
+    // to be taken too, or it would reach the popup and close the whole modal.
     Keys.onEscapePressed: (event) => {
+        if (!root._pendingEdit) {
+            event.accepted = false
+            return
+        }
         _showValue()
+        root._escapeTaken = true
         event.accepted = true
+    }
+
+    Keys.onReleased: (event) => {
+        if (event.key === Qt.Key_Escape && root._escapeTaken && !event.isAutoRepeat) {
+            root._escapeTaken = false
+            event.accepted = true
+        }
+    }
+
+    onActiveFocusChanged: {
+        if (!activeFocus)
+            root._escapeTaken = false
     }
 
     Keys.onUpPressed: (event) => {

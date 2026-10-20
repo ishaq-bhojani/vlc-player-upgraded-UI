@@ -32,10 +32,10 @@ import VLC.Redesign
  * context menu and the drag and drop of the media of the library into the queue are its own).
  *
  * Clear is what the context menu of the play queue does (MainPlaylistController.clear(), no
- * confirmation, no undo). Save puts the queue into a playlist of the media library, with the dialog
- * of VLC that asks the name (it creates the playlist with MLPlaylistListModel.create), or, without a
- * media library, saves it to a file (the "Save Play Queue to File" action). The media library types
- * are not used here: they do not exist without a media library.
+ * confirmation, no undo). Save puts the queue into a playlist of the media library, with the New
+ * playlist dialog of the shell that asks the name (ShellActions.newPlaylistRequested, hosted by
+ * DialogHost.qml), or, without a media library, saves it to a file (the "Save Play Queue to File"
+ * action). The media library types are not used here: they do not exist without a media library.
  *
  * Media dropped on the header (outside of the list) are appended to the queue.
  */
@@ -63,7 +63,7 @@ FocusScope {
             const indexes = []
             for (let i = 0; i < count; ++i)
                 indexes.push(i)
-            DialogsProvider.playlistsDialog(pane.model.getItemsForIndexes(indexes))
+            ShellActions.newPlaylistRequested(pane.model.getItemsForIndexes(indexes))
         } else {
             DialogsProvider.savePlayingToPlaylist()
         }

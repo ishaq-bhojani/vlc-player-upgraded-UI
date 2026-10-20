@@ -69,6 +69,16 @@ public:
     Q_INVOKABLE QString hotkeyFromKeyEvent(int key, int modifiers, const QString& text) const;
 
     /**
+     * The file:// URL of a local path, as QUrl::fromLocalFile makes it: "C:\Music" and "C:/Music"
+     * give "file:///C:/Music", "/home/me/Music" gives "file:///home/me/Music", a network path
+     * "\\server\share\a" (or "//server/share/a") gives "file://server/share/a". The parts are
+     * percent-encoded ("/a#b" gives "file:///a%23b"). The spaces around are dropped, a string that
+     * already is a URL (scheme://...) is kept as it is, an empty one gives "". The folder model of the
+     * media library wants a URL, the settings pages have a path.
+     */
+    Q_INVOKABLE QString localFileUrl(const QString& path) const;
+
+    /**
      * The native folder dialog, a child of the main window and modal to it. The native path of
      * the folder chosen, "" if the user cancelled. `startDir` is where it opens (a native path,
      * may be empty or not exist).
