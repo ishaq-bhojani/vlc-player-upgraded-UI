@@ -38,6 +38,7 @@ moc_headers += files(
     'cpp/settingsmodel.hpp',
     'cpp/shortcutsmodel.hpp',
     'cpp/toolmanager.hpp',
+    'cpp/waveform.hpp',
 )
 
 qt_plugin_sources += files(
@@ -65,6 +66,10 @@ qt_plugin_sources += files(
     'cpp/toolmanager.hpp',
     'cpp/toolmanagervlc.cpp',
     'cpp/toolmanagervlc.hpp',
+    'cpp/waveform.cpp',
+    'cpp/waveform.hpp',
+    'cpp/waveformvlc.cpp',
+    'cpp/waveformvlc.hpp',
     'cpp/currentmediafavorite.cpp',
     'cpp/currentmediafavorite.hpp',
     'cpp/effectscontroller.cpp',

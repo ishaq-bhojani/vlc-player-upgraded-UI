@@ -316,3 +316,28 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qtest_qt6_dep],
 }
+
+# WaveformProvider (waveform peaks for the seek bar and the loudness measurement): the pure
+# part and the provider against a fake decoder, plus the real decoder (libvlccore: transcode +
+# smem, a private vlc_player, no output device) on a libvlc instance with a throwaway --config.
+vlc_tests += {
+    'name': 'test_qt_waveform',
+    'sources': files(
+        '../../tests/test_waveform.cpp',
+        '../cpp/waveform.hpp',
+        '../cpp/waveform.cpp',
+        '../cpp/waveformvlc.hpp',
+        '../cpp/waveformvlc.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_waveform.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/waveform.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore, libvlc],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

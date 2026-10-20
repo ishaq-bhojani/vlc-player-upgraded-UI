@@ -35,6 +35,8 @@
 #include "settingsmodel.hpp"
 #include "shortcutsmodel.hpp"
 #include "toolmanagervlc.hpp"
+#include "waveform.hpp"
+#include "waveformvlc.hpp"
 
 #include "../../maininterface/mainctx.hpp"
 #include "../../qt.hpp"
@@ -61,6 +63,7 @@ static_assert(SettingItem::Bool == 0 && SettingItem::Integer == 1 && SettingItem
  *                          modal (what QML can not reach in the upstream code)
  *   ShortcutsModel         singleton, the keyboard shortcuts page (call reload() when it opens)
  *   ToolManager            singleton, verified yt-dlp / ffmpeg downloads (consent, pinned manifest)
+ *   WaveformProvider       creatable type, the peaks of a file:// url (seek bar waveform, loudness)
  * plus, only when the interface has a media library, the default backend
  * factory of CurrentMediaFavorite (MLFavoriteBackend), and the
  * qmlRegisterModule/qmlProtectModule pair of the URI.
@@ -92,6 +95,8 @@ void registerQmlTypes(MainCtx* ctx)
         [intf](QQmlEngine*, QJSEngine*) { return new ShortcutsModel(VLC_OBJECT(intf)); });
     qmlRegisterSingletonType<ToolManager>(uri, versionMajor, versionMinor, "ToolManager",
         [intf](QQmlEngine*, QJSEngine*) { return createToolManager(VLC_OBJECT(intf)); });
+    WaveformProvider::setDefaultEnvironment([intf] { return makeVlcWaveformEnvironment(VLC_OBJECT(intf)); });
+    qmlRegisterType<WaveformProvider>(uri, versionMajor, versionMinor, "WaveformProvider");
     if (ctx->hasMediaLibrary()) {
         CurrentMediaFavorite::setDefaultBackendFactory([ml = ctx->getMediaLibrary()] {
             return std::make_unique<MLFavoriteBackend>(ml);
@@ -105,6 +110,7 @@ void registerQmlTypes(MainCtx* ctx)
 void clearQmlTypes()
 {
     CurrentMediaFavorite::setDefaultBackendFactory({});
+    WaveformProvider::setDefaultEnvironment({});
 }
 
 } // namespace redesign
