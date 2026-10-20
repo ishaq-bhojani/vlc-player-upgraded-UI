@@ -119,9 +119,11 @@ ColumnLayout {
         color: theme.fg.secondary
     }
 
-    // The field for the path of a folder, and the two buttons. In a narrow page (the owner's window
-    // is 600 dp wide: the page is about 320) the field would get ~110 dp between the buttons, so it
-    // takes a line of its own and the buttons share the line under it.
+    // The Browse button, the field for the path of a folder and the Add folder button. In a narrow
+    // page (the owner's window is 600 dp wide: the page is about 320) the field would get ~110 dp
+    // between the two buttons, so Add folder goes to a line of its own under the other two. The
+    // items stay in the order of the keyboard (Browse, field, Add folder) in both layouts, so Tab
+    // follows what is drawn.
     GridLayout {
         id: addRow
 
@@ -136,9 +138,8 @@ ColumnLayout {
         Widgets.ButtonExt {
             id: browseButton
 
-            Layout.row: addRow.narrow ? 1 : 0
+            Layout.row: 0
             Layout.column: 0
-            Layout.fillWidth: addRow.narrow
 
             text: qsTr("Browse...")
 
@@ -151,8 +152,7 @@ ColumnLayout {
             id: field
 
             Layout.row: 0
-            Layout.column: addRow.narrow ? 0 : 1
-            Layout.columnSpan: addRow.narrow ? 2 : 1
+            Layout.column: 1
             Layout.fillWidth: true
             Layout.preferredHeight: VLCStyle.dp(36, VLCStyle.scale)
 
@@ -168,7 +168,8 @@ ColumnLayout {
 
         Widgets.ButtonExt {
             Layout.row: addRow.narrow ? 1 : 0
-            Layout.column: addRow.narrow ? 1 : 2
+            Layout.column: addRow.narrow ? 0 : 2
+            Layout.columnSpan: addRow.narrow ? 2 : 1
             Layout.fillWidth: addRow.narrow
 
             text: qsTr("Add folder")

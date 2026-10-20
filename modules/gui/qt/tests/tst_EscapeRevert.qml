@@ -121,6 +121,12 @@ TestCase {
         }
     }
 
+    Component {
+        id: reverterComponent
+
+        EscapeRevert {}
+    }
+
     function init() {
         stored = "10"
     }
@@ -223,6 +229,23 @@ TestCase {
         keyRelease(Qt.Key_Escape)
         verify(!h.field.reverter.taken)
         compare(h.releases, 0)
+    }
+
+    // a repeat of the key (held down) is not the release that ends a taken press
+    function test_autoRepeatReleaseIsNotTaken() {
+        const reverter = createTemporaryObject(reverterComponent, testCase)
+        verify(reverter)
+        reverter.taken = true
+
+        const repeat = { key: Qt.Key_Escape, isAutoRepeat: true, accepted: false }
+        reverter.release(repeat)
+        compare(repeat.accepted, false)
+        verify(reverter.taken)
+
+        const real = { key: Qt.Key_Escape, isAutoRepeat: false, accepted: false }
+        reverter.release(real)
+        compare(real.accepted, true)
+        verify(!reverter.taken)
     }
 
     // inside a FocusScope, as the field of PathControl

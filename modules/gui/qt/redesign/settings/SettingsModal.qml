@@ -70,9 +70,9 @@ Item {
     // Functions
 
     /**
-     * Shows the modal on a page (an id of SettingsData.pages; the page shown last when empty or
-     * unknown), scrolled to the row `rowId` when it is given. "shortcuts" shows the keyboard
-     * shortcuts, the sub-page of Controls.
+     * Shows the modal on a page (an id of SettingsData.pages; the current page of this instance
+     * when empty or unknown, the host remembers the last page), scrolled to the row `rowId` when
+     * it is given. "shortcuts" shows the keyboard shortcuts, the sub-page of Controls.
      */
     function open(pageId: var, rowId: var) {
         sidebar.clearSearch()
