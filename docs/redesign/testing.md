@@ -172,11 +172,13 @@ pass the smoke run. The redesign run therefore also carries a probe:
   `MainCtx` exists), it creates a second `QQmlEngine` in the same process, and
   loads **every** file of the `VLC.Redesign` module as a `Component`. The types
   (the QML type registry is process-wide: `VLC.MainInterface`, `VLC.Player`, the
-  C++ types of `VLC.Redesign`, ...) and the import path (`:/qt/qml`) are the
-  app's, so every `import` and type name resolves as in the app. What the second
-  engine does not have is what `MainUI::setup` installs on the app's own engine
-  (image providers such as the media library cover provider, context
-  properties). That is enough for a load check: a `Component` only needs the files
+  C++ types of `VLC.Redesign`, ...) are the app's, and the probe adds the import
+  path `:/qt/qml` itself (the app adds it only for `QT_VERSION < 6.5`,
+  `mainui.cpp` in `MainUI::setup`; from Qt 6.5 on it is a default), so every
+  `import` and type name resolves as in the app. What the second engine does not
+  have is what `MainUI::setup` installs on the app's own engine: its image
+  providers (the media library cover provider, `svgcolor`, ...); the app installs
+  no context properties. That is enough for a load check: a `Component` only needs the files
   and the types to compile; an `Image` source is not looked up before an `Image`
   is created, and nothing is created. Nothing is instantiated:
   `Component.Ready` is the pass criterion. It takes about
@@ -214,7 +216,7 @@ typeload: 101 files, 96 ready, 5 skipped (ML-only), 0 errors
 ```
 
 What it does not do: create the components (a binding that is wrong only at run
-time, a missing context property, a `Loader` source that is wrong still pass),
+time, an undefined name, a `Loader` source that is wrong still pass),
 or exercise the ML-only files.
 
 ### Reading the summary

@@ -19,10 +19,11 @@
 // "skipped-ml"; any other error (a syntax error, an unterminated comment, a
 // missing type that is not one of those) still fails.
 //
-// The second engine has the app's registered types and import path (":/qt/qml",
-// as in MainUI::setup) but not its image providers or context properties. A load
-// check does not need them: a Component only needs the types and the files, and
-// an image source is not resolved before an Image is created.
+// The second engine has the app's registered types, and the import path ":/qt/qml"
+// that it adds itself (the app adds it only for Qt < 6.5, in MainUI::setup), but
+// not the image providers that MainUI::setup installs (the app has no context
+// properties). A load check does not need them: a Component only needs the types
+// and the files, and an image source is not resolved before an Image is created.
 //
 // Result lines, written to stderr (they end up in the vlc log):
 //   TYPELOAD ready <path>

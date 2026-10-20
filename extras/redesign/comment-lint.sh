@@ -23,7 +23,9 @@
 # and /regex/ literals (a "/" starts one after an operator, an opening bracket or
 # one of return typeof case in of void delete throw yield await new instanceof
 # else do; "prev" is carried over line ends, so a continuation line that starts
-# with "/ 2" is a division). It reports:
+# with "/ 2" is a division). In C++ the text of a preprocessor directive line
+# (# at the start of the line, with its backslash continuations) is not scanned for
+# quotes (#error don't ...); a /* opened on such a line still counts. It reports:
 #   - a /* that is never closed (the line of the /*),
 #   - a /* that starts a line inside a comment, which is how a lost closing marker
 #     usually hides: a later doc comment closes the licence header, so nothing is
@@ -133,6 +135,20 @@ const char32_t c = U'"';
 const char8_t d = u8'"';
 int e = 1'000'000 + 0x1F'FF;
 const char *s = "it's";
+EOF
+
+    fixture cpp_directive_text.cpp pass <<'EOF'
+#error do not, it's broken
+  #  warning "don't" \
+     continued, it's still the directive
+#define LONG 1 /* a comment that
+   spans lines, with an apostrophe: it's fine */
+int ok = 'x';
+EOF
+
+    fixture cpp_directive_open_comment.cpp fail <<'EOF'
+#define A 1 /* opened on a directive line, never closed
+int x;
 EOF
 
     fixture cpp_raw_string.cpp pass <<'EOF'
@@ -255,6 +271,15 @@ FNR == 1 {
     sub(/\r$/, "", line)
     n = length(line)
     i = 1
+    # C++ preprocessor directive (a line whose first character is #, and its
+    # backslash continuations): its text is not C++ source (#error don\047t ...), so
+    # quotes are ignored in it; comments still count (a /* opened here is tracked)
+    if (!isqml && !inblock && !inraw && !instr) {
+        dir = dircont || (line ~ /^[ \t]*#/)
+        dircont = dir && (line ~ /\\$/)
+    } else {
+        dir = 0; dircont = 0
+    }
     while (i <= n) {
         if (inblock) {
             # a comment that opens at the start of a line inside a comment: the
@@ -299,6 +324,7 @@ FNR == 1 {
         if (c == " " || c == "\t") { i++; continue }
         if (c2 == "//") break
         if (c2 == "/*") { inblock = 1; blockline = FNR; i += 2; continue }
+        if (dir && (c == "\"" || c == "\047")) { i++; continue }
         if (c ~ /[A-Za-z_$]/) {       # identifier (or a string prefix such as L u8 R)
             j = i + 1
             while (j <= n && isword(substr(line, j, 1))) j++
