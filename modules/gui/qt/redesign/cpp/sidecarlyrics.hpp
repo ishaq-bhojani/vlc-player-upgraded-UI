@@ -30,8 +30,8 @@
 /**
  * @brief The synced lyrics of a local audio file, from the ".lrc" file next to it.
  *
- * For `<dir>/<name>.<ext>` the file is `<dir>/<name>.lrc` (the extension is matched without
- * case). Only local files are looked at, the file is read once when `media` is set (it is not
+ * For `<dir>/<name>.<ext>` the file is `<dir>/<name>.lrc` (also `.LRC` and `.Lrc` where the file
+ * system is case sensitive). Only local files are looked at, the file is read once when `media` is set (it is not
  * watched), a file bigger than maxFileSize is ignored, and a file that is not valid UTF-8 is read
  * as Latin-1.
  *

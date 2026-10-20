@@ -44,9 +44,7 @@ Item {
     readonly property bool available: root.embedded || sidecar.available
 
     // index of the line to highlight, -1 before the first line
-    readonly property int currentIndex: root.embedded
-                                        ? Player.currentLyricIndex
-                                        : (sidecar.available ? sidecar.indexAtTime(Player.time) : -1)
+    readonly property int currentIndex: root.embedded ? Player.currentLyricIndex : root._sidecarIndex
 
     // time without scrolling by the user before the current line is centered again
     property int resumeDelay: 4000
@@ -54,11 +52,27 @@ Item {
     // the user scrolled the list less than `resumeDelay` ms ago
     property bool _userScrolling: false
 
-    // Settings
+    // The playback time for the lines of the file: Player.positionUpdated gives it at the pace of
+    // the position of the seek bar (interpolated between the updates of the player), and on seeks.
+    property var _time
 
-    clip: true
+    // the line of the file at `_time`
+    property int _sidecarIndex: -1
 
     // Functions
+
+    function refreshSidecarIndex() {
+        root._sidecarIndex = sidecar.available ? sidecar.indexAtTime(root._time) : -1
+    }
+
+    // other lines or another media: the user starts over
+    function reset() {
+        resumeTimer.stop()
+        root._userScrolling = false
+        root._time = Player.time
+        root.refreshSidecarIndex()
+        Qt.callLater(root.centerCurrent)
+    }
 
     // Brings the current line to the center. A line that is not on screen (a seek, the first
     // line) is jumped to, one that is on screen is reached with an animation.
@@ -88,7 +102,37 @@ Item {
 
     onCurrentIndexChanged: Qt.callLater(root.centerCurrent)
 
+    // Settings
+
+    Component.onCompleted: root.reset()
+
     // Children
+
+    Connections {
+        target: Player
+
+        function onPositionUpdated(position, time, length) {
+            root._time = time
+            root.refreshSidecarIndex()
+        }
+
+        // another media
+        function onInputChanged() {
+            root.reset()
+        }
+
+        function onSyltLyricsChanged() {
+            root.reset()
+        }
+    }
+
+    Connections {
+        target: sidecar
+
+        function onLinesChanged() {
+            root.reset()
+        }
+    }
 
     ColorContext {
         id: theme
@@ -165,6 +209,8 @@ Item {
                 NumberAnimation { duration: VLCStyle.duration_short }
             }
 
+            // a pause in the song is not announced
+            Accessible.ignored: line.text.length === 0
             Accessible.role: Accessible.StaticText
             Accessible.name: line.text
         }

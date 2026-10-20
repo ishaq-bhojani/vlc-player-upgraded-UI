@@ -40,16 +40,11 @@ const QRegularExpression& stampRegex()
     return re;
 }
 
-// the value of an "offset:" tag, only for tags that are exactly that
-bool parseOffsetTag(const QString& tag, qint64* offset)
+const QRegularExpression& offsetRegex()
 {
     static const QRegularExpression re(
-        QStringLiteral("^offset:\\s*([+-]?\\d{1,9})\\s*$"), QRegularExpression::CaseInsensitiveOption);
-    const QRegularExpressionMatch m = re.match(tag);
-    if (!m.hasMatch())
-        return false;
-    *offset = m.captured(1).toLongLong();
-    return true;
+        QStringLiteral("^\\[offset:\\s*([+-]?\\d{1,9})\\s*\\]"),QRegularExpression::CaseInsensitiveOption);
+    return re;
 }
 
 bool parseStamp(const QString& tag, qint64* ms)
@@ -98,25 +93,35 @@ QVector<LrcLine> parseLrc(const QString& content)
         }
         line = line.trimmed();
 
-        // the leading "[...]" groups
+        // the leading time stamps, with or without blanks between them
         QVector<qint64> stamps;
         int pos = 0;
-        while (pos < line.size() && line[pos] == QLatin1Char('[')) {
-            const int end = line.indexOf(QLatin1Char(']'), pos + 1);
+        while (pos < line.size()) {
+            int p = pos;
+            while (p < line.size() && line[p].isSpace())
+                ++p;
+            if (p >= line.size() || line[p] != QLatin1Char('['))
+                break;
+            const int end = line.indexOf(QLatin1Char(']'), p + 1);
             if (end < 0)
                 break;
-            const QString tag = line.mid(pos + 1, end - pos - 1);
             qint64 value = 0;
-            if (parseStamp(tag, &value))
-                stamps.append(value);
-            else if (parseOffsetTag(tag, &value))
-                offset = value;
-            // else: [ar:], [ti:], malformed ... skipped
+            if (!parseStamp(line.mid(p + 1, end - p - 1), &value))
+                break;
+            stamps.append(value);
             pos = end + 1;
         }
-        if (stamps.isEmpty())
-            continue;
 
+        if (stamps.isEmpty()) {
+            // a line without time stamp: the tags ([ti:], [ar:], ...) live here, only [offset:]
+            // is of any use
+            const QRegularExpressionMatch m = offsetRegex().match(line);
+            if (m.hasMatch())
+                offset = m.captured(1).toLongLong();
+            continue;
+        }
+
+        // what follows the stamps is the text, even if it starts with a "[Chorus]"
         QString text = stripWordStamps(line.mid(pos)).trimmed();
         if (text.size() > kMaxLrcLineChars)
             text.truncate(kMaxLrcLineChars);

@@ -43,17 +43,18 @@ QString SidecarLyrics::sidecarPath(const QUrl& media)
 
     const QDir dir = audio.dir();
 
-    // the usual spelling first, without listing the directory
-    const QFileInfo direct(dir.filePath(base + QStringLiteral(".lrc")));
-    if (direct.isFile())
-        return direct.filePath();
-
-    // ".LRC", ".Lrc": the extension is matched without case, whatever the file system
-    const QFileInfoList files = dir.entryInfoList(QDir::Files | QDir::Readable | QDir::NoDotAndDotDot);
-    for (const QFileInfo& f : files) {
-        if (f.completeBaseName() == base
-            && f.suffix().compare(QLatin1String("lrc"), Qt::CaseInsensitive) == 0)
-            return f.filePath();
+    // Windows and macOS file systems ignore the case of a name: ".lrc" finds ".LRC". Elsewhere the
+    // usual spellings are probed one by one (no directory listing).
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+    const QStringList extensions = { QStringLiteral(".lrc") };
+#else
+    const QStringList extensions = { QStringLiteral(".lrc"), QStringLiteral(".LRC"),
+                                     QStringLiteral(".Lrc") };
+#endif
+    for (const QString& extension : extensions) {
+        const QFileInfo candidate(dir.filePath(base + extension));
+        if (candidate.isFile())
+            return candidate.filePath();
     }
     return {};
 }

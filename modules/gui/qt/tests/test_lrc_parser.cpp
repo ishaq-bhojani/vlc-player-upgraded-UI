@@ -175,11 +175,65 @@ private slots:
         QVERIFY(parseLrc("[00:01.0000]a").isEmpty()); // too many fraction digits
         QVERIFY(parseLrc("[:01.00]a").isEmpty());
         QVERIFY(parseLrc("[00:01.00a").isEmpty());    // never closed
-        // a bad tag next to a good one: the good one is kept, the text is what follows the tags
+        QVERIFY(parseLrc("[bad][00:10.00]a").isEmpty());  // the stamps are at the start of the line
+        // a bad group after a good stamp is part of the text
         const auto lines = parseLrc("[00:10.00][bad]Hi");
         QCOMPARE(lines.size(), 1);
         QCOMPARE(lines[0].timeMs, qint64(10000));
-        QCOMPARE(lines[0].text, QString("Hi"));
+        QCOMPARE(lines[0].text, QString("[bad]Hi"));
+    }
+
+    void blanksBetweenStamps()
+    {
+        const auto lines = parseLrc("[00:01.00] [00:02.00]   text");
+        QCOMPARE(lines.size(), 2);
+        QCOMPARE(lines[0].timeMs, qint64(1000));
+        QCOMPARE(lines[1].timeMs, qint64(2000));
+        QCOMPARE(lines[0].text, QString("text"));
+        QCOMPARE(lines[1].text, QString("text"));
+    }
+
+    void bracketGroupAfterStampsIsText()
+    {
+        auto lines = parseLrc("[00:10.00][Chorus] la la");
+        QCOMPARE(lines.size(), 1);
+        QCOMPARE(lines[0].text, QString("[Chorus] la la"));
+        lines = parseLrc("[00:10.00] [Chorus] la");
+        QCOMPARE(lines.size(), 1);
+        QCOMPARE(lines[0].text, QString("[Chorus] la"));
+        // a stamp after the text is text too
+        lines = parseLrc("[00:10.00]a [00:20.00] b");
+        QCOMPARE(lines.size(), 1);
+        QCOMPARE(lines[0].text, QString("a [00:20.00] b"));
+    }
+
+    void tagsOnlyOnLinesWithoutStamps()
+    {
+        // metadata and offset after a stamp are text, they change nothing
+        const auto lines = parseLrc("[00:05.00][offset:500]x\n[00:06.00][ti:Hello]y");
+        QCOMPARE(lines.size(), 2);
+        QCOMPARE(lines[0].timeMs, qint64(5000));
+        QCOMPARE(lines[0].text, QString("[offset:500]x"));
+        QCOMPARE(lines[1].text, QString("[ti:Hello]y"));
+    }
+
+    void longTextIsCut()
+    {
+        const QString text(redesign::kMaxLrcLineChars + 500, QChar('x'));
+        const auto lines = parseLrc("[00:01.00]" + text);
+        QCOMPARE(lines.size(), 1);
+        QCOMPARE(lines[0].text.size(), redesign::kMaxLrcLineChars);
+        // exactly at the limit: kept whole
+        const QString exact(redesign::kMaxLrcLineChars, QChar('y'));
+        QCOMPARE(parseLrc("[00:01.00]" + exact)[0].text, exact);
+    }
+
+    void lineCountAtTheCapIsKept()
+    {
+        QString big;
+        for (int i = 0; i < redesign::kMaxLrcLines; ++i)
+            big += QString("[%1:00.00]x\n").arg(i % 100, 2, 10, QChar('0'));
+        QCOMPARE(parseLrc(big).size(), redesign::kMaxLrcLines);
     }
 
     void textIsTrimmedAndKeepsInnerBrackets()
@@ -291,6 +345,32 @@ private slots:
         QVERIFY(lyrics.available());
     }
 
+    void sidecarMixedCaseExtension()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        writeFile(dir.filePath("song.ogg"), "x");
+        writeFile(dir.filePath("song.Lrc"), "[00:01.00]one");
+
+        SidecarLyrics lyrics;
+        lyrics.setMedia(QUrl::fromLocalFile(dir.filePath("song.ogg")));
+        QVERIFY(lyrics.available());
+    }
+
+    void sidecarNonAsciiPath()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString name = QString::fromUtf8("Música é");
+        writeFile(dir.filePath(name + ".mp3"), "x");
+        writeFile(dir.filePath(name + ".lrc"), "[00:01.00]café");
+
+        SidecarLyrics lyrics;
+        lyrics.setMedia(QUrl::fromLocalFile(dir.filePath(name + ".mp3")));
+        QVERIFY(lyrics.available());
+        QCOMPARE(lyrics.lines()[0].toMap().value("text").toString(), QString::fromUtf8("café"));
+    }
+
     void sidecarBaseNameWithDots()
     {
         QTemporaryDir dir;
@@ -343,6 +423,35 @@ private slots:
         QVERIFY(!lyrics.available());
     }
 
+    void sidecarExactlyAtTheSizeLimitIsRead()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        writeFile(dir.filePath("song.mp3"), "x");
+        QByteArray data = "[00:01.00]a\n";
+        data += QByteArray(SidecarLyrics::maxFileSize - data.size(), ' ');
+        QCOMPARE(qint64(data.size()), SidecarLyrics::maxFileSize);
+        writeFile(dir.filePath("song.lrc"), data);
+
+        SidecarLyrics lyrics;
+        lyrics.setMedia(QUrl::fromLocalFile(dir.filePath("song.mp3")));
+        QVERIFY(lyrics.available());
+    }
+
+    void sidecarOneByteOverTheSizeLimitIgnored()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        writeFile(dir.filePath("song.mp3"), "x");
+        QByteArray data = "[00:01.00]a\n";
+        data += QByteArray(SidecarLyrics::maxFileSize + 1 - data.size(), ' ');
+        writeFile(dir.filePath("song.lrc"), data);
+
+        SidecarLyrics lyrics;
+        lyrics.setMedia(QUrl::fromLocalFile(dir.filePath("song.mp3")));
+        QVERIFY(!lyrics.available());
+    }
+
     void sidecarWithoutAnyLineIsNotAvailable()
     {
         QTemporaryDir dir;
@@ -367,7 +476,8 @@ private slots:
 
     void sidecarTimeConversion()
     {
-        // Player.time counts from VLC_TICK_0, not from zero: 62.5 s into the track
+        // Player.time is a VLCTime: ticks (VLC_TICK_0 based, 1 tick, so this does not tell the
+        // offset apart) converted to milliseconds; 62.5 s into the track
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         writeFile(dir.filePath("song.lrc"), "[00:10.00]a\n[01:02.50]b");

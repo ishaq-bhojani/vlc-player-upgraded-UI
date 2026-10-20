@@ -46,8 +46,10 @@ constexpr int kMaxLrcLineChars = 1000;
  *   give one entry each, with the same text.
  * - "[offset:N]" (milliseconds, anywhere in the file) shifts every line N ms earlier (a negative
  *   N later); the result is never below 0.
- * - the other tags ([ar:], [ti:], [al:], [by:], ...) and malformed stamps are ignored; a line
- *   without any valid stamp is skipped.
+ * - the time stamps are the "[...]" groups at the start of the line (blanks between them are fine);
+ *   everything after them is the text, also a "[Chorus]" group.
+ * - the tags ([ar:], [ti:], [al:], [by:], [length:], ...) are only looked at on lines without
+ *   time stamp, and ignored; so is a line whose first group is not a valid stamp.
  * - a stamp with no text is kept (empty text): it ends the previous line.
  * - the word stamps of enhanced LRC ("<mm:ss.xx>") are removed from the text.
  * - the result is sorted by time (lines with the same time keep the file order), at most
