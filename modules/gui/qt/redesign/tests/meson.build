@@ -317,6 +317,31 @@ vlc_tests += {
     'dependencies': [qt6_dep, qtest_qt6_dep],
 }
 
+# LRC parser and SidecarLyrics (lyrics next to the media), against temporary directories
+vlc_tests += {
+    'name': 'test_qt_lrc_parser',
+    'sources': files(
+        '../../tests/test_lrc_parser.cpp',
+        '../cpp/lrcparser.hpp',
+        '../cpp/lrcparser.cpp',
+        '../cpp/sidecarlyrics.hpp',
+        '../cpp/sidecarlyrics.cpp',
+        '../../util/vlctick.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_lrc_parser.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/sidecarlyrics.hpp',
+        '../../util/vlctick.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}
+
 # WaveformProvider (waveform peaks for the seek bar and the loudness measurement): the pure
 # part and the provider against a fake decoder, plus the real decoder (libvlccore: transcode +
 # smem, a private vlc_player, no output device) on a libvlc instance with a throwaway --config.
@@ -369,31 +394,6 @@ vlc_tests += {
     'suite': ['qt'],
     'include_directories' : qt_include_dir,
     'link_with': [libvlccore, libvlc],
-    'link_args': qt_link_args,
-    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
-}
-
-# LRC parser and SidecarLyrics (lyrics next to the media), against temporary directories
-vlc_tests += {
-    'name': 'test_qt_lrc_parser',
-    'sources': files(
-        '../../tests/test_lrc_parser.cpp',
-        '../cpp/lrcparser.hpp',
-        '../cpp/lrcparser.cpp',
-        '../cpp/sidecarlyrics.hpp',
-        '../cpp/sidecarlyrics.cpp',
-        '../../util/vlctick.cpp'
-    ),
-    'moc_sources': files(
-        '../../tests/test_lrc_parser.cpp'
-    ),
-    'moc_headers': files(
-        '../cpp/sidecarlyrics.hpp',
-        '../../util/vlctick.hpp'
-    ),
-    'suite': ['qt'],
-    'include_directories' : qt_include_dir,
-    'link_with': [libvlccore],
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
