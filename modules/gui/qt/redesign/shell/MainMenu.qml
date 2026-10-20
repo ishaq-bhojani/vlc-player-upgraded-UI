@@ -31,6 +31,7 @@ import VLC.Redesign
  *   Open file, Open folder, Network stream, Capture device, Open from clipboard
  *   Recent media >  (the last 10 media of the library, Clear)
  *   Convert / Save, Stream
+ *   Detach / dock the play queue
  *   -----
  *   Keyboard shortcuts, Settings, Help >  (Help, About, Messages)
  *
@@ -202,6 +203,15 @@ RedesignMenu {
         text: qsTr("Stream…")
 
         onTriggered: root._launch(() => DialogsProvider.openAndStreamingDialogs())
+    }
+
+    RedesignMenuItem {
+        // The "Docked Play Queue" entry of the View menu of the classic interface: docked, the
+        // queue is the panel beside the stage; detached, it is a window of its own.
+        text: MainCtx.playqueuePanel.docked ? qsTr("Detach the play queue")
+                                            : qsTr("Dock the play queue")
+
+        onTriggered: root._launch(() => { MainCtx.playqueuePanel.docked = !MainCtx.playqueuePanel.docked })
     }
 
     RedesignMenuSeparator {}

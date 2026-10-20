@@ -29,7 +29,7 @@ now, and what is dropped or deferred (with the task that owns it).
 | Touch drag on the video (`TouchDragHandler`: one finger drag sends wheel hotkeys) | not ported | R5 polish pass |
 | List mode of the library page in the panel beside the video (the pages use the global `MainCtx.gridView`, which must not be flipped) | the page only gets the panel width | Task 26 (LibraryOptions view modes, CompactListView) |
 | Navigation neighbours (`Navigation.*`) between panel, Stage and control bar | focus is routed by `_focusState()` only | R5 accessibility pass |
-| Play queue panel (`PlaylistPane`) | right panel slot is empty | queue panel task (Queue button, `ShellActions.queueRequested`) |
+| Play queue panel (`PlaylistPane`) | `RightPanel` (mode `queue`) hosts `QueuePanel`, which reuses `PlaylistPane` as is; the Queue button (`ShellActions.queueRequested`) toggles it while `MainCtx.playqueuePanel.docked`, else shows or hides the detached window of upstream. The panel mode follows `MainCtx.playqueuePanel.visible` (Ctrl+L, saved state); the main menu has the "Docked Play Queue" toggle of the classic View menu | done (Task 24) |
 | `UpdatePane` | not hosted, VLC falls back to its update dialog | settings / update task |
 | `VoronoiSnow`, `interfaceScalePinchHandler` (pinch to scale) | not ported | none |
 | Library header (address bar, view-mode cycle, sort, search), history forward | the panel header has back and the title | Task 26 |

@@ -51,8 +51,9 @@ import VLC.Redesign
  * watch and immersive, the page of the library in browse; the LibraryPanel is a header strip in
  * browse and a drawer beside the video in watch (an overlay when the video can not be placed
  * around it); the MiniPlayerCard shows the playing media over the library in browse. The page
- * of the library is one item that moves between the panel and the Stage. The right panel is a
- * slot without content for now.
+ * of the library is one item that moves between the panel and the Stage. The right panel shows
+ * the play queue (the watch sidebar comes later); the queue follows the docked / visible state of
+ * the play queue of upstream (MainCtx.playqueuePanel): detached, it stays the window of upstream.
  *
  * Besides the layout, the root provides what MainInterface.qml and MainDisplay.qml provide to
  * their pages: the window background, the interface metrics, the tooltips, the detached play
@@ -162,10 +163,19 @@ Item {
 
     // The one place that decides where the keyboard is, called (delayed, so that the state and the panel
     // mode are final) whenever one of them changes:
+    //   - the right panel was just opened: the panel
     //   - the overlay is open: the page in it
     //   - browse: the current page
     //   - watch (panel docked or closed) and immersive: the Stage, whose keys are the hotkeys
     function _focusState() {
+        if (root._panelFocusPending) {
+            root._panelFocusPending = false
+            if (rightPanel.shown) {
+                rightPanel.focusContent()
+                return
+            }
+        }
+
         const showsPage = (shellStates.state === "browse") || (shellStates.panelMode === "overlay")
         if (showsPage) {
             libraryHost.forceActiveFocus(Qt.TabFocusReason)
@@ -240,10 +250,39 @@ Item {
         keyActivityTimer.restart()
     }
 
+    // the right panel was opened: the next _focusState puts the keyboard in it (once)
+    property bool _panelFocusPending: false
+
+    // the interface finished loading (the panel restored from the settings does not take the keyboard)
+    property bool _completed: false
+
+    // The Queue button, and the shortcut of upstream: with the play queue docked it is the queue
+    // panel; detached (the user chose that) it is the window of upstream, which is shown or hidden.
+    function toggleQueue() {
+        if (MainCtx.playqueuePanel.docked) {
+            rightPanel.toggle("queue")
+        } else {
+            MainCtx.playqueuePanel.visible = !MainCtx.playqueuePanel.visible
+            const window = playlistWindowLoader.item
+            if (MainCtx.playqueuePanel.visible && window)
+                window.raise()
+        }
+    }
+
+    // The mode of the right panel follows the state of the play queue of upstream, which also
+    // changes with its shortcut (Ctrl+L), its drop button and its saved state; and the other way
+    // around, so that the detached window and the menu of upstream stay right.
+    function _syncPanelToQueue() {
+        const panel = MainCtx.playqueuePanel
+        rightPanel.mode = RightPanelLogic.modeForQueueState(rightPanel.mode, panel.docked, panel.visible)
+    }
+
     // Events
 
     Component.onCompleted: {
         _showStartPage()
+        _syncPanelToQueue()
+        root._completed = true
         Qt.callLater(_focusState)
     }
 
@@ -357,6 +396,26 @@ Item {
 
         function onPanelModeChanged() {
             Qt.callLater(root._focusState)
+        }
+    }
+
+    Connections {
+        target: MainCtx.playqueuePanel
+
+        function onVisibleChanged() {
+            root._syncPanelToQueue()
+        }
+
+        function onDockedChanged() {
+            root._syncPanelToQueue()
+        }
+    }
+
+    Connections {
+        target: ShellActions
+
+        function onQueueRequested() {
+            root.toggleQueue()
         }
     }
 
@@ -658,6 +717,8 @@ Item {
                 spacing: 0
 
                 RowLayout {
+                    id: panelsRow
+
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
@@ -788,14 +849,43 @@ Item {
                         }
                     }
 
-                    // slot of the right panel (queue, watch sidebar)
+                    // Slot of the right panel (queue, watch sidebar): it takes the room of a docked
+                    // panel, none for an overlay, which extends to the left over the stage.
                     Item {
                         id: rightPanelSlot
 
                         Layout.fillHeight: true
-                        Layout.preferredWidth: 0
+                        Layout.preferredWidth: rightPanel.slotWidth
 
-                        visible: false
+                        z: 5
+
+                        RightPanel {
+                            id: rightPanel
+
+                            anchors {
+                                right: parent.right
+                                top: parent.top
+                                bottom: parent.bottom
+                            }
+
+                            // the immersive stage is the whole window: the panel floats over the video
+                            forceOverlay: shellStates.state === "immersive"
+                            // what the rail and a docked library panel leave
+                            freeWidth: panelsRow.width
+                                       - (rail.visible ? rail.width : 0)
+                                       - ((libraryPanel.mode === "docked") ? libraryPanel.width : 0)
+
+                            onModeChanged: {
+                                const panel = MainCtx.playqueuePanel
+                                // the upstream state follows the panel (see _syncPanelToQueue)
+                                if (panel.docked && (panel.visible !== (mode === "queue")))
+                                    panel.visible = (mode === "queue")
+
+                                if (mode !== "" && root._completed)
+                                    root._panelFocusPending = true
+                                Qt.callLater(root._focusState)
+                            }
+                        }
                     }
                 }
 
@@ -819,9 +909,9 @@ Item {
 
                         visible: shellStates.bottomBarVisible
 
-                        // ShellActions.queueRequested and sidebarRequested are connected where their
-                        // panels are (queue, watch sidebar); trackPopupRequested is connected below,
-                        // at the track popup
+                        // ShellActions.queueRequested is connected above (toggleQueue);
+                        // sidebarRequested where the watch sidebar is; trackPopupRequested is
+                        // connected below, at the track popup
                     }
                 }
             }
