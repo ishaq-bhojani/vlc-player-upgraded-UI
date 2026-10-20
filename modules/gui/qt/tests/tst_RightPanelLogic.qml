@@ -52,6 +52,9 @@ TestCase {
             { tag: "small window: overlay, never all of it", req: 560, free: 600, width: 450, overlay: true },
             { tag: "tiny window", req: 320, free: 200, width: 150, overlay: true },
             { tag: "no room", req: 320, free: 0, width: 0, overlay: true },
+            { tag: "negative room", req: 320, free: -50, width: 0, overlay: true },
+            { tag: "share rounds down", req: 320, free: 319, width: 239, overlay: true },
+            { tag: "just above the minimum", req: 240, free: 330, width: 240, overlay: true },
         ]
     }
 
@@ -62,6 +65,9 @@ TestCase {
         // an overlay never covers the whole free width
         if (l.overlay && data.free > 0)
             verify(l.width < data.free)
+        // ... and is never narrower than the smaller of the minimum width and the share
+        if (l.overlay)
+            verify(l.width >= Math.min(240, Math.floor(Math.max(0, data.free) * 0.75)))
     }
 
     function test_modeForQueueState_data() {

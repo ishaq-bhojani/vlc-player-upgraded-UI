@@ -69,19 +69,39 @@ FocusScope {
         }
     }
 
-    // The first label of the pane is its own "Play Queue" title: this header has one, the label
-    // keeps its room so that the sort and the search stay at the end of the line.
+    // The pane has its own "Play Queue" title: this header has one, so the title of the pane is
+    // emptied (the label keeps its room, so that the sort and the search stay at the end of the
+    // line). UPSTREAM COUPLING (docs/redesign/upstream-touchpoints.md): it looks for the
+    // SubtitleLabel that has the name of the pane or sits in the row of the SortControl; without
+    // a match (the pane was restructured) nothing is changed and the title shows twice.
     function _blankPaneTitle() {
+        if (!pane.contentItem)
+            return
+
+        const paneName = pane.Accessible.name
         const stack = [pane.contentItem]
         while (stack.length > 0) {
             const item = stack.pop()
-            if (Helpers.isValidInstanceOf(item, Widgets.SubtitleLabel)) {
+            if (!item)
+                continue
+
+            if (Helpers.isValidInstanceOf(item, Widgets.SubtitleLabel)
+                    && ((item.text === paneName) || _hasSortSibling(item))) {
                 item.text = ""
                 return
             }
             for (let i = item.children.length - 1; i >= 0; --i)
                 stack.push(item.children[i])
         }
+    }
+
+    function _hasSortSibling(item) {
+        const siblings = item.parent ? item.parent.children : []
+        for (let i = 0; i < siblings.length; ++i) {
+            if (Helpers.isValidInstanceOf(siblings[i], Widgets.SortControl))
+                return true
+        }
+        return false
     }
 
     // Signals
@@ -93,8 +113,8 @@ FocusScope {
 
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: qsTr("Queue")
+    // the right panel is "Queue" for the accessibility; this and the pane are not announced again
+    Accessible.ignored: true
     AccessibleCompat.id: "queuePanel"
 
     activeFocusOnTab: true
@@ -148,7 +168,6 @@ FocusScope {
             textFormat: Text.PlainText
             text: qsTr("Queue")
             font.pixelSize: VLCStyle.fontSize_large
-            font.weight: Font.Bold
             color: theme.fg.primary
 
             Accessible.role: Accessible.Heading
@@ -197,6 +216,8 @@ FocusScope {
         }
 
         focus: true
+
+        Accessible.ignored: true
 
         useAcrylic: false
         verticalPadding: 0

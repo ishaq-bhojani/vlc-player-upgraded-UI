@@ -51,7 +51,10 @@ QtObject {
         const width = Math.max(minWidth, Math.min(maxWidth, requested))
         if ((free - width) >= stageMin)
             return { "width": width, "overlay": false }
-        return { "width": Math.max(0, Math.min(width, Math.floor(free * share))), "overlay": true }
+        // at most `share` of the free width, but never below the smaller of the minimum width and that
+        // share (a very narrow window gets a narrow panel, not one wider than the share)
+        const cap = Math.floor(Math.max(0, free) * share)
+        return { "width": Math.max(Math.min(minWidth, cap), Math.min(width, cap)), "overlay": true }
     }
 
     // The mode after the upstream play queue state changed: a docked and visible queue is the
