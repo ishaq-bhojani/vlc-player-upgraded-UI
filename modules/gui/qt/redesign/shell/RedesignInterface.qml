@@ -889,6 +889,100 @@ Item {
                     }
                 }
 
+                // The update pane of upstream (UpdatePane.qml, reused as is), a banner above the control
+                // bar, the same Loader as MainDisplay.qml: it opens itself for the status of UpdateModel
+                // and is dismissed by its button. WARNING: the object name is how C++ (MainCtx::getUpdateModel)
+                // knows this pane is loaded; without it a modal update dialog opens instead.
+                // UpdateModel only exists with UPDATE_CHECK, hence the typeof guard (the Loader stays inactive).
+                Item {
+                    id: updatePaneSlot
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: updatePaneLoader.height
+
+                    // not in the immersive state (the bars are hidden there)
+                    visible: shellStates.state !== "immersive"
+
+                    Loader {
+                        id: updatePaneLoader
+
+                        objectName: "updatePaneLoader"
+
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                        }
+
+                        readonly property bool updateModelIsAvailable: (typeof UpdateModel !== 'undefined')
+
+                        active: updateModelIsAvailable && (shouldShow || height > 0.0)
+
+                        property int _updateStatusOnDismissal: -1
+
+                        readonly property bool shouldShow: {
+                            if (!updateModelIsAvailable)
+                                return false
+
+                            if (UpdateModel.explicitCheck)
+                                return (UpdateModel.updateStatus !== UpdateModel.Unchecked)
+
+                            if (UpdateModel.updateStatus === _updateStatusOnDismissal)
+                                return false // already dismissed with the same status
+
+                            switch (UpdateModel.updateStatus) {
+                                case UpdateModel.Unchecked:
+                                case UpdateModel.Checking:
+                                case UpdateModel.UpToDate:
+                                    return false
+                                default:
+                                    return true
+                            }
+                        }
+
+                        function dismiss() {
+                            if (updateModelIsAvailable)
+                                _updateStatusOnDismissal = UpdateModel.updateStatus
+
+                            height = 0.0
+                        }
+
+                        onShouldShowChanged: {
+                            if (shouldShow)
+                                height = Qt.binding(() => { return implicitHeight })
+                        }
+
+                        onActiveChanged: {
+                            if (updateModelIsAvailable && !active)
+                                UpdateModel.explicitCheck = undefined // Resets the property
+                        }
+
+                        clip: (height < implicitHeight)
+
+                        Behavior on height {
+                            id: updatePaneHeightBehavior
+
+                            NumberAnimation {
+                                easing.type: Easing.InOutSine
+                                duration: VLCStyle.duration_long
+                            }
+                        }
+
+                        source: "qrc:///qt/qml/VLC/MainInterface/UpdatePane.qml"
+
+                        onLoaded: {
+                            item.dismissRequested.connect(function() {
+                                updatePaneLoader.dismiss()
+                                // the pane (maybe with the keyboard) is going away
+                                Qt.callLater(root._focusState)
+                            })
+
+                            // the height animates here, not inside of the item as well
+                            item.animations = Qt.binding(function() { return !updatePaneHeightBehavior.enabled })
+                        }
+                    }
+                }
+
                 // the control bar: a row below the panels; in the immersive state it takes no room
                 // and floats over the stage instead
                 Item {
