@@ -34,7 +34,7 @@ QtObject {
     // Dialogs: the redesign dialogs are hosted once, by DialogHost.qml; whoever wants one emits the
     // request and knows nothing about the dialog.
 
-    // open the "Open network stream" dialog (title bar menu, the Add menu of the rail)
+    // open the "Open network stream" dialog (the main menu of the title bar)
     signal networkStreamRequested()
 
     // open the "New playlist" dialog, which puts the media of `mediaIds` (a list of media library

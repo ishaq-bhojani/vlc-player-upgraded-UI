@@ -69,6 +69,22 @@ TestCase {
             compare(StreamUrl.normalize(url), url)
     }
 
+    // the known schemes without "//" are kept too, not given an https
+    function test_knownSchemesWithoutSlashes() {
+        const urls = [
+            "udp:@239.0.0.1:1234",
+            "rtp:@239.0.0.1:5004",
+            "file:/media/a.mp4",
+            "RTSP:cam.example.org/1",
+            "magnet:?xt=urn:btih:abc.def"
+        ]
+        for (const url of urls)
+            compare(StreamUrl.normalize(url), url)
+        // a host with a port is not a scheme
+        compare(StreamUrl.normalize("example.org:8080/a"), "https://example.org:8080/a")
+        compare(StreamUrl.normalize("fileserver.local/a.mp4"), "https://fileserver.local/a.mp4")
+    }
+
     // a scheme is recognised whatever its case, and is not given a second one
     function test_schemeCaseInsensitive() {
         compare(StreamUrl.normalize("HTTP://Example.org/A"), "HTTP://Example.org/A")

@@ -35,7 +35,19 @@ import VLC.Redesign
  * them takes the window with it); a request for one of them without a library does nothing, and
  * is logged.
  *
- * To host another dialog: a Loader, a `_xxxOpen` flag, a request in ShellActions.
+ * The state of a dialog is two flags:
+ *   `Open`    the dialog is shown (or about to be): set by a request, cleared by the dialog's `closed`
+ *   `Loaded`  the Loader is active: set by a request, cleared a moment after `closed` (the dialog is
+ *             in the middle of its own signal then) and only if the dialog was not opened again in
+ *             the meantime and is not busy (NewPlaylistDialog.pending: the library is still creating
+ *             the playlist, the model must outlive the dialog)
+ * A request while a dialog is `Open` is ignored: one modal at a time. A request while the Loader of
+ * that dialog still exists (closed, not yet released) opens the existing item again, as the
+ * Loader will not load it a second time. A request for the playlist dialog while its playlist is
+ * being created is ignored (and logged). A Loader that fails (status Error) clears both flags, so
+ * the next request starts afresh instead of jamming the host.
+ *
+ * To host another dialog: a Loader, the two flags, a request in ShellActions.
  */
 Item {
     id: root
@@ -68,8 +80,11 @@ Item {
     function openNetworkStream() {
         if (active)
             return
-        _networkStreamLoaded = true
         _networkStreamOpen = true
+        if (networkStreamLoader.item)
+            _show(networkStreamLoader.item)
+        else
+            _networkStreamLoaded = true // onLoaded shows it
     }
 
     function openNewPlaylist(mediaIds) {
@@ -79,9 +94,23 @@ Item {
         }
         if (active)
             return
+        if (newPlaylistLoader.item?.pending) {
+            console.warn("DialogHost: the previous playlist is still being created")
+            return
+        }
         _newPlaylistItems = mediaIds ?? []
-        _newPlaylistLoaded = true
         _newPlaylistOpen = true
+        if (newPlaylistLoader.item) {
+            newPlaylistLoader.item.initialItems = _newPlaylistItems
+            _show(newPlaylistLoader.item)
+        } else {
+            _newPlaylistLoaded = true // onLoaded shows it
+        }
+    }
+
+    function _show(dialog) {
+        dialog.rootWindow = root.backdrop
+        dialog.open()
     }
 
     // Destroys the dialog of `loader` once it is closed: later, the dialog is in the middle of its
@@ -128,9 +157,13 @@ Item {
 
         source: "OpenNetworkStreamDialog.qml"
 
-        onLoaded: {
-            item.rootWindow = root.backdrop
-            item.open()
+        onLoaded: root._show(item)
+
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                root._networkStreamOpen = false
+                root._networkStreamLoaded = false
+            }
         }
     }
 
@@ -153,9 +186,15 @@ Item {
         source: "NewPlaylistDialog.qml"
 
         onLoaded: {
-            item.rootWindow = root.backdrop
             item.initialItems = root._newPlaylistItems
-            item.open()
+            root._show(item)
+        }
+
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                root._newPlaylistOpen = false
+                root._newPlaylistLoaded = false
+            }
         }
     }
 

@@ -24,10 +24,20 @@ import QtQml
  * No library or network access: it only decides what text VLC is given.
  */
 QtObject {
-    // the schemes VLC opens as streams or remote files; any other `scheme://` is kept too
+    // the schemes VLC opens as streams or remote files: kept as they are, with or without the `//`
+    // ("udp:@239.0.0.1:1234", "file:/x"); any other `scheme://` is kept too
     readonly property var knownSchemes: [
         "http", "https", "rtsp", "rtmp", "udp", "rtp", "mms", "smb", "ftp", "sftp", "file"
     ]
+
+    // schemes that have no `//` and are not streams of the list above
+    readonly property var otherSchemes: ["magnet"]
+
+    // true when `line` starts with one of the schemes followed by a colon (case does not matter)
+    function _startsWithScheme(line, schemes) {
+        const lower = line.toLowerCase()
+        return schemes.some(scheme => lower.startsWith(scheme + ":"))
+    }
 
     // The first line of `text` that has something in it, trimmed ("" when there is none): a pasted
     // block of text plays its first address.
@@ -44,7 +54,8 @@ QtObject {
 
     // The address to play for `text`, "" when there is nothing to play.
     //  - the first non-empty line, trimmed
-    //  - kept as it is when it has a scheme (`xxx://`), is a local path (`C:\`, `\server`, `/x`)
+    //  - kept as it is when it has a scheme (`xxx://`, or a known one without the `//`) or is a local
+    //    path (a drive letter, a network share, `/x`)
     //  - gets "https://" when it has a dot ("example.org/a.m3u8")
     //  - kept as it is otherwise ("hello")
     function normalize(text) {
@@ -53,6 +64,10 @@ QtObject {
             return ""
 
         if (/^[A-Za-z][A-Za-z0-9+.\-]*:\/\//.test(line))
+            return line
+
+        // "udp:@239.0.0.1:1234", "file:/x", "magnet:?xt=..."
+        if (_startsWithScheme(line, knownSchemes) || _startsWithScheme(line, otherSchemes))
             return line
 
         // a local file: a drive letter ("C:\a.mp4", "C:/a.mp4"), a network share or an absolute path
