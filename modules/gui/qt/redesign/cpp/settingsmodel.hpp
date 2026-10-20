@@ -41,6 +41,8 @@ class SettingItem : public QObject
 
     Q_PROPERTY(QString key READ key CONSTANT)
     Q_PROPERTY(Type type READ type CONSTANT)
+    //! for a Path: "directory", "loadfile" (a file to read) or "savefile" (a file to write), else ""
+    Q_PROPERTY(QString pathKind READ pathKind CONSTANT)
     Q_PROPERTY(QVariant value READ value WRITE setValue NOTIFY valueChanged)
     Q_PROPERTY(QVariant defaultValue READ defaultValue CONSTANT)
     //! lower bound; invalid (undefined in QML) when the option declares no range
@@ -76,6 +78,7 @@ public:
 
     QString key() const { return m_key; }
     Type type() const { return m_type; }
+    QString pathKind() const { return m_pathKind; }
     QVariant value() const;
     void setValue(const QVariant& value);
     QVariant defaultValue() const;
@@ -105,6 +108,7 @@ private:
     QString m_text;
     QString m_longText;
     Type m_type = String;
+    QString m_pathKind;
     QVariant m_min;
     QVariant m_max;
     mutable QVariantList m_choices;

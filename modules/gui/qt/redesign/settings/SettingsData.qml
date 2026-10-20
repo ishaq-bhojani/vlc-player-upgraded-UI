@@ -83,10 +83,8 @@ QtObject {
     //! the pages: id, title, subcats (the VLC subcategories of the Advanced section), rows
     readonly property var pages: [
         {
-            id: "general", title: qsTr("General"), subcats: [101],
+            id: "general", title: qsTr("General"), subcats: [101], // SUBCAT_INTERFACE_GENERAL
             rows: [
-                special("theme", qsTr("Theme"), { description: qsTr("Light, dark, or the theme of the system.") }),
-                { kind: "accent", id: "qt-accent-color", key: "qt-accent-color" },
                 s("qt-error-dialogs"),
                 s("qt-updates-notif"),
                 s("file-logging"),
@@ -97,8 +95,10 @@ QtObject {
             ]
         },
         {
-            id: "interface", title: qsTr("Interface"), subcats: [102],
+            id: "interface", title: qsTr("Interface"), subcats: [102], // SUBCAT_INTERFACE_MAIN
             rows: [
+                special("theme", qsTr("Theme"), { description: qsTr("Light, dark, or the theme of the system.") }),
+                { kind: "accent", id: "qt-accent-color", key: "qt-accent-color" },
                 s("qt-system-tray"),
                 s("qt-close-to-system-tray"),
                 choice("qt-notification"),
@@ -122,7 +122,7 @@ QtObject {
             ]
         },
         {
-            id: "privacy", title: qsTr("Privacy"), subcats: [],
+            id: "privacy", title: qsTr("Privacy"), subcats: [], // no VLC subcategory is privacy specific
             rows: [
                 s("metadata-network-access"),
                 s("save-recentplay"),
@@ -130,7 +130,7 @@ QtObject {
             ]
         },
         {
-            id: "controls", title: qsTr("Controls"), subcats: [103, 104],
+            id: "controls", title: qsTr("Controls"), subcats: [103, 104], // SUBCAT_INTERFACE_CONTROL, SUBCAT_INTERFACE_HOTKEYS
             rows: [
                 choice("hotkeys-y-wheel-mode"),
                 choice("hotkeys-x-wheel-mode"),
@@ -144,7 +144,7 @@ QtObject {
             ]
         },
         {
-            id: "playback", title: qsTr("Playback"), subcats: [401, 701],
+            id: "playback", title: qsTr("Playback"), subcats: [401, 701], // SUBCAT_INPUT_GENERAL, SUBCAT_PLAYLIST_GENERAL
             rows: [
                 choice("short-jump-size"),
                 s("play-and-pause"),
@@ -162,7 +162,7 @@ QtObject {
             ]
         },
         {
-            id: "video", title: qsTr("Video"), subcats: [301, 302, 303, 306],
+            id: "video", title: qsTr("Video"), subcats: [301, 302, 303, 306], // SUBCAT_VIDEO_GENERAL, SUBCAT_VIDEO_VOUT, SUBCAT_VIDEO_VFILTER, SUBCAT_VIDEO_SPLITTER
             rows: [
                 s("video"),
                 s("fullscreen"),
@@ -210,7 +210,7 @@ QtObject {
             ]
         },
         {
-            id: "audio", title: qsTr("Audio"), subcats: [201, 202, 203, 204, 206],
+            id: "audio", title: qsTr("Audio"), subcats: [201, 202, 203, 204, 206], // SUBCAT_AUDIO_GENERAL, SUBCAT_AUDIO_AOUT, SUBCAT_AUDIO_AFILTER, SUBCAT_AUDIO_VISUAL, SUBCAT_AUDIO_RESAMPLER
             rows: [
                 s("audio"),
                 choice("aout"),
@@ -253,7 +253,7 @@ QtObject {
             ]
         },
         {
-            id: "subtitles", title: qsTr("Subtitles"), subcats: [305, 406],
+            id: "subtitles", title: qsTr("Subtitles"), subcats: [305, 406], // SUBCAT_VIDEO_SUBPIC, SUBCAT_INPUT_SCODEC
             rows: [
                 s("sub-track"),
                 s("sub-language"),
@@ -282,7 +282,7 @@ QtObject {
             ]
         },
         {
-            id: "library", title: qsTr("Library"), subcats: [702],
+            id: "library", title: qsTr("Library"), subcats: [702], // SUBCAT_PLAYLIST_SD
             rows: [
                 s("media-library"),
                 s("auto-preparse"),
@@ -291,7 +291,7 @@ QtObject {
             ]
         },
         {
-            id: "network", title: qsTr("Network"), subcats: [402, 603],
+            id: "network", title: qsTr("Network"), subcats: [402, 603], // SUBCAT_INPUT_ACCESS, SUBCAT_ADVANCED_NETWORK
             rows: [
                 s("http-proxy"),
                 s("http-user-agent"),
@@ -305,7 +305,7 @@ QtObject {
             ]
         },
         {
-            id: "performance", title: qsTr("Performance"), subcats: [403, 404, 405, 407, 602],
+            id: "performance", title: qsTr("Performance"), subcats: [403, 404, 405, 407, 602], // SUBCAT_INPUT_DEMUX, SUBCAT_INPUT_VCODEC, SUBCAT_INPUT_ACODEC, SUBCAT_INPUT_STREAM_FILTER, SUBCAT_ADVANCED_MISC
             rows: [
                 s("file-caching"),
                 s("network-caching"),
@@ -322,14 +322,14 @@ QtObject {
             ]
         },
         {
-            id: "recording", title: qsTr("Recording"), subcats: [501, 502, 503, 504, 505, 507, 508, 703],
+            id: "recording", title: qsTr("Recording"), subcats: [501, 502, 503, 504, 505, 507, 508, 703], // SUBCAT_SOUT_GENERAL, SUBCAT_SOUT_STREAM, SUBCAT_SOUT_MUX, SUBCAT_SOUT_ACO, SUBCAT_SOUT_PACKETIZER, SUBCAT_SOUT_VOD, SUBCAT_SOUT_RENDERER, SUBCAT_PLAYLIST_EXPORT
             rows: [
                 s("input-record-path"),
                 s("input-record-native")
             ]
         },
         {
-            id: "extensions", title: qsTr("Extensions"), subcats: [],
+            id: "extensions", title: qsTr("Extensions"), subcats: [], // Lua options are in SUBCAT_INTERFACE_MAIN (Interface)
             rows: [
                 s("qt-autoload-extensions"),
                 s("lua"),
@@ -357,6 +357,23 @@ QtObject {
     }
 
     // Functions
+
+    /**
+     * The file:// URL of a local path ("C:\Music", "C:/Music", "/home/me/Music"); the folder
+     * model of the media library wants a URL. Each part is percent-encoded. A string that
+     * already is a URL is kept, an empty string gives "".
+     */
+    function localUrl(path: string): string {
+        const text = String(path ?? "").trim()
+        if (text.length === 0)
+            return ""
+        if (/^[a-zA-Z][a-zA-Z0-9+.-]+:\/\//.test(text))
+            return text
+        const slashes = text.replace(/[\\]/g, "/")
+        const drive = /^[a-zA-Z]:/.test(slashes) ? slashes.slice(0, 2) : ""
+        const encoded = slashes.slice(drive.length).split("/").map(encodeURIComponent).join("/")
+        return "file://" + (drive.length > 0 ? "/" + drive : "") + (encoded.startsWith("/") ? encoded : "/" + encoded)
+    }
 
     //! the page object of an id, undefined if there is none
     function pageById(id: string): var {

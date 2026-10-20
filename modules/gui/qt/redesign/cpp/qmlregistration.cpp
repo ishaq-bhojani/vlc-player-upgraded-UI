@@ -24,6 +24,7 @@
 #include <memory>
 
 #include <QQmlEngine>
+#include <QWindow>
 #include <QJSEngine>
 
 #include "currentmediafavorite.hpp"
@@ -93,7 +94,11 @@ void registerQmlTypes(MainCtx* ctx)
     qmlRegisterSingletonType<SettingsModel>(uri, versionMajor, versionMinor, "RedesignSettings",
         [intf](QQmlEngine*, QJSEngine*) { return new SettingsModel(VLC_OBJECT(intf)); });
     qmlRegisterSingletonType<SettingsBridge>(uri, versionMajor, versionMinor, "SettingsBridge",
-        [colorScheme = ctx->getColorScheme()](QQmlEngine*, QJSEngine*) { return new SettingsBridge(colorScheme); });
+        [ctx](QQmlEngine*, QJSEngine*) {
+            return new SettingsBridge(ctx->getColorScheme(), [ctx] {
+                return ctx->property("intfMainWindow").value<QWindow*>();
+            });
+        });
     qmlRegisterSingletonType<ShortcutsModel>(uri, versionMajor, versionMinor, "ShortcutsModel",
         [intf](QQmlEngine*, QJSEngine*) { return new ShortcutsModel(VLC_OBJECT(intf)); });
     qmlRegisterSingletonType<ToolManager>(uri, versionMajor, versionMinor, "ToolManager",

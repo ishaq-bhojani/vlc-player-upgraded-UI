@@ -331,6 +331,24 @@ private slots:
         QVERIFY(!hotkey->defaultValue().toString().isEmpty());
     }
 
+    void pathKinds()
+    {
+        // what a Browse button opens: a folder, a file to read or a file to write
+        const auto kind = [this](const char* key) {
+            SettingItem* item = m_model->item(key);
+            return item ? item->property("pathKind").toString() : QString("missing");
+        };
+        QCOMPARE(kind("snapshot-path"), QString("directory"));
+        QCOMPARE(kind("input-record-path"), QString("directory"));
+        QCOMPARE(kind("sub-file"), QString("loadfile"));
+        // declared by a plugin, which may not be in the build
+        const QString log = kind("logfile");
+        QVERIFY2(log == "savefile" || log == "missing", qPrintable(log));
+        // not a path: no kind. (sub-autodetect-path is a list of folders in a string option)
+        QCOMPARE(kind("audio-language"), QString());
+        QCOMPARE(kind("sub-autodetect-path"), QString());
+    }
+
     void resetRestoresDefault()
     {
         SettingItem* volume = m_model->item("qt-max-volume");

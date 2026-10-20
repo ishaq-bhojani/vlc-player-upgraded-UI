@@ -18,7 +18,7 @@
 import VLC.Redesign
 
 /**
- * @brief The General page: theme, accent color, dialogs, updates and the log.
+ * @brief The General page: dialogs, updates and the log.
  *
  * The rows are the "general" page of SettingsData (docs/redesign/settings-map.md).
  */

@@ -102,6 +102,8 @@ FocusScope {
         if (other.length > 0) {
             _pendingKey = hotkey
             _conflictLabel = other
+            // the answer is one key away: Enter or Space replaces, Tab goes to Cancel
+            Qt.callLater(() => replaceButton.forceActiveFocus(Qt.TabFocusReason))
             return
         }
         ShortcutsModel.assign(_actionKey, hotkey, _global)
@@ -189,25 +191,49 @@ FocusScope {
             Accessible.role: Accessible.Pane
             Accessible.name: qsTr("New key for %1").arg(root._actionLabel)
 
-            Keys.onPressed: (event) => {
-                event.accepted = true
+            // the application shortcuts (Ctrl+P...) must not fire while a key is asked for
+            Keys.onShortcutOverride: (event) => {
+                if (root._actionKey.length > 0)
+                    event.accepted = true
+            }
 
-                // a key is already waiting for the answer: only the buttons answer
-                if (root._pendingKey.length > 0) {
-                    if (event.key === Qt.Key_Escape)
-                        root.stopCapture()
+            Keys.onPressed: (event) => {
+                // holding a key down asks for nothing more
+                if (event.isAutoRepeat) {
+                    event.accepted = true
                     return
                 }
 
+                // Esc is acted on at its release: the release has to be taken here too, or it
+                // would reach the popup and close the whole modal
                 if (event.key === Qt.Key_Escape && event.modifiers === Qt.NoModifier) {
-                    root.stopCapture()
-                } else if ((event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete)
-                           && event.modifiers === Qt.NoModifier) {
+                    event.accepted = true
+                    return
+                }
+
+                // a key is already waiting for the answer: the buttons answer (Tab, Enter and
+                // Space are theirs)
+                if (root._pendingKey.length > 0) {
+                    event.accepted = false
+                    return
+                }
+
+                event.accepted = true
+
+                if ((event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete)
+                        && event.modifiers === Qt.NoModifier) {
                     root.offer("")
                 } else {
                     const hotkey = SettingsBridge.hotkeyFromKeyEvent(event.key, event.modifiers, event.text)
                     if (hotkey.length > 0)
                         root.offer(hotkey)
+                }
+            }
+
+            Keys.onReleased: (event) => {
+                if (event.key === Qt.Key_Escape && event.modifiers === Qt.NoModifier && !event.isAutoRepeat) {
+                    root.stopCapture()
+                    event.accepted = true
                 }
             }
 
@@ -258,6 +284,8 @@ FocusScope {
                     spacing: RedesignStyle.spacingS
 
                     Widgets.ButtonExt {
+                        id: replaceButton
+
                         visible: root._pendingKey.length > 0
 
                         text: qsTr("Replace")

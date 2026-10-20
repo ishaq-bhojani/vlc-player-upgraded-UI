@@ -18,17 +18,21 @@
 #ifndef VLC_QT_REDESIGN_SETTINGSBRIDGE_HPP
 #define VLC_QT_REDESIGN_SETTINGSBRIDGE_HPP
 
+#include <functional>
+
 #include <QObject>
 #include <QString>
 #include <QVariantList>
 
 class ColorSchemeModel;
+class QWindow;
 
 /**
- * The two things the settings modal needs from the upstream code that QML can not reach: the
- * color scheme (ColorSchemeModel has no writable property, only a C++ setter) and the VLC key
- * string of a key press (the conversion of the QWidgets hotkey dialog, util/vlchotkeyconverter).
- * The QML singleton `SettingsBridge` of VLC.Redesign.
+ * What the settings modal needs from C++ that QML can not reach: the color scheme
+ * (ColorSchemeModel has no writable property, only a C++ setter), the VLC key string of a key
+ * press (the conversion of the QWidgets hotkey dialog, util/vlchotkeyconverter), and the native
+ * file and folder dialogs (the static Qt has no QtQuick.Dialogs). The QML singleton
+ * `SettingsBridge` of VLC.Redesign.
  */
 class SettingsBridge : public QObject
 {
@@ -46,7 +50,11 @@ class SettingsBridge : public QObject
     Q_PROPERTY(int colorSchemeIndex READ colorSchemeIndex WRITE setColorSchemeIndex NOTIFY colorSchemeIndexChanged)
 
 public:
-    explicit SettingsBridge(ColorSchemeModel* colorScheme, QObject* parent = nullptr);
+    //! gives the window the dialogs are children of (MainCtx::intfMainWindow); null: no parent
+    using WindowProvider = std::function<QWindow*()>;
+
+    explicit SettingsBridge(ColorSchemeModel* colorScheme, WindowProvider window = {},
+                            QObject* parent = nullptr);
 
     QVariantList colorSchemes() const;
     int colorSchemeIndex() const;
@@ -60,11 +68,33 @@ public:
      */
     Q_INVOKABLE QString hotkeyFromKeyEvent(int key, int modifiers, const QString& text) const;
 
+    /**
+     * The native folder dialog, a child of the main window and modal to it. The native path of
+     * the folder chosen, "" if the user cancelled. `startDir` is where it opens (a native path,
+     * may be empty or not exist).
+     */
+    Q_INVOKABLE QString pickFolder(const QString& title, const QString& startDir) const;
+
+    /**
+     * The native "open file" dialog, as pickFolder(). `filter` is a Qt name filter
+     * ("Text files (*.txt)", empty for all files). `startDir` may be a file.
+     */
+    Q_INVOKABLE QString pickFile(const QString& title, const QString& startDir,
+                                 const QString& filter = QString()) const;
+
+    /**
+     * The native "save file" dialog (the file may not exist yet), as pickFolder(): for the
+     * options that name a file to write (the log file).
+     */
+    Q_INVOKABLE QString pickSaveFile(const QString& title, const QString& startDir,
+                                     const QString& filter = QString()) const;
+
 signals:
     void colorSchemeIndexChanged();
 
 private:
     ColorSchemeModel* m_colorScheme;
+    WindowProvider m_window;
 };
 
 #endif

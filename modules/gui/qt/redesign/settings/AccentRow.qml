@@ -61,7 +61,9 @@ RowFrame {
             required property string modelData
             required property int index
 
-            // "default" is the first swatch (the default accent)
+            // "default" is the first swatch (the default accent). "system" (the accent of the
+            // operating system, only set by hand in the configuration file) is none of the
+            // swatches: nothing is ringed on purpose, picking a swatch replaces it.
             readonly property bool chosen: root.current === modelData
                                            || (index === 0 && root.current === "default")
 

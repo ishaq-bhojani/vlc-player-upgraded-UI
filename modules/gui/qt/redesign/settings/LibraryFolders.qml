@@ -30,31 +30,27 @@ import VLC.Redesign
  * one. It names MLFolderModel, so it is only loaded when the interface has a media library (see
  * LibraryFoldersRow).
  *
- * There is no folder dialog in QML (the static Qt build has no QtQuick.Dialogs): a folder is added
- * by typing or pasting its path.
+ * A folder is added with the native folder dialog (Browse), or by typing or pasting its path.
  */
 ColumnLayout {
     id: root
 
     // Functions
 
-    // "C:\Music" or "/home/me/Music" or already a URL -> the url the model wants
-    function toUrl(path: string): string {
-        const text = path.trim()
-        if (text.length === 0)
-            return ""
-        if (/^[a-zA-Z][a-zA-Z0-9+.-]+:\/\//.test(text))
-            return text
-        const slashes = text.replace(/\\/g, "/")
-        return slashes.startsWith("/") ? "file://" + slashes : "file:///" + slashes
-    }
-
     function addFolder() {
-        const url = root.toUrl(field.text)
+        const url = SettingsData.localUrl(field.text)
         if (url.length === 0)
             return
         foldersModel.add(url)
         field.text = ""
+    }
+
+    // the native folder dialog of the main window; a cancel adds nothing
+    function browseFolder() {
+        const path = SettingsBridge.pickFolder(qsTr("Add a folder to the media library"), "")
+        const url = SettingsData.localUrl(path)
+        if (url.length > 0)
+            foldersModel.add(url)
     }
 
     // Settings
@@ -127,6 +123,16 @@ ColumnLayout {
         Layout.fillWidth: true
 
         spacing: RedesignStyle.spacingS
+
+        Widgets.ButtonExt {
+            id: browseButton
+
+            text: qsTr("Browse...")
+
+            Accessible.name: qsTr("Browse for a folder to add")
+
+            onClicked: root.browseFolder()
+        }
 
         Widgets.TextFieldExt {
             id: field

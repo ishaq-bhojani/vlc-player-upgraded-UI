@@ -115,9 +115,16 @@ SettingItem::SettingItem(vlc_object_t* obj, module_config_t* config, const QVari
         m_type = Hotkey;
         break;
     case CONFIG_ITEM_LOADFILE:
+        m_type = Path;
+        m_pathKind = QStringLiteral("loadfile");
+        break;
     case CONFIG_ITEM_SAVEFILE:
+        m_type = Path;
+        m_pathKind = QStringLiteral("savefile");
+        break;
     case CONFIG_ITEM_DIRECTORY:
         m_type = Path;
+        m_pathKind = QStringLiteral("directory");
         break;
     default:
         m_type = isIntegerClass(config->i_type) ? Integer : String;

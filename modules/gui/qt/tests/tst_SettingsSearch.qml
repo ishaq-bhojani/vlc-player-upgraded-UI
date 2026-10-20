@@ -131,4 +131,17 @@ TestCase {
             }
         }
     }
+
+    function test_local_url() {
+        compare(SettingsData.localUrl("C:\\Music\\Albums"), "file:///C:/Music/Albums")
+        compare(SettingsData.localUrl("C:/My Music"), "file:///C:/My%20Music")
+        compare(SettingsData.localUrl("/home/me/Music"), "file:///home/me/Music")
+        compare(SettingsData.localUrl("/a#b"), "file:///a%23b")
+        compare(SettingsData.localUrl("  /home/me  "), "file:///home/me")
+        // already a URL, or nothing
+        compare(SettingsData.localUrl("file:///home/me"), "file:///home/me")
+        compare(SettingsData.localUrl("smb://host/share"), "smb://host/share")
+        compare(SettingsData.localUrl(""), "")
+        compare(SettingsData.localUrl("   "), "")
+    }
 }

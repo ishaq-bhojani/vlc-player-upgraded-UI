@@ -135,9 +135,9 @@ QtObject {
                    || Effects.equalizerPreamp !== 0 || Effects.equalizerBands.some(db => db !== 0)
         case "filterToken":
             return hasFilter(row.key, row.token)
-        case "toolConsent":
-            return ToolManager.consentGiven
         default:
+            // not "toolConsent": taking back the consent to download programs is the user's
+            // choice on its own row, "Reset to defaults" of the page must not do it
             return false
         }
     }
@@ -175,9 +175,6 @@ QtObject {
         case "filterToken":
             setFilter(row.key, row.token, false)
             break
-        case "toolConsent":
-            ToolManager.consentGiven = false
-            break
         }
     }
 
@@ -209,6 +206,9 @@ QtObject {
         for (const page of SettingsData.pages) {
             index.push({ page: page.id, label: page.title, description: "", rowId: "" })
             for (const row of presentRows(page)) {
+                // a link to the Advanced section of the page it is on: not a setting to find
+                if (row.kind === "advancedLink")
+                    continue
                 const label = titleOf(row)
                 if (label.length > 0)
                     index.push({ page: page.id, label: label, description: descriptionOf(row), rowId: row.id })

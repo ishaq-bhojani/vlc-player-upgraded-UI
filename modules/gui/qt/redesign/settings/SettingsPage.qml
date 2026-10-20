@@ -86,6 +86,10 @@ FocusScope {
     // the number of settings the confirmation is about, -1 while there is no question
     property int _resetCount: -1
 
+    // scrollTo(): the index to keep in view and the passes left
+    property int _scrollIndex: 0
+    property int _scrollPasses: 0
+
     // "Reset to defaults" had nothing to reset
     property bool _nothingToReset: false
 
@@ -103,7 +107,12 @@ FocusScope {
             return
         if (entries[index].row && entries[index].row.kind === "equalizer")
             equalizerOpen = true
+        _scrollIndex = index
         list.positionViewAtIndex(index, ListView.Beginning)
+        // the rows above are only estimated until they exist: place the view again as the sizes
+        // settle, so that a row deep in the page lands on target
+        _scrollPasses = 4
+        scrollTimer.restart()
         highlightId = rowId
         flashTimer.restart()
     }
@@ -193,6 +202,19 @@ FocusScope {
     }
 
     Timer {
+        id: scrollTimer
+
+        interval: 80
+        repeat: true
+
+        onTriggered: {
+            list.positionViewAtIndex(root._scrollIndex, ListView.Beginning)
+            if (--root._scrollPasses <= 0)
+                scrollTimer.stop()
+        }
+    }
+
+    Timer {
         id: flashTimer
 
         interval: 1800
@@ -214,6 +236,28 @@ FocusScope {
 
         key: spec ? spec.key : ""
         hint: spec ? (spec.hint ?? "") : ""
+
+        // a path has a Browse button: the native folder or file dialog of the main window
+        canBrowse: item !== null && item.type === ControlChooser.type.Path
+
+        onBrowseRequested: (setting) => {
+            const start = String(setting.value ?? "")
+            let picked
+            switch (setting.pathKind) {
+            case "directory":
+                picked = SettingsBridge.pickFolder(setting.text, start)
+                break
+            case "savefile":
+                picked = SettingsBridge.pickSaveFile(setting.text, start)
+                break
+            default:
+                picked = SettingsBridge.pickFile(setting.text, start)
+                break
+            }
+            // "" is a cancel
+            if (picked.length > 0)
+                setting.value = picked
+        }
     }
 
     Component { id: settingComponent; SettingEntry {} }

@@ -366,3 +366,31 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+# SettingsBridge: the VLC key string of a key press and the color scheme, with the real
+# ColorSchemeModel and key converter of the Qt interface (the native file dialogs are not tested).
+vlc_tests += {
+    'name': 'test_qt_settings_bridge',
+    'sources': files(
+        '../../tests/test_settings_bridge.cpp',
+        '../cpp/settingsbridge.hpp',
+        '../cpp/settingsbridge.cpp',
+        '../../util/color_scheme_model.hpp',
+        '../../util/color_scheme_model.cpp',
+        '../../util/vlchotkeyconverter.hpp',
+        '../../util/vlchotkeyconverter.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_settings_bridge.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/settingsbridge.hpp',
+        '../../util/color_scheme_model.hpp',
+        '../../util/vlchotkeyconverter.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

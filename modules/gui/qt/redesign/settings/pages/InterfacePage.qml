@@ -18,7 +18,7 @@
 import VLC.Redesign
 
 /**
- * @brief The Interface page: window, tray, fullscreen controls and appearance.
+ * @brief The Interface page: theme, accent color, window, tray and fullscreen controls.
  *
  * The rows are the "interface" page of SettingsData (docs/redesign/settings-map.md).
  */

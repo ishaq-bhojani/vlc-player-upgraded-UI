@@ -24,15 +24,19 @@
 #include <vlc_common.h>
 #include <vlc_actions.h>
 
+#include <QDir>
+#include <QFileDialog>
 #include <QKeyEvent>
 #include <QVariantMap>
+#include <QWindow>
 
 #include "../../util/color_scheme_model.hpp"
 #include "../../util/vlchotkeyconverter.hpp"
 
-SettingsBridge::SettingsBridge(ColorSchemeModel* colorScheme, QObject* parent)
+SettingsBridge::SettingsBridge(ColorSchemeModel* colorScheme, WindowProvider window, QObject* parent)
     : QObject(parent)
     , m_colorScheme(colorScheme)
+    , m_window(std::move(window))
 {
     if (m_colorScheme)
         connect(m_colorScheme, &ColorSchemeModel::currentChanged,
@@ -91,4 +95,53 @@ QString SettingsBridge::hotkeyFromKeyEvent(int key, int modifiers, const QString
     if ((unsigned(vlcKey) & ~unsigned(KEY_MODIFIER)) == 0)
         return QString();
     return VLCKeyToString(unsigned(vlcKey), false);
+}
+
+namespace
+{
+
+//! runs the dialog as a child of `parent` (modal to it) and returns the chosen path, "" if none
+QString runDialog(QFileDialog& dialog, QWindow* parent)
+{
+    if (parent)
+    {
+        // the dialog is a widget, the main window is not: give it a native window to put the
+        // main window as its transient parent
+        dialog.setAttribute(Qt::WA_NativeWindow, true);
+        dialog.winId();
+        if (QWindow* handle = dialog.windowHandle())
+            handle->setTransientParent(parent);
+        dialog.setWindowModality(Qt::WindowModal);
+    }
+
+    if (dialog.exec() != QDialog::Accepted || dialog.selectedFiles().isEmpty())
+        return QString();
+    return QDir::toNativeSeparators(dialog.selectedFiles().first());
+}
+
+} // namespace
+
+QString SettingsBridge::pickFolder(const QString& title, const QString& startDir) const
+{
+    QFileDialog dialog(nullptr, title, startDir);
+    dialog.setFileMode(QFileDialog::Directory);
+    dialog.setOption(QFileDialog::ShowDirsOnly, true);
+    return runDialog(dialog, m_window ? m_window() : nullptr);
+}
+
+QString SettingsBridge::pickFile(const QString& title, const QString& startDir,
+                                 const QString& filter) const
+{
+    QFileDialog dialog(nullptr, title, startDir, filter);
+    dialog.setFileMode(QFileDialog::ExistingFile);
+    return runDialog(dialog, m_window ? m_window() : nullptr);
+}
+
+QString SettingsBridge::pickSaveFile(const QString& title, const QString& startDir,
+                                     const QString& filter) const
+{
+    QFileDialog dialog(nullptr, title, startDir, filter);
+    dialog.setFileMode(QFileDialog::AnyFile);
+    dialog.setAcceptMode(QFileDialog::AcceptSave);
+    return runDialog(dialog, m_window ? m_window() : nullptr);
 }

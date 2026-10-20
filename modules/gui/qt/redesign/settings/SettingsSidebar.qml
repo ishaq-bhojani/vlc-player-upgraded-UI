@@ -141,13 +141,24 @@ FocusScope {
                     root.resultsRequested()
             }
 
-            // the first Esc clears the search, the next one closes the modal
+            // the first Esc clears the search, the next one closes the modal. The release of the
+            // Esc that cleared it is taken here too, or it would close the modal at once.
+            property bool escHandled: false
+
             Keys.onEscapePressed: (event) => {
                 if (field.text.length > 0) {
                     field.text = ""
+                    field.escHandled = true
                     event.accepted = true
                 } else {
                     event.accepted = false
+                }
+            }
+
+            Keys.onReleased: (event) => {
+                if (event.key === Qt.Key_Escape && field.escHandled) {
+                    field.escHandled = false
+                    event.accepted = true
                 }
             }
         }
