@@ -13,10 +13,12 @@
 #   (no arguments)   run the whole qt suite
 #   TEST_NAME...     run only these tests (e.g. tst_FSM base_model_test)
 #
-# The exit status is meson test's. Tests run with QT_QPA_PLATFORM=offscreen.
+# The exit status is meson test's, except that the comment lint (below) exits 1
+# before Docker and meson are started. Tests run with QT_QPA_PLATFORM=offscreen.
 #
-# Before anything is built, comment-lint.sh scans the redesign sources for an
-# unterminated /* comment (file:line) and stops at once if it finds one: such a file
+# Before anything is built, comment-lint.sh checks itself (--self-test, fixtures that
+# must pass and must fail) and then scans the redesign sources for an unterminated
+# /* comment or string (file:line); it stops at once if it finds one: such a file
 # only fails at run time in QML, and in a page the startup run never opens.
 #
 # Layout:
@@ -46,6 +48,7 @@ case "${1:-}" in
 esac
 
 # fail fast, before the volume and the build (a second; prints file:line)
+bash "$(dirname "${BASH_SOURCE[0]}")/comment-lint.sh" --self-test
 bash "$(dirname "${BASH_SOURCE[0]}")/comment-lint.sh"
 
 linux_prepare_volume linux-tests.sh

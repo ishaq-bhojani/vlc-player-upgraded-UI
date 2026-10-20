@@ -13,9 +13,16 @@
 //
 // A file named in $QML_TYPELOAD_ML_ONLY (one path per line) uses media library
 // types, which the Linux image does not register. If it fails and every error is
-// about a missing ML* type or the VLC.MediaLibrary module it is reported as
+// about a type that only exists with a media library ($QML_TYPELOAD_ML_TYPES, one
+// name per line, taken from the registrations in MainUI::registerQMLTypes), the
+// VLC.MediaLibrary module, or a "Type ... unavailable" cascade, it is reported as
 // "skipped-ml"; any other error (a syntax error, an unterminated comment, a
-// missing non-ML type) still fails.
+// missing type that is not one of those) still fails.
+//
+// The second engine has the app's registered types and import path (":/qt/qml",
+// as in MainUI::setup) but not its image providers or context properties. A load
+// check does not need them: a Component only needs the types and the files, and
+// an image source is not resolved before an Image is created.
 //
 // Result lines, written to stderr (they end up in the vlc log):
 //   TYPELOAD ready <path>
@@ -67,7 +74,7 @@ void out(const QString &line)
     fflush(stderr);
 }
 
-void runProbe(const QStringList &files, const QSet<QString> &mlOnly)
+void runProbe(const QStringList &files, const QSet<QString> &mlOnly, const QStringList &mlTypes)
 {
     QElapsedTimer clock;
     clock.start();
@@ -75,10 +82,17 @@ void runProbe(const QStringList &files, const QSet<QString> &mlOnly)
     auto *engine = new QQmlEngine; // the app's own import path, see MainUI::setup
     engine->addImportPath(QStringLiteral(":/qt/qml"));
 
-    // What a missing media library looks like: an ML* type (MLFolderModel, ...)
-    // that is not registered, or the module itself.
-    static const QRegularExpression missing(
-        QStringLiteral("^(ML[A-Za-z0-9_]* is not a type|module \"VLC[.]MediaLibrary\" is not installed|Type .+ unavailable)$"));
+    // What a missing media library looks like: one of the types that
+    // MainUI::registerQMLTypes registers only with a media library (the names
+    // come from $QML_TYPELOAD_ML_TYPES, read from those registrations) is "not a
+    // type", or the module itself is missing, or a file that needs one is
+    // "unavailable". An empty name list matches no "is not a type" at all.
+    QStringList escaped;
+    for (const QString &name : mlTypes)
+        escaped << QRegularExpression::escape(name);
+    const QRegularExpression missing(
+        QStringLiteral("^((%1) is not a type|module \"VLC[.]MediaLibrary\" is not installed|Type .+ unavailable)$")
+            .arg(escaped.isEmpty() ? QStringLiteral("(?!)") : escaped.join(QLatin1Char('|'))));
 
     int ready = 0, skipped = 0, errors = 0;
     for (const QString &rel : files) {
@@ -160,7 +174,7 @@ void start()
             out(QStringLiteral("TYPELOAD notrun empty file list"));
             return;
         }
-        runProbe(files, QSet<QString>(ml.begin(), ml.end()));
+        runProbe(files, QSet<QString>(ml.begin(), ml.end()), readLines(qgetenv("QML_TYPELOAD_ML_TYPES")));
     });
     timer->start(kPollMs);
 }

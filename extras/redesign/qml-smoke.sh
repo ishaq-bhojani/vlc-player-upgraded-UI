@@ -31,7 +31,8 @@
 #                 test/samples/meta.mp3 or test/samples/slaves/t.mp4)
 #
 # Exit status: 0 clean, 1 errors, 2 a run did not start (or quit by itself
-# before the N seconds were up) and there are no errors, 64 usage.
+# before the N seconds were up) and there are no errors, 3 the type-load probe
+# did not compile (nothing was run), 64 usage.
 #
 # Verdict:
 #
@@ -62,9 +63,12 @@
 # not be in the resources, so it would be neither shipped nor checked), and a probe
 # that printed no result (needs the interface to be up, so ~8 s or more per run).
 # Files that use media library types, which this image does not register, may
-# fail ONLY with a missing ML* type or the missing module ("MLFolderModel is not a
-# type", "module VLC.MediaLibrary is not installed", "Type ... unavailable") and
-# are then printed as "skipped (ML-only)"; the list is ML_ONLY below.
+# fail ONLY with one of the types that MainUI::registerQMLTypes registers just with
+# a media library ("MLFolderModel is not a type"; the names are read from those
+# registrations), "module VLC.MediaLibrary is not installed" or a "Type ...
+# unavailable" cascade, and are then printed as "skipped (ML-only)"; the list of
+# files is ML_ONLY below. The second engine has the app's registered types and
+# import path but not its image providers: enough for a load check.
 #
 # Full logs are kept in the container only; the matching lines are printed.
 # Set QML_SMOKE_FULL_LOG=1 to print the complete logs as well.
@@ -150,21 +154,29 @@ ML_ONLY=(
 QMLDIR="$B/modules/gui/qt/VLC/Redesign/qmldir"
 [ -f "$QMLDIR" ] || { echo "qml-smoke.sh: $QMLDIR was not generated" >&2; exit 2; }
 # The module is flat: genqrc.py puts every file at qrc:/qt/qml/VLC/Redesign/<basename>,
-# so the probe loads by basename. typeload.list = the files the module ships (the
-# "Name 1.0 file" and "singleton Name 1.0 file" lines of the built qmldir);
-# typeload.ondisk = "basename<TAB>path below redesign/" of the tree, to show paths.
-awk 'NF >= 3 && $1 != "module" && $1 != "prefer" { print $NF }' "$QMLDIR" | sort > "$ROOT/typeload.list"
-(cd /vlc/modules/gui/qt/redesign && find . -name '*.qml' | sed 's|^\./||' | awk -F/ '{ print $NF "\t" $0 }' | sort) > "$ROOT/typeload.ondisk"
+# so the probe loads by basename. typeload.list = the files the module ships, from
+# the lines "Name 1.0 File.qml" and "singleton Name 1.0 File.qml" of the built qmldir
+# (any other line than module/prefer/empty is reported); typeload.ondisk =
+# "basename<TAB>path below redesign/" of the tree, to show paths.
+# (LC_ALL=C for sort, comm and uniq: one collation, whatever the image locale.)
 : > "$ROOT/typeload.problems"
+QMLDIR_RE='^(singleton )?[A-Za-z0-9_]+ [0-9]+\.[0-9]+ [A-Za-z0-9_]+\.qml$'
+{ grep -E "$QMLDIR_RE" "$QMLDIR" || true; } | awk '{ print $NF }' | LC_ALL=C sort > "$ROOT/typeload.list"
+grep -vE "$QMLDIR_RE|^(module|prefer) |^[[:space:]]*$" "$QMLDIR" | while IFS= read -r l; do
+    echo "typeload: unrecognised line in the built VLC/Redesign/qmldir: $l" >> "$ROOT/typeload.problems"
+done || true
+[ -s "$ROOT/typeload.list" ] || echo "typeload: the built VLC/Redesign/qmldir lists no QML file" >> "$ROOT/typeload.problems"
+(cd /vlc/modules/gui/qt/redesign && find . -name '*.qml' | sed 's|^\./||' | awk -F/ '{ print $NF "\t" $0 }' | LC_ALL=C sort) > "$ROOT/typeload.ondisk"
+LC_ALL=C cut -f1 "$ROOT/typeload.ondisk" | LC_ALL=C sort -u > "$ROOT/typeload.ondisk.names"
 # two files with one basename would shadow each other in the flat module
-cut -f1 "$ROOT/typeload.ondisk" | uniq -d | while IFS= read -r f; do
+LC_ALL=C cut -f1 "$ROOT/typeload.ondisk" | LC_ALL=C uniq -d | while IFS= read -r f; do
     echo "typeload: $f exists more than once below redesign/ (the module is flat, one would shadow the other)" >> "$ROOT/typeload.problems"
 done
 # a .qml file of the tree that the module does not list is never shipped nor loaded
-comm -13 "$ROOT/typeload.list" <(cut -f1 "$ROOT/typeload.ondisk" | sort -u) | while IFS= read -r f; do
+LC_ALL=C comm -13 "$ROOT/typeload.list" "$ROOT/typeload.ondisk.names" | while IFS= read -r f; do
     echo "typeload: $(awk -F'\t' -v f="$f" '$1 == f { print $2; exit }' "$ROOT/typeload.ondisk") is not listed in the VLC.Redesign module (redesign/meson.build); it is neither shipped nor checked" >> "$ROOT/typeload.problems"
 done
-comm -23 "$ROOT/typeload.list" <(cut -f1 "$ROOT/typeload.ondisk" | sort -u) | while IFS= read -r f; do
+LC_ALL=C comm -23 "$ROOT/typeload.list" "$ROOT/typeload.ondisk.names" | while IFS= read -r f; do
     echo "typeload: the module lists $f but the tree has no such file" >> "$ROOT/typeload.problems"
 done
 : > "$ROOT/typeload.mlonly"
@@ -175,6 +187,13 @@ for f in "${ML_ONLY[@]}"; do
         echo "typeload: ML_ONLY names $f, which is not a file of the tree (update ML_ONLY in qml-smoke.sh)" >> "$ROOT/typeload.problems"
     fi
 done
+# The QML names that exist only with a media library: every qmlRegister*() of the
+# VLC.MediaLibrary block of MainUI::registerQMLTypes (the first string argument).
+sed -n '/const char\* uri = "VLC\.MediaLibrary"/,/qmlProtectModule/p' /vlc/modules/gui/qt/maininterface/mainui.cpp \
+    | grep -E '^[[:space:]]*qmlRegister.*"[A-Za-z0-9_]+"' | sed -E 's/^[^"]*"([A-Za-z0-9_]+)".*$/\1/' > "$ROOT/typeload.mltypes"
+if [ "$(wc -l < "$ROOT/typeload.mltypes")" -lt 10 ]; then
+    echo "typeload: found only $(wc -l < "$ROOT/typeload.mltypes") media library type registrations in maininterface/mainui.cpp (did MainUI::registerQMLTypes change? fix the extraction in qml-smoke.sh)" >> "$ROOT/typeload.problems"
+fi
 # The probe is compiled here (the image has g++ and the Qt 6 development files)
 # and injected into the redesign run only. It lives in /vlc/extras/redesign, is
 # never part of the VLC build and changes nothing in the product.
@@ -183,8 +202,8 @@ PROBE_SECONDS=$SECONDS
 if ! g++ -std=c++17 -fPIC -shared -O1 -Wall $(pkg-config --cflags Qt6Qml Qt6Core) \
         /vlc/extras/redesign/qml-typeload.cpp -o "$ROOT/libqml-typeload.so" \
         $(pkg-config --libs Qt6Qml Qt6Core); then
-    echo "qml-smoke.sh: the type-load probe did not compile" >&2
-    exit 2
+    echo "qml-smoke.sh: the type-load probe did not compile (exit 3)" >&2
+    exit 3
 fi
 PROBE_SECONDS=$((SECONDS - PROBE_SECONDS))
 
@@ -209,7 +228,7 @@ run_vlc() {
         VLC_PLUGIN_PATH="$B/modules" VLC_LIB_PATH="$B/modules" VLC_LIBEXEC_PATH="$B/modules" \
         PATH="$B/bin:$PATH" \
         timeout -k 10 "$SMOKE_SECONDS" \
-        ${RUN_PRELOAD:+env LD_PRELOAD="$RUN_PRELOAD" QML_TYPELOAD_LIST="$ROOT/typeload.list" QML_TYPELOAD_ML_ONLY="$ROOT/typeload.mlonly"} \
+        ${RUN_PRELOAD:+env LD_PRELOAD="$RUN_PRELOAD" QML_TYPELOAD_LIST="$ROOT/typeload.list" QML_TYPELOAD_ML_ONLY="$ROOT/typeload.mlonly" QML_TYPELOAD_ML_TYPES="$ROOT/typeload.mltypes"} \
         "$B/bin/vlc" \
             -I qt --verbose=2 --no-qt-privacy-ask \
             --qt-compositor=dummy --aout=dummy --vout=dummy --no-video-title-show \

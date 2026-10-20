@@ -41,8 +41,9 @@ upstream's `debian-meson` CI job uses; Qt 6.10.2 with QuickTest, meson 1.11):
    or, when names are given, `meson test ... NAME...` (no `--suite`, so exactly
    those tests run).
 
-Before step 1, on the host and in about a second, the script runs
-`extras/redesign/comment-lint.sh` and stops at once, printing `file:line`, if a
+Before step 1, on the host and in about two seconds, the script runs
+`extras/redesign/comment-lint.sh --self-test` and then `comment-lint.sh`, and
+exits 1 at once (before Docker and meson are started), printing `file:line`, if a
 `*.qml`, `*.cpp` or `*.hpp` file under `modules/gui/qt/redesign/` or
 `modules/gui/qt/tests/` (tracked, or new and not ignored) has a `/*` that is
 never closed, a `/*` that starts a line inside another comment (the way a lost
@@ -50,8 +51,20 @@ never closed, a `/*` that starts a line inside another comment (the way a lost
 line or file. A C++ compiler reports such a file, but QML is only parsed when it
 is loaded, so a broken page that the interface does not open at startup passed
 every earlier check. The lint is a small scanner, not a parser (comments,
-strings, raw strings, template strings, regex literals); run it alone with
+strings, raw strings, template strings, regex literals, digit separators, string
+prefixes such as `L'x'`); run it alone with
 `bash extras/redesign/comment-lint.sh [FILE...]`.
+
+**Its limit:** a lost `*/` is only detected when a `/*` starts a line later
+inside the swallowed text (a doc comment, as in the `RedesignModalDialog.qml`
+case), or when the comment runs to the end of the file. If the comment just
+becomes one long comment with no such `/*` after it, the lint sees nothing
+wrong; the type-load pass of `qml-smoke.sh` (below) catches the rest, because
+the file's types are then unavailable. `comment-lint.sh --self-test` runs
+built-in fixtures that must pass (a regex after `return`, a division on a
+continuation line, `L'"'`, `u8'x'`, `1'000`, raw strings, ...) and must fail
+(the lost licence close, unterminated strings and raw strings, ...), so a change
+to the scanner cannot silently start blocking, or stop catching, the real cases.
 
 There is no explicit `meson setup --reconfigure` on later runs: meson/ninja
 regenerate the build files by themselves when a `meson.build` or
@@ -156,11 +169,17 @@ pass the smoke run. The redesign run therefore also carries a probe:
   build and no product code changes. It does nothing in any process whose
   executable is not named `vlc`.
 * Once the interface has registered its QML types (`VLC.MainInterface`'s
-  `MainCtx` exists), it creates a second `QQmlEngine` in the same process, so
-  `VLC.MainInterface`, `VLC.Style`, `VLC.Player`, the C++ types of `VLC.Redesign`
-  and the rest resolve exactly as in the app, and loads **every** file of the
-  `VLC.Redesign` module as a `Component`, with the import path the app uses.
-  Nothing is instantiated: `Component.Ready` is the pass criterion. It takes about
+  `MainCtx` exists), it creates a second `QQmlEngine` in the same process, and
+  loads **every** file of the `VLC.Redesign` module as a `Component`. The types
+  (the QML type registry is process-wide: `VLC.MainInterface`, `VLC.Player`, the
+  C++ types of `VLC.Redesign`, ...) and the import path (`:/qt/qml`) are the
+  app's, so every `import` and type name resolves as in the app. What the second
+  engine does not have is what `MainUI::setup` installs on the app's own engine
+  (image providers such as the media library cover provider, context
+  properties). That is enough for a load check: a `Component` only needs the files
+  and the types to compile; an `Image` source is not looked up before an `Image`
+  is created, and nothing is created. Nothing is instantiated:
+  `Component.Ready` is the pass criterion. It takes about
   1 s, inside the run that already exists (the whole pass adds about 4 s to the
   smoke test: the probe compile plus the load).
 * The list of files comes from the built `VLC/Redesign/qmldir` (the sources and
@@ -179,11 +198,16 @@ pass the smoke run. The redesign run therefore also carries a probe:
   `dialogs/NewPlaylistDialog.qml`, `dialogs/RecentStreams.qml`,
   `library/HomeContent.qml`, `settings/LibraryFolders.qml`,
   `shell/MainMenuRecent.qml`: the files that import `VLC.MediaLibrary`, except
-  `RedesignInterface.qml`, which loads at startup) may fail, but only with a
-  missing `ML*` type, the missing `VLC.MediaLibrary` module, or a `Type ...
-  unavailable` cascade. They are printed as `skipped (ML-only)`. Any other error in
-  these files (a syntax error, an unterminated comment, a missing non-ML type)
-  still fails. When you add a file that names `ML*` types, add it to `ML_ONLY`.
+  `RedesignInterface.qml`, which loads at startup) may fail, but only with
+  `<Name> is not a type` for one of the types that `MainUI::registerQMLTypes`
+  registers just when there is a media library (the names are read by the script
+  from the `VLC.MediaLibrary` block of `maininterface/mainui.cpp`: `MLFolderModel`,
+  `MLRecentMediaModel`, `NetworkMediaModel`, `MediaLib`, ...; the run reports a
+  problem if that extraction finds fewer than 10), with the missing
+  `VLC.MediaLibrary` module, or with a `Type ... unavailable` cascade. They are
+  printed as `skipped (ML-only)`. Any other error in these files (a syntax error,
+  an unterminated comment, a missing type that is not one of those) still fails.
+  When you add a file that names those types, add it to `ML_ONLY`.
 
 ```text
 typeload: 101 files, 96 ready, 5 skipped (ML-only), 0 errors
@@ -220,7 +244,9 @@ redesign: 2 errors, 2 warnings; stock: 0 errors, 2 warnings; env: 2 + 3 SVG-plug
   "ran until stopped"), or the log has no `using interface module "qt"`. The
   last 25 log lines are printed.
 
-Exit status: 0 clean, 1 errors, 2 a run did not start, 64 usage error.
+Exit status: 0 clean, 1 errors, 2 a run did not start, 3 the type-load probe
+(`qml-typeload.cpp`) did not compile (nothing was run; fix the probe or the
+image), 64 usage error.
 
 The container compiles the live working tree, so an error in a file you did not
 touch may be another agent's work in progress: report it, do not fix it.
