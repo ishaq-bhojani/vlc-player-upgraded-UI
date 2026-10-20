@@ -48,8 +48,10 @@ constexpr int kMaxLrcLineChars = 1000;
  *   N later); the result is never below 0.
  * - the time stamps are the "[...]" groups at the start of the line (blanks between them are fine);
  *   everything after them is the text, also a "[Chorus]" group.
- * - the tags ([ar:], [ti:], [al:], [by:], [length:], ...) are only looked at on lines without
- *   time stamp, and ignored; so is a line whose first group is not a valid stamp.
+ * - the metadata tags ([ar:], [ti:], [al:], [by:], [au:], [length:], [re:], [ve:], [offset:]) are
+ *   skipped when they come before the first time stamp of a line ("[ti:X][00:01.00]Hello" is
+ *   "Hello" at 1 s); after a stamp they are text. Any other group before the first stamp
+ *   ("[bad][00:10.00]a") makes the line a non-lyric line: no entry.
  * - a stamp with no text is kept (empty text): it ends the previous line.
  * - the word stamps of enhanced LRC ("<mm:ss.xx>") are removed from the text.
  * - the result is sorted by time (lines with the same time keep the file order), at most

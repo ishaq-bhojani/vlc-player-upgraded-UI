@@ -56,20 +56,22 @@ Item {
     // the position of the seek bar (interpolated between the updates of the player), and on seeks.
     property var _time
 
+    // `_time` belongs to the current media (false from a new media until its first position update)
+    property bool _timeValid: false
+
     // the line of the file at `_time`
     property int _sidecarIndex: -1
 
     // Functions
 
     function refreshSidecarIndex() {
-        root._sidecarIndex = sidecar.available ? sidecar.indexAtTime(root._time) : -1
+        root._sidecarIndex = (root._timeValid && sidecar.available) ? sidecar.indexAtTime(root._time) : -1
     }
 
     // other lines or another media: the user starts over
     function reset() {
         resumeTimer.stop()
         root._userScrolling = false
-        root._time = Player.time
         root.refreshSidecarIndex()
         Qt.callLater(root.centerCurrent)
     }
@@ -104,7 +106,11 @@ Item {
 
     // Settings
 
-    Component.onCompleted: root.reset()
+    Component.onCompleted: {
+        root._time = Player.time
+        root._timeValid = true
+        root.reset()
+    }
 
     // Children
 
@@ -113,11 +119,14 @@ Item {
 
         function onPositionUpdated(position, time, length) {
             root._time = time
+            root._timeValid = true
             root.refreshSidecarIndex()
         }
 
         // another media
         function onInputChanged() {
+            // the time of the previous media is of no use: no line until the first update
+            root._timeValid = false
             root.reset()
         }
 

@@ -217,6 +217,29 @@ private slots:
         QCOMPARE(lines[1].text, QString("[ti:Hello]y"));
     }
 
+    void metadataTagsBeforeTheStampsAreSkipped()
+    {
+        auto lines = parseLrc("[ti:X][00:01.00]Hello");
+        QCOMPARE(lines.size(), 1);
+        QCOMPARE(lines[0].timeMs, qint64(1000));
+        QCOMPARE(lines[0].text, QString("Hello"));
+        lines = parseLrc("[ar:A] [by:B][length:03:00][00:02.00]Hi");
+        QCOMPARE(lines.size(), 1);
+        QCOMPARE(lines[0].timeMs, qint64(2000));
+        QCOMPARE(lines[0].text, QString("Hi"));
+        // an unknown group before the stamps: not a lyric line
+        QVERIFY(parseLrc("[ti:X][bad][00:01.00]Hello").isEmpty());
+    }
+
+    void offsetBeforeTheStampsIsAppliedOnce()
+    {
+        const auto lines = parseLrc("[offset:500][00:02.00]Hi\n[00:04.00]Yo");
+        QCOMPARE(lines.size(), 2);
+        QCOMPARE(lines[0].timeMs, qint64(1500));
+        QCOMPARE(lines[0].text, QString("Hi"));
+        QCOMPARE(lines[1].timeMs, qint64(3500));
+    }
+
     void longTextIsCut()
     {
         const QString text(redesign::kMaxLrcLineChars + 500, QChar('x'));
