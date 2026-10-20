@@ -34,6 +34,25 @@ TestCase {
         return shell
     }
 
+    function test_panelDocksOnlyWhereTheStageKeepsItsRoom() {
+        const shell = createShell({ playerView: true, canShowVideoPIP: true, panelRequested: true })
+        compare(shell.panelMode, "docked")
+        shell.panelFits = false
+        compare(shell.panelMode, "overlay")
+        shell.panelFits = true
+        compare(shell.panelMode, "docked")
+
+        // the browse state shows the strip whatever the room, the immersive state no panel
+        shell.panelFits = false
+        shell.playerView = false
+        compare(shell.state, "browse")
+        compare(shell.panelMode, "docked")
+        shell.fullscreen = true
+        shell.playerView = true
+        compare(shell.state, "immersive")
+        compare(shell.panelMode, "hidden")
+    }
+
     function test_defaults() {
         const shell = createShell()
         compare(shell.state, "browse")

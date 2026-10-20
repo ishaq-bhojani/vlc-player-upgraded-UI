@@ -30,8 +30,9 @@ import VLC.Redesign
  * (docs/redesign/figma-svg/play.svg: 54 x 28, radius 6).
  *
  * The glyph is the action the button performs: Play on the accent fill while the media is
- * paused or stopped, Pause on a neutral fill while it plays. Press and hold stops, like the
- * stock button. Registered for PLAY_BUTTON in redesign mode only (PlayerControlbarControls.qml).
+ * paused or stopped, Pause on the muted grey fill of the Figma export while it plays. Press and
+ * hold stops, like the stock button. Registered for PLAY_BUTTON in redesign mode only
+ * (PlayerControlbarControls.qml).
  */
 T.Control {
     id: root
@@ -165,7 +166,9 @@ T.Control {
     background: Rectangle {
         radius: RedesignStyle.radiusM
 
-        color: root._playing ? neutralTheme.bg.secondary : accentTheme.bg.primary
+        // Figma (play.svg): Pause is the muted text colour (#6B6B6B), not the sunken black that
+        // ButtonStandard Bg Secondary is
+        color: root._playing ? neutralTheme.fg.secondary : accentTheme.bg.primary
 
         border.width: root.visualFocus ? VLCStyle.dp(2, VLCStyle.scale) : 0
         border.color: neutralTheme.visualFocus
@@ -181,7 +184,8 @@ T.Control {
     contentItem: T.Label {
         text: root._playing ? VLCIcons.pause_filled : VLCIcons.play_filled
 
-        color: root._playing ? neutralTheme.fg.primary : accentTheme.fg.primary
+        // the dark glyph of the Figma Pause variant (Bg Secondary: #090909, white in the light theme)
+        color: root._playing ? neutralTheme.bg.secondary : accentTheme.fg.primary
 
         font.pixelSize: Math.round(root.height * 0.55)
         font.family: VLCIcons.fontFamily

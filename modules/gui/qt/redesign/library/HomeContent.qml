@@ -169,13 +169,16 @@ FocusScope {
 
         // the "progress" role is a fraction, 0 when never played
         property bool showProgress: false
-        property url fallbackImage: VLCStyle.noArtAlbumCover
+        // shown on a dark surface when the media has no artwork (the stock placeholder is a bright card)
+        property string fallbackGlyph: VLCIcons.topbar_music
         property string subtitle
 
         property real coverWidth: VLCStyle.dp(200, VLCStyle.scale)
         property real coverHeight: VLCStyle.dp(112, VLCStyle.scale)
 
         readonly property bool isCurrent: ListView.isCurrentItem && ListView.view.activeFocus
+
+        readonly property bool hasCover: !!card.model.small_cover
 
         width: coverWidth
         height: ListView.view ? ListView.view.height : coverHeight
@@ -206,10 +209,39 @@ FocusScope {
             border.width: card.isCurrent ? VLCStyle.focus_border : 0
             border.color: cardTheme.visualFocus
 
+            // no artwork: a muted glyph on a sunken surface, like the empty state
+            Rectangle {
+                anchors.fill: parent
+
+                visible: !card.hasCover
+
+                color: cardTheme.bg.secondary
+
+                border.width: VLCStyle.dp(1, VLCStyle.scale)
+                border.color: placeholderTheme.separator
+                radius: parent.radius
+
+                ColorContext {
+                    id: placeholderTheme
+
+                    colorSet: ColorContext.View
+                }
+
+                Widgets.IconLabel {
+                    anchors.centerIn: parent
+
+                    text: card.fallbackGlyph
+                    color: cardTheme.fg.secondary
+                    font.pixelSize: Math.round(Math.min(card.coverWidth, card.coverHeight) * 0.4)
+                }
+            }
+
             Image {
                 anchors.fill: parent
 
-                source: card.model.small_cover ? card.model.small_cover : card.fallbackImage
+                visible: card.hasCover
+
+                source: card.hasCover ? card.model.small_cover : ""
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 cache: false
@@ -413,7 +445,7 @@ FocusScope {
 
                 delegate: MediaCard {
                     showProgress: true
-                    fallbackImage: VLCStyle.noArtVideoCover
+                    fallbackGlyph: VLCIcons.topbar_video
                     subtitle: model.duration?.formatHMS() ?? ""
                 }
 
@@ -584,15 +616,21 @@ FocusScope {
 
     // Children: nothing to show
 
-    Widgets.EmptyLabel {
+    // The stock empty view (Widgets.EmptyLabel) is a bright cover card, which clashes with the
+    // dark theme: a muted glyph on a sunken surface, readable text and the accent button instead.
+    FocusScope {
         id: emptyState
 
         anchors.centerIn: parent
 
         visible: !root.recentView && root.isEmpty
+        enabled: visible
 
-        cover: VLCStyle.noArtAlbumCover
-        text: qsTr("No media found\nPlease try adding sources")
+        width: emptyColumn.implicitWidth
+        height: emptyColumn.implicitHeight
+
+        Accessible.role: Accessible.Pane
+        Accessible.name: qsTr("Empty view")
 
         Navigation.parentItem: root
 
@@ -620,22 +658,77 @@ FocusScope {
             Navigation.defaultKeyReleaseAction(event)
         }
 
-        Widgets.ButtonExt {
-            id: addFolders
+        Column {
+            id: emptyColumn
 
-            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: RedesignStyle.spacingL
 
-            width: Math.max(VLCStyle.dp(84, VLCStyle.scale), implicitWidth)
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
 
-            focus: true
+                width: VLCStyle.dp(96, VLCStyle.scale)
+                height: width
 
-            text: qsTr("Add folders")
-            iconTxt: VLCIcons.rd_folder
+                radius: RedesignStyle.radiusL
+                color: theme.bg.secondary
 
-            Navigation.parentItem: emptyState
+                border.width: VLCStyle.dp(1, VLCStyle.scale)
+                border.color: theme.separator
 
-            // the media library page of the preferences lists the folders of the library
-            onClicked: DialogsProvider.prefsDialog()
+                Widgets.IconLabel {
+                    anchors.centerIn: parent
+
+                    text: VLCIcons.topbar_music
+                    color: theme.fg.secondary
+                    font.pixelSize: VLCStyle.icon_medium
+                }
+            }
+
+            Column {
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                spacing: RedesignStyle.spacingXS
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+
+                    text: qsTr("No media found")
+                    color: theme.fg.primary
+                    font.pixelSize: VLCStyle.fontSize_xlarge
+                    font.weight: Font.DemiBold
+                    textFormat: Text.PlainText
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+
+                    text: qsTr("Please try adding sources")
+                    color: theme.fg.primary
+                    font.pixelSize: VLCStyle.fontSize_normal
+                    textFormat: Text.PlainText
+                }
+            }
+
+            Widgets.ButtonExt {
+                id: addFolders
+
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                width: Math.max(VLCStyle.dp(120, VLCStyle.scale), implicitWidth)
+
+                focus: true
+
+                text: qsTr("Add folders")
+                iconTxt: VLCIcons.rd_folder
+                font.bold: true
+
+                colorContext.colorSet: ColorContext.ButtonAccent
+
+                Navigation.parentItem: emptyState
+
+                // the media library page of the preferences lists the folders of the library
+                onClicked: DialogsProvider.prefsDialog()
+            }
         }
     }
 }

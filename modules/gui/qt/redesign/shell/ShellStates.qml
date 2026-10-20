@@ -30,7 +30,7 @@ import VLC.Util
  *   state:     "immersive" if (fullscreen && hasMedia) || minimalView, else "watch" if
  *              playerView, else "browse" (fullscreen with nothing playing is no empty video view)
  *   panelMode: "hidden" in immersive or when no panel is requested; in watch "docked"
- *              if canShowVideoPIP, else "overlay"; in browse "docked"
+ *              if canShowVideoPIP and panelFits, else "overlay"; in browse "docked"
  *   bars:      browse shows both (uiHidden is ignored), watch shows both unless
  *              uiHidden, immersive shows a bar only while the pointer is near it or
  *              a key was recently pressed or keepTopBar / keepBottomBar is set (bars never when
@@ -46,6 +46,9 @@ QtObject {
     property bool hasMedia: true
     property bool minimalView: false
     property bool canShowVideoPIP: false
+    // the stage keeps enough room beside a docked library panel (false: a docked panel would
+    // leave the video a sliver, the panel is an overlay)
+    property bool panelFits: true
     property bool panelRequested: false
     property bool uiHidden: false
     property bool pointerNearTop: false
@@ -62,7 +65,7 @@ QtObject {
         if (!panelRequested || _state === "immersive")
             return "hidden"
         if (_state === "watch")
-            return canShowVideoPIP ? "docked" : "overlay"
+            return (canShowVideoPIP && panelFits) ? "docked" : "overlay"
         return "docked"
     }
     readonly property bool miniPlayerShowsVideo: _state === "browse" && canShowVideoPIP

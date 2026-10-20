@@ -78,4 +78,53 @@ QtObject {
         const p = Math.min(1, Math.max(0, peak))
         return Math.min(height, Math.max(minHeight, p * height))
     }
+
+    // Colours. The played bars are the accent, whatever the user picked, so the colour of the
+    // others is computed from it: WCAG 1.4.11 asks 3:1 between the two parts of a control, and
+    // hue alone does not give that (the grey of the muted text against the default orange is
+    // 1.65:1 in the dark theme, 1.23:1 in the light one).
+
+    // the least luminance contrast between the played and the other bars (3 is the minimum)
+    readonly property real minRestContrast: 3.2
+
+    // below this contrast with its background, a bar dimmer than the played ones is hard to see
+    readonly property real minRestVisibility: 1.5
+
+    function _linear(channel: real): real {
+        return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4)
+    }
+
+    function _unlinear(value: real): real {
+        return value <= 0.0031308 ? value * 12.92 : 1.055 * Math.pow(value, 1 / 2.4) - 0.055
+    }
+
+    // relative luminance (WCAG) of a colour
+    function luminance(value: var): real {
+        // a colour value or a string, "#RRGGBB"
+        const c = Qt.color(value)
+        return 0.2126 * _linear(c.r) + 0.7152 * _linear(c.g) + 0.0722 * _linear(c.b)
+    }
+
+    // contrast ratio (WCAG, 1..21) of two colours
+    function contrast(a: var, b: var): real {
+        const la = luminance(a)
+        const lb = luminance(b)
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+    }
+
+    // The colour of the bars that are not played yet: a grey `minRestContrast`:1 from `played`
+    // (luminance), on `background`. The dimmer one when it can still be seen against the
+    // background (always in the light theme, and in the dark one for the usual accents), the
+    // brighter one otherwise (a dark accent on a dark bar).
+    function restColor(played: var, background: var): var {
+        const lp = luminance(played) + 0.05
+        const lb = luminance(background)
+        // the luminances that are `minRestContrast`:1 darker and brighter than `played`
+        const dim = Math.max(0, lp / minRestContrast - 0.05)
+        const bright = lp * minRestContrast - 0.05
+
+        const dimVisible = (Math.max(dim, lb) + 0.05) / (Math.min(dim, lb) + 0.05) >= minRestVisibility
+        const grey = _unlinear((dimVisible || bright > 1) ? dim : bright)
+        return Qt.rgba(grey, grey, grey, 1)
+    }
 }

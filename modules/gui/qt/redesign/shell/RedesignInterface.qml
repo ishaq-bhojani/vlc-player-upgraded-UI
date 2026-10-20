@@ -70,8 +70,13 @@ Item {
     property bool browsePanelOpen: true
 
     // Whether the library panel is requested in the watch state: docked beside the video by
-    // default, an overlay (which covers the video) only when the user asks for it
-    property bool watchPanelOpen: MainCtx.canShowVideoPIP
+    // default (where the video keeps its room), an overlay (which covers the video) only when
+    // the user asks for it
+    property bool watchPanelOpen: MainCtx.canShowVideoPIP && root._panelFits
+
+    // A docked library panel leaves the stage at least what a docked right panel leaves it
+    // (RightPanel.stageMinWidth). The right panel is not counted: it adapts to what is left.
+    readonly property bool _panelFits: panelsRow.width - rail.width - libraryPanel.panelWidth >= rightPanel.stageMinWidth
 
     // title shown while no media with a folder is playing: the label of the current rail entry
     readonly property string pageTitle: {
@@ -329,6 +334,7 @@ Item {
         fullscreen: Player.fullscreen || (MainCtx.intfMainWindow.visibility === Window.FullScreen)
         minimalView: MainCtx.minimalView
         canShowVideoPIP: MainCtx.canShowVideoPIP
+        panelFits: root._panelFits
         hasMedia: root._hasMedia
         panelRequested: (shellStates.state === "browse") ? root.browsePanelOpen : root.watchPanelOpen
 

@@ -79,6 +79,17 @@ FocusScope {
         colorSet: ColorContext.View
     }
 
+    // The background of the library. The window paints nothing itself when its colour is
+    // transparent (the compositors with client side decorations on Windows, see the guard in
+    // RedesignInterface.qml), the stock interface paints it in MainDisplay.qml for the same
+    // reason. Not shown with media: the video is drawn below the window, the music view has its own.
+    Rectangle {
+        anchors.fill: parent
+
+        visible: !root.showsMedia
+        color: theme.bg.primary
+    }
+
     Item {
         id: pageSlotItem
 

@@ -285,7 +285,9 @@ T.Control {
                     position: root.visualPosition
                     // the played part is the accent itself (Slider Fg Primary is the dim accent-tint)
                     playedColor: theme.accent
-                    restColor: theme.fg.secondary
+                    // 3:1 against the played part, in luminance (WCAG 1.4.11): the muted text colour
+                    // differs from the accent in hue only (1.65:1 dark, 1.23:1 light)
+                    restColor: WaveformMath.restColor(theme.accent, textTheme.bg.primary)
 
                     barWidth: VLCStyle.dp(2, VLCStyle.scale)
                     gap: VLCStyle.dp(2, VLCStyle.scale)

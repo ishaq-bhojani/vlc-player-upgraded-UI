@@ -113,4 +113,51 @@ TestCase {
         compare(WaveformMath.barHeight(-1, 28, 2), 2)
         compare(WaveformMath.barHeight(0.5, 1, 2), 1)
     }
+
+    function test_luminanceAndContrast() {
+        fuzzyCompare(WaveformMath.luminance(Qt.rgba(0, 0, 0, 1)), 0, 1e-9)
+        fuzzyCompare(WaveformMath.luminance(Qt.rgba(1, 1, 1, 1)), 1, 1e-9)
+        fuzzyCompare(WaveformMath.contrast(Qt.rgba(0, 0, 0, 1), Qt.rgba(1, 1, 1, 1)), 21, 1e-9)
+        // symmetric
+        fuzzyCompare(WaveformMath.contrast("#D37918", "#6B6B6B"),
+                     WaveformMath.contrast("#6B6B6B", "#D37918"), 1e-9)
+    }
+
+    function test_restColorOfTheDefaultAccentInBothThemes() {
+        const accent = Qt.color("#D37918")
+
+        // the grey of the muted text was only 1.65:1 (dark) and 1.23:1 (light) from the accent
+        verify(WaveformMath.contrast(accent, "#6B6B6B") < 1.7)
+        verify(WaveformMath.contrast(accent, "#808080") < 1.3)
+
+        // dark theme: on the bar #1B1B1B, dimmer than the played bars
+        const dark = WaveformMath.restColor(accent, "#1B1B1B")
+        verify(WaveformMath.contrast(accent, dark) >= 3)
+        verify(WaveformMath.luminance(dark) < WaveformMath.luminance(accent))
+        // and still tells from the bar
+        verify(WaveformMath.contrast(dark, "#1B1B1B") >= 1.5)
+
+        // light theme: on the bar #EDEDED the only way to 3:1 is darker than the accent
+        const light = WaveformMath.restColor(accent, "#EDEDED")
+        verify(WaveformMath.contrast(accent, light) >= 3)
+        verify(WaveformMath.luminance(light) < WaveformMath.luminance(accent))
+    }
+
+    function test_restColorForEveryAccentSwatch() {
+        const swatches = ["#D37918", "#E15032", "#C49F23", "#19A235", "#19AAD4", "#195DD4",
+                          "#8E42FF", "#F052B3", "#AFAFAF"]
+        const backgrounds = ["#1B1B1B", "#EDEDED"]
+        for (const hex of swatches) {
+            for (const bg of backgrounds) {
+                const rest = WaveformMath.restColor(Qt.color(hex), bg)
+                verify(WaveformMath.contrast(Qt.color(hex), rest) >= 3,
+                       hex + " on " + bg + ": " + WaveformMath.contrast(Qt.color(hex), rest))
+                // a neutral grey, and never invisible on its background
+                compare(rest.r, rest.g)
+                compare(rest.g, rest.b)
+                verify(WaveformMath.contrast(rest, bg) >= 1.5,
+                       hex + " on " + bg + ": " + WaveformMath.contrast(rest, bg))
+            }
+        }
+    }
 }

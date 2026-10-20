@@ -141,10 +141,11 @@ FocusScope {
         colorSet: ColorContext.Window
     }
 
+    // flush with the window edge, the title bar and the bars below: square corners (the rail
+    // never floats over the stage)
     Rectangle {
         anchors.fill: parent
 
-        radius: RedesignStyle.radiusM
         color: theme.bg.secondary
     }
 

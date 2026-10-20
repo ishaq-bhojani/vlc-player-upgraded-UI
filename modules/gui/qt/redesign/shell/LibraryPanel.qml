@@ -109,11 +109,35 @@ FocusScope {
         colorSet: ColorContext.Window
     }
 
+    ColorContext {
+        id: viewTheme
+
+        colorSet: ColorContext.View
+    }
+
+    // The strip (browse state) is the top of the page: the background of the page, the window
+    // paints none (see Stage.qml). Docked, the panel is flush with the rail, the bars and the
+    // window: square corners. As an overlay over the stage its free side, the right one, is
+    // rounded (the square rectangle below keeps the left corners square).
     Rectangle {
         anchors.fill: parent
 
-        visible: !root.strip
-        color: theme.bg.secondary
+        color: root.strip ? viewTheme.bg.primary : theme.bg.secondary
+
+        radius: (root.mode === "overlay") ? RedesignStyle.radiusM : 0
+
+        Rectangle {
+            anchors {
+                left: parent.left
+                top: parent.top
+                bottom: parent.bottom
+            }
+
+            width: parent.radius
+            visible: parent.radius > 0
+
+            color: parent.color
+        }
     }
 
     RowLayout {

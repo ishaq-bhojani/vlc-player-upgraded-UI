@@ -40,10 +40,16 @@ T.Menu {
 
     // The room of the popup: the height of the window less where the popup starts (y: it opens
     // below the button) and the margin that keeps it inside, but room for a few entries at least.
-    readonly property real _maxHeight: (contentItem && contentItem.Window.window)
-                                       ? Math.max(MainCtx.dp(96, RedesignStyle.scale),
-                                                  contentItem.Window.window.height - y - bottomMargin)
-                                       : Number.POSITIVE_INFINITY
+    // The window is the one of the parent (the item the menu opens in): the content has none until
+    // the menu is open, and by then the popup has already moved up to fit its full height. `y` is
+    // relative to the parent, so it is mapped to the window.
+    readonly property real _maxHeight: {
+        const win = parent ? parent.Window.window : null
+        if (!win)
+            return Number.POSITIVE_INFINITY
+        const top = parent.mapToItem(null, 0, y).y
+        return Math.max(MainCtx.dp(96, RedesignStyle.scale), win.height - top - bottomMargin)
+    }
 
     // Settings
 
