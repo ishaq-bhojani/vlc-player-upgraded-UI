@@ -222,7 +222,7 @@ QtObject {
                 s("volume-save"),
                 special("replayGain", qsTr("Replay gain"),
                         { key: "audio-replay-gain-mode",
-                          description: qsTr("Track and Album use the replay gain tags of a file. Measured also levels the files that have none: their loudness is measured while the file is analysed, and the volume is matched to it. The first play of a file is levelled after about a second, the next ones at once. Your volume setting is not changed.") }),
+                          description: qsTr("Track and Album use the replay gain tags of a file. Measured also levels the files that have none: their loudness is measured while the file is analysed, and the volume is matched to it. The first play of a file is levelled after about a second, the next ones at once. Media that can't be measured (streams, video, very long files) play at VLC's default level. Your volume setting is not changed.") }),
                 s("audio-replay-gain-preamp"),
                 s("audio-replay-gain-default"),
                 s("audio-time-stretch"),

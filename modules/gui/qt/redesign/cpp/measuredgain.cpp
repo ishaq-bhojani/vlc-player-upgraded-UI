@@ -103,8 +103,8 @@ MeasuredGain::MeasuredGain(std::unique_ptr<MeasuredGainBackend> backend, Wavefor
 
 MeasuredGain::~MeasuredGain()
 {
-    // leave the audio output the way it was found
-    release();
+    // leave the audio output the way it was found; nobody is told (the object is going away)
+    release(/*notify*/ false);
 }
 
 QString MeasuredGain::choice() const
@@ -189,7 +189,12 @@ void MeasuredGain::decide()
 
 void MeasuredGain::apply(const QUrl& url, const MeasuredGainSettings& settings)
 {
-    m_backend->setOutputGain(measuredOutputGain(float(m_provider.gainDb()), float(m_provider.peak()), settings));
+    const float factor = measuredOutputGain(float(m_provider.gainDb()), float(m_provider.peak()), settings);
+    // nothing to do when the output already has this gain for this media (a refresh caused by a
+    // change of metadata or info); a media change on the player thread removes the gain, which
+    // outputGain() reports, so a replay of the same file is levelled again
+    if (m_appliedUrl != url || m_backend->outputGain() != std::optional<float>(factor))
+        m_backend->setOutputGain(factor);
     m_appliedUrl = url;
     if (!m_active || m_gainDb != m_provider.gainDb()) {
         m_active = true;
@@ -198,14 +203,15 @@ void MeasuredGain::apply(const QUrl& url, const MeasuredGainSettings& settings)
     }
 }
 
-void MeasuredGain::release()
+void MeasuredGain::release(bool notify)
 {
     m_backend->setOutputGain(std::nullopt);
     m_appliedUrl = QUrl();
     if (m_active) {
         m_active = false;
         m_gainDb = 0.0;
-        emit activeChanged();
+        if (notify)
+            emit activeChanged();
     }
 }
 

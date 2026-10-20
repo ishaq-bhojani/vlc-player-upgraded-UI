@@ -73,6 +73,12 @@ public:
         vlc_player_Lock(m_player);
         m_listener = vlc_player_AddListener(m_player, &cbs, this);
         vlc_player_Unlock(m_player);
+        if (!m_listener)
+            // vlc_object_Log with a module name: msg_Warn needs the vlc_module_name of a plugin, which
+            // the unit test of this file (an executable) does not have
+            vlc_object_Log(m_obj, VLC_MSG_WARN, "redesign", __FILE__, __LINE__, __func__,
+                    "measured loudness: cannot listen to the player; the gain of a track is taken "
+                    "back by the next refresh of the media instead of at once");
     }
 
     ~VlcMeasuredGainBackend() override
@@ -163,12 +169,34 @@ public:
         audio_output_t* aout = vlc_player_aout_Hold(m_player);
         if (!aout)
             return;
-        if (var_Type(aout, kGainVar) == 0)
-            var_Create(aout, kGainVar, VLC_VAR_FLOAT);
-        var_SetFloat(aout, kGainVar, *factor);
+        // Flag first: a media change on the player thread that runs from here on always finds
+        // something to clear. If it runs between the flag and the variable it clears nothing, and
+        // the gain set below then plays on the new media until the refresh that the change of
+        // media causes (MeasuredGain::refresh(), from PlayerController::inputChanged) takes it
+        // back: that refresh is the self-heal.
         m_hasGain = true;
+        if (var_Type(aout, kGainVar) == 0) {
+            // DOINHERIT: the variable is born with the value the option has (the user's own gain),
+            // not with 0.0, which would mute the output if the decoder triggers the replay gain
+            // between the creation and the set below
+            var_Create(aout, kGainVar, VLC_VAR_FLOAT | VLC_VAR_DOINHERIT);
+        }
+        var_SetFloat(aout, kGainVar, *factor);
         var_TriggerCallback(aout, kModeVar);
         aout_Release(aout);
+    }
+
+    std::optional<float> outputGain() override
+    {
+        if (!m_hasGain)
+            return std::nullopt;
+        std::optional<float> value;
+        if (audio_output_t* aout = vlc_player_aout_Hold(m_player)) {
+            if (var_Type(aout, kGainVar) != 0)
+                value = float(var_GetFloat(aout, kGainVar));
+            aout_Release(aout);
+        }
+        return value;
     }
 
 private:

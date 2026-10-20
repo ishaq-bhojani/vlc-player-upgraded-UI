@@ -95,6 +95,7 @@ public:
         m_state->settings.mode = mode;
     }
     void setOutputGain(std::optional<float> factor) override { m_state->calls.append(factor); }
+    std::optional<float> outputGain() override { return m_state->current(); }
 
 private:
     FakeState* m_state;
@@ -479,6 +480,46 @@ private slots:
         QCOMPARE(state.sets(), 0);
     }
 
+    void aRefreshThatChangesNothingDoesNotTouchTheOutput()
+    {
+        FakeState state = trackState(makeFile("loud.mp3"));
+        auto decoder = std::make_shared<DecoderState>();
+        MeasuredGain gain(std::make_unique<FakeBackend>(&state), env(decoder), m_ini.get());
+        gain.setEnabled(true);
+        QTRY_VERIFY_WITH_TIMEOUT(gain.active(), 5000);
+        QCOMPARE(state.sets(), 1);
+
+        // metadata and info events: nothing to set again
+        for (int i = 0; i < 5; ++i)
+            gain.refresh();
+        QCOMPARE(state.sets(), 1);
+
+        // the player thread took the gain off for a new input of the same file: levelled again
+        state.calls.append(std::nullopt);
+        gain.refresh();
+        QCOMPARE(state.sets(), 2);
+
+        // another preamp is another value
+        state.settings.preampDb = -2.f;
+        gain.refresh();
+        QCOMPARE(state.sets(), 3);
+    }
+
+    void destroyingItDoesNotSignal()
+    {
+        FakeState state = trackState(makeFile("loud.mp3"));
+        auto decoder = std::make_shared<DecoderState>();
+        int emissions = 0;
+        {
+            MeasuredGain gain(std::make_unique<FakeBackend>(&state), env(decoder), m_ini.get());
+            gain.setEnabled(true);
+            QTRY_VERIFY_WITH_TIMEOUT(gain.active(), 5000);
+            connect(&gain, &MeasuredGain::activeChanged, this, [&] { ++emissions; });
+        }
+        QCOMPARE(emissions, 0);
+        QVERIFY(!state.current().has_value()); // the output was still given back
+    }
+
     void destroyingItGivesTheOutputBackItsOwnGain()
     {
         FakeState state = trackState(makeFile("loud.mp3"));
@@ -560,8 +601,10 @@ private slots:
         QCOMPARE(var_Type(aout, "gain"), 0);
         QCOMPARE(gainOf(aout), 1.0);
 
+        QVERIFY(!rig.backend->outputGain().has_value());
         rig.backend->setOutputGain(0.5f);
         QCOMPARE(gainOf(aout), 0.5);
+        QCOMPARE(rig.backend->outputGain().value_or(-1.f), 0.5f);
         // only this output: the configuration is untouched
         QCOMPARE(double(var_InheritFloat(rig.holder, "gain")), 1.0);
         rig.backend->setOutputGain(0.25f);
@@ -570,6 +613,7 @@ private slots:
         rig.backend->setOutputGain(std::nullopt);
         QCOMPARE(var_Type(aout, "gain"), 0);
         QCOMPARE(gainOf(aout), 1.0);
+        QVERIFY(!rig.backend->outputGain().has_value());
         // nothing to take back: no error, no variable
         rig.backend->setOutputGain(std::nullopt);
         QCOMPARE(var_Type(aout, "gain"), 0);

@@ -105,6 +105,9 @@ public:
      * The volume of the user is never touched.
      */
     virtual void setOutputGain(std::optional<float> factor) = 0;
+    //! the gain this backend set and that is still on the output, nullopt if none (it is gone
+    //! when the media changed in the meantime): lets MeasuredGain skip a call that changes nothing
+    virtual std::optional<float> outputGain() = 0;
 };
 
 /**
@@ -118,6 +121,14 @@ public:
  * through the backend. The gain follows the file: it is taken back when another media starts, when
  * the file turns out to have tags, and when the option is switched off. It does not depend on the
  * waveform seek bar or its setting.
+ *
+ * Known limits:
+ *  - Replay gain that a decoder carries inside the stream (Vorbis comments of a Vorbis stream in a
+ *    container other than Ogg: modules/codec/vorbis.c fills the gain of the decoder, which neither
+ *    the item meta nor the track format shows) is invisible here, so such a file may be levelled
+ *    twice.
+ *  - The peak used for peak protection is that of the 8 kHz mono decode, which reads lower than the
+ *    true peak: a boost of a quiet track may clip slightly.
  */
 class MeasuredGain : public QObject
 {
@@ -165,7 +176,7 @@ private:
     void decide();
     void apply(const QUrl& url, const MeasuredGainSettings& settings);
     //! takes the measured gain back (the output gets its own)
-    void release();
+    void release(bool notify = true);
 
     std::unique_ptr<MeasuredGainBackend> m_backend;
     QSettings* m_settings = nullptr;
