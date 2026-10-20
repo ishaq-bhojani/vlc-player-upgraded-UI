@@ -69,7 +69,7 @@ FocusScope {
     // what the panel shows (null while closed or for the sidebar)
     readonly property Item content: contentLoader.item
 
-    readonly property var placement: RightPanelLogic.layout(persisted.panelWidth,
+    readonly property var placement: RightPanelLogic.layout(persisted.rightPanelWidth,
                                                             RedesignStyle.panelWidthMin,
                                                             RedesignStyle.panelWidthMax,
                                                             freeWidth,
@@ -120,7 +120,7 @@ FocusScope {
 
         category: "redesign"
 
-        property int panelWidth: RedesignStyle.panelWidthDefault
+        property int rightPanelWidth: RedesignStyle.panelWidthDefault
     }
 
     ColorContext {
@@ -163,6 +163,6 @@ FocusScope {
         minimumWidth: RedesignStyle.panelWidthMin
         maximumWidth: RedesignStyle.panelWidthMax
 
-        onRequestedWidthChanged: persisted.panelWidth = requestedWidth
+        onRequestedWidthChanged: persisted.rightPanelWidth = requestedWidth
     }
 }
