@@ -32,6 +32,10 @@ import VLC.Redesign
  * The Stage loads it while the shell shows the media (watch, immersive) and there is no video.
  * Without artwork the artwork square shows the album placeholder and the backdrop is plain.
  * The view is not focusable; the keys are handled by the shell.
+ *
+ * Synced lyrics (LyricsPanel), when the media has some, take the right half of a wide view (the
+ * artwork and the caption are centered in the left half) or the lower part of a tall one. A view
+ * too small for them stays as without lyrics.
  */
 Item {
     id: root
@@ -53,15 +57,38 @@ Item {
 
     readonly property real _margin: RedesignStyle.spacingXL
 
+    // Where the lyrics are: "side" (right half of a wide view), "below" (lower part of a tall
+    // view) or "none" (no lyrics, or no room for them)
+    readonly property string lyricsPlacement: {
+        if (!lyricsPanel.available)
+            return "none"
+        if (root.width >= root.height * 1.3 && root.width / 2 >= RedesignStyle.panelWidthMin)
+            return "side"
+        if (root.width < root.height * 1.3 && root.height * (1 - root.lyricsArtworkShare) >= root.lyricsMinHeight)
+            return "below"
+        return "none"
+    }
+
+    // share of the height that the artwork and the caption keep when the lyrics are below them
+    readonly property real lyricsArtworkShare: 0.5
+
+    // the lyrics are not shown when they would have less room than this
+    readonly property real lyricsMinHeight: RedesignStyle.panelWidthMin / 2
+
+    // the area of the artwork and the caption (the whole view without lyrics)
+    readonly property real _artAreaWidth: root.lyricsPlacement === "side" ? root.width / 2 : root.width
+    readonly property real _artAreaHeight: root.lyricsPlacement === "below"
+                                           ? root.height * root.lyricsArtworkShare : root.height
+
     // the artwork of the current media could not be loaded (gone, broken): the placeholder is shown
     property bool _artworkFailed: false
 
     // The artwork never overflows: it is a fraction of the smaller side, and it leaves room for
     // the caption and the margins, whatever the size of the view.
     readonly property real artworkSide: Math.max(0, Math.min(
-        Math.min(root.width, root.height) * root.artworkFraction,
-        root.width - 2 * root._margin,
-        root.height - captionLabel.implicitHeight - RedesignStyle.spacingL - 2 * root._margin))
+        Math.min(root._artAreaWidth, root._artAreaHeight) * root.artworkFraction,
+        root._artAreaWidth - 2 * root._margin,
+        root._artAreaHeight - captionLabel.implicitHeight - RedesignStyle.spacingL - 2 * root._margin))
 
     // Decode size of the artwork: never 0 (which would decode the full image) and quantized, so
     // that resizing the view does not decode the cover again (and re-trigger the blur) at each step
@@ -176,9 +203,9 @@ Item {
     Widgets.ImageExt {
         id: artwork
 
-        anchors.horizontalCenter: parent.horizontalCenter
-        // artwork and caption together are centered
-        y: Math.max(root._margin, (root.height - root.artworkSide - RedesignStyle.spacingL
+        // artwork and caption together are centered in their area
+        x: (root._artAreaWidth - width) / 2
+        y: Math.max(root._margin, (root._artAreaHeight - root.artworkSide - RedesignStyle.spacingL
                                    - captionLabel.implicitHeight) / 2)
 
         width: root.artworkSide
@@ -205,10 +232,10 @@ Item {
         anchors {
             top: artwork.bottom
             topMargin: RedesignStyle.spacingL
-            horizontalCenter: parent.horizontalCenter
+            horizontalCenter: artwork.horizontalCenter
         }
 
-        width: Math.max(0, root.width - 2 * root._margin)
+        width: Math.max(0, root._artAreaWidth - 2 * root._margin)
 
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight
@@ -216,5 +243,18 @@ Item {
         text: root.caption
         font.pixelSize: VLCStyle.fontSize_xlarge
         color: theme.fg.primary
+    }
+
+    LyricsPanel {
+        id: lyricsPanel
+
+        visible: root.lyricsPlacement !== "none"
+
+        x: root.lyricsPlacement === "side" ? root.width / 2 : root._margin
+        y: root.lyricsPlacement === "side" ? root._margin : root._artAreaHeight
+        width: root.lyricsPlacement === "side" ? root.width / 2 - root._margin
+                                               : Math.max(0, root.width - 2 * root._margin)
+        height: Math.max(0, root.lyricsPlacement === "side" ? root.height - 2 * root._margin
+                                                            : root.height - root._artAreaHeight - root._margin)
     }
 }

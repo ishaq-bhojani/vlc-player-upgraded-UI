@@ -33,6 +33,7 @@
 #include "pinnavigation.hpp"
 #include "settingsbridge.hpp"
 #include "settingsmodel.hpp"
+#include "sidecarlyrics.hpp"
 #include "shortcutsmodel.hpp"
 #include "toolmanagervlc.hpp"
 #include "waveform.hpp"
@@ -54,6 +55,7 @@ static_assert(SettingItem::Bool == 0 && SettingItem::Integer == 1 && SettingItem
  * Every C++ type of the "VLC.Redesign" module 1.0, in registration order:
  *   CurrentMediaFavorite   creatable type (Favorite control-bar item)
  *   MLRecentAudioModel     creatable type ("Listen Again" row of Home)
+ *   SidecarLyrics          creatable type (the .lrc file next to a local audio file)
  *   Effects                singleton, EffectsController (live audio/video effects)
  *   PinNavigation          singleton (rail pin navigation helpers)
  *   SettingItem            uncreatable, returned by RedesignSettings.item()
@@ -80,6 +82,7 @@ void registerQmlTypes(MainCtx* ctx)
     // @uri VLC.Redesign
     qmlRegisterType<CurrentMediaFavorite>(uri, versionMajor, versionMinor, "CurrentMediaFavorite");
     qmlRegisterType<MLRecentAudioModel>(uri, versionMajor, versionMinor, "MLRecentAudioModel");
+    qmlRegisterType<SidecarLyrics>(uri, versionMajor, versionMinor, "SidecarLyrics");
     qmlRegisterSingletonType<EffectsController>(uri, versionMajor, versionMinor, "Effects",
         [intf](QQmlEngine*, QJSEngine*) { return new EffectsController(intf->p_player, VLC_OBJECT(intf)); });
     qmlRegisterSingletonType<PinNavigation>(uri, versionMajor, versionMinor, "PinNavigation",
