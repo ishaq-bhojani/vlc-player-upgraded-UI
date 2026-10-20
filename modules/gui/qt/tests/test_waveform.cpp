@@ -24,10 +24,14 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <limits>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
 
+#include <QDateTime>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -37,6 +41,9 @@
 
 #include <vlc/vlc.h>
 #include <vlc_common.h>
+#include <vlc_objects.h>
+#include <vlc_player.h>
+#include <vlc_variables.h>
 
 #include "../../../../lib/libvlc_internal.h"
 
@@ -55,9 +62,13 @@ struct FakeState
     std::atomic_int running{0};
     std::atomic_int maxRunning{0};
     std::atomic_int cancelled{0};
-    std::atomic_bool hold{false}; //!< a decode blocks while this is set (or until it is cancelled)
-    std::atomic_bool fail{false};
+    std::atomic_bool hold{false};      //!< a decode blocks while this is set (or until it is cancelled)
+    std::atomic_bool fail{false};      //!< the decode fails for good
+    std::atomic_bool interrupt{false}; //!< the decode is interrupted (transient failure)
     std::vector<int16_t> samples;
+
+    std::mutex mutex;
+    QStringList order;                 //!< the files in the order their decode started
 };
 
 class FakeDecoder : public WaveformDecoder
@@ -65,10 +76,14 @@ class FakeDecoder : public WaveformDecoder
 public:
     explicit FakeDecoder(std::shared_ptr<FakeState> state) : m_state(std::move(state)) {}
 
-    bool decode(const QString&, PeaksAccumulator& acc, CancelToken& cancel) override
+    DecodeResult decode(const QString& file, PeaksAccumulator& acc, CancelToken& cancel) override
     {
         FakeState& s = *m_state;
         ++s.decodes;
+        {
+            std::lock_guard<std::mutex> lock(s.mutex);
+            s.order.append(file);
+        }
         const int now = ++s.running;
         int prev = s.maxRunning;
         while (now > prev && !s.maxRunning.compare_exchange_weak(prev, now)) {}
@@ -76,15 +91,19 @@ public:
         while (s.hold && !cancel.cancelled())
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-        bool ok = false;
-        if (cancel.cancelled())
+        DecodeResult result = DecodeResult::Ok;
+        if (cancel.cancelled()) {
             ++s.cancelled;
-        else if (!s.fail) {
+            result = DecodeResult::Interrupted;
+        } else if (s.fail) {
+            result = DecodeResult::Failed;
+        } else if (s.interrupt) {
+            result = DecodeResult::Interrupted;
+        } else {
             acc.append(s.samples.data(), s.samples.size());
-            ok = true;
         }
         --s.running;
-        return ok;
+        return result;
     }
 
 private:
@@ -108,18 +127,88 @@ WaveformEnvironment makeEnv(const QString& cacheDir, const std::shared_ptr<FakeS
     return env;
 }
 
-/** 16-bit PCM WAV: `silenceSec` of silence, then `toneSec` of a 440 Hz sine of the given amplitude. */
-QByteArray makeWav(int rate, int channels, double silenceSec, double toneSec, double amplitude)
+/**
+ * Wraps the real decoder: counts the starts and ends, remembers how many samples every decode
+ * got, and can freeze one decode at its first chunk (holdNext) until it is cancelled, so that a
+ * test cancels or destroys a provider while samples demonstrably flow and the input is busy.
+ */
+struct ProbeState
+{
+    std::atomic_bool holdNext{false};
+    std::atomic<size_t> reached{0}; //!< samples of the latest chunk
+    std::atomic_int started{0};
+    std::atomic_int ended{0};
+    std::mutex mutex;
+    std::vector<size_t> finals;     //!< samples of every ended decode
+    std::vector<int> results;       //!< DecodeResult of every ended decode
+};
+
+class ProbeDecoder : public WaveformDecoder
+{
+public:
+    ProbeDecoder(vlc_object_t* obj, std::shared_ptr<ProbeState> state)
+        : m_inner(makeVlcWaveformDecoder(obj))
+        , m_state(std::move(state))
+        , m_hold(m_state->holdNext.exchange(false))
+    {
+    }
+
+    DecodeResult decode(const QString& file, PeaksAccumulator& acc, CancelToken& cancel) override
+    {
+        ++m_state->started;
+        acc.setProgressCallback([this, &cancel](size_t n) {
+            m_state->reached = n;
+            while (m_hold && !cancel.cancelled())
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        });
+        const DecodeResult result = m_inner->decode(file, acc, cancel);
+        {
+            std::lock_guard<std::mutex> lock(m_state->mutex);
+            m_state->finals.push_back(acc.sampleCount());
+            m_state->results.push_back(int(result));
+        }
+        ++m_state->ended;
+        return result;
+    }
+
+private:
+    std::unique_ptr<WaveformDecoder> m_inner;
+    std::shared_ptr<ProbeState> m_state;
+    bool m_hold;
+};
+
+/** The jobs of the process are over (they use the libvlc instance that is released next). */
+struct IdleGuard
+{
+    ~IdleGuard()
+    {
+        QElapsedTimer timer;
+        timer.start();
+        while (WaveformProvider::activeJobs() > 0 && timer.elapsed() < 30000)
+            QTest::qWait(10);
+    }
+};
+
+/** 16 or 8-bit PCM WAV: `silenceSec` of silence, then `toneSec` of a 440 Hz sine of the given amplitude. */
+QByteArray makeWav(int rate, int channels, double silenceSec, double toneSec, double amplitude, int bits = 16)
 {
     const int frames = int((silenceSec + toneSec) * rate);
     const int silentFrames = int(silenceSec * rate);
+    const int bytesPerSample = bits / 8;
     QByteArray pcm;
-    pcm.resize(frames * channels * 2);
-    auto* out = reinterpret_cast<int16_t*>(pcm.data());
+    pcm.resize(frames * channels * bytesPerSample);
+    char* out = pcm.data();
     for (int i = 0; i < frames; ++i) {
         const double v = i < silentFrames ? 0.0 : amplitude * std::sin(2.0 * 3.14159265358979323846 * 440.0 * i / rate);
-        for (int c = 0; c < channels; ++c)
-            *out++ = int16_t(std::lround(v * 32767.0));
+        for (int c = 0; c < channels; ++c) {
+            if (bits == 16) {
+                const int16_t s = int16_t(std::lround(v * 32767.0));
+                std::memcpy(out, &s, 2);
+            } else {
+                *reinterpret_cast<uint8_t*>(out) = uint8_t(128 + std::lround(v * 127.0)); // unsigned
+            }
+            out += bytesPerSample;
+        }
     }
 
     QByteArray wav;
@@ -132,9 +221,9 @@ QByteArray makeWav(int rate, int channels, double silenceSec, double toneSec, do
     put16(1);
     put16(uint16_t(channels));
     put32(uint32_t(rate));
-    put32(uint32_t(rate * channels * 2));
-    put16(uint16_t(channels * 2));
-    put16(16);
+    put32(uint32_t(rate * channels * bytesPerSample));
+    put16(uint16_t(channels * bytesPerSample));
+    put16(uint16_t(bits));
     wav.append("data");
     put32(uint32_t(pcm.size()));
     wav.append(pcm);
@@ -155,7 +244,12 @@ private slots:
         m_cache = m_dir->filePath("cache");
     }
 
-    void cleanup() { m_dir.reset(); }
+    void cleanup()
+    {
+        // the jobs of a test are over before its files go away
+        QTRY_COMPARE_WITH_TIMEOUT(WaveformProvider::activeJobs(), 0, 30000);
+        m_dir.reset();
+    }
 
     // ---- computePeaks / encoding -------------------------------------------------
 
@@ -282,6 +376,30 @@ private slots:
         QVERIFY(decodeWaveformCache(encodePeaks(peaks) + QByteArray(5, 0)).isEmpty());
     }
 
+    void cacheFileRejectsValuesOutsideZeroToOne()
+    {
+        const float bad[] = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity(),
+                             1.5f, -0.1f};
+        for (float value : bad) {
+            QVector<float> peaks(kWaveformBuckets, 0.25f);
+            peaks[17] = value;
+            QVERIFY2(decodeWaveformCache(encodeWaveformCache(peaks)).isEmpty(), qPrintable(QString::number(value)));
+        }
+        QVector<float> edges(kWaveformBuckets, 0.f);
+        edges[0] = 1.f;
+        QCOMPARE(decodeWaveformCache(encodeWaveformCache(edges)), edges);
+    }
+
+    void failedMarkerIsNotAPeaksFile()
+    {
+        const QByteArray marker = encodeWaveformFailed();
+        QCOMPARE(marker, QByteArray("VRWF\x01", 5));
+        QVERIFY(isWaveformFailedMarker(marker));
+        QVERIFY(decodeWaveformCache(marker).isEmpty());
+        QVERIFY(!isWaveformFailedMarker(encodeWaveformCache(QVector<float>(kWaveformBuckets, 0.f))));
+        QVERIFY(!isWaveformFailedMarker(QByteArray()));
+    }
+
     void cacheFileNameIsSha1OfUrl()
     {
         const QUrl url("file:///music/a.mp3");
@@ -300,11 +418,14 @@ private slots:
         auto state = makeState();
         WaveformProvider provider(makeEnv(m_cache, state));
         QSignalSpy changed(&provider, &WaveformProvider::peaksChanged);
+        QSignalSpy failedSpy(&provider, &WaveformProvider::failedChanged);
         provider.setUrl(QUrl("https://x/a.mp3"));
         QTest::qWait(200);
         QVERIFY(!provider.ready());
+        QVERIFY(!provider.failed()); // nothing is analysed, so nothing failed
         QVERIFY(provider.peaks().isEmpty());
         QCOMPARE(changed.count(), 0);
+        QCOMPARE(failedSpy.count(), 0);
         QCOMPARE(state->decodes.load(), 0);
         QVERIFY(!QDir(m_cache).exists()); // nothing written either
     }
@@ -317,6 +438,7 @@ private slots:
             provider.setUrl(QUrl(QString::fromLatin1(u)));
             QTest::qWait(30);
             QVERIFY2(!provider.ready(), u);
+            QVERIFY2(!provider.failed(), u);
         }
         QCOMPARE(state->decodes.load(), 0);
     }
@@ -329,7 +451,9 @@ private slots:
         QSignalSpy changed(&provider, &WaveformProvider::peaksChanged);
         provider.setUrl(url);
         QVERIFY(!provider.ready()); // the GUI thread does not decode
+        QVERIFY(!provider.failed()); // analysing
         QTRY_VERIFY_WITH_TIMEOUT(provider.ready(), 5000);
+        QVERIFY(!provider.failed());
         QCOMPARE(changed.count(), 1);
 
         const QVariantList peaks = provider.peaks();
@@ -396,12 +520,7 @@ private slots:
             first.setUrl(url);
             QTRY_VERIFY_WITH_TIMEOUT(first.ready(), 5000);
         }
-        // the song was replaced after the cache was written
-        QFile source(url.toLocalFile());
-        QVERIFY(source.open(QIODevice::Append));
-        QVERIFY(source.setFileTime(QDateTime::currentDateTime().addSecs(60),
-                                   QFileDevice::FileModificationTime));
-        source.close();
+        touchSource(url, 60);
 
         auto state = makeState();
         WaveformProvider second(makeEnv(m_cache, state));
@@ -410,42 +529,125 @@ private slots:
         QCOMPARE(state->decodes.load(), 1);
     }
 
-    void failedDecodeStaysNotReadyAndWritesNoCache()
+    // ---- failures are remembered ------------------------------------------------------
+
+    void failedDecodeIsRememberedAndNotDecodedAgain()
     {
         auto state = makeState();
         state->fail = true;
         const QUrl url = makeFile("song.mp3");
-        WaveformProvider provider(makeEnv(m_cache, state));
-        provider.setUrl(url);
-        QTRY_COMPARE_WITH_TIMEOUT(state->decodes.load(), 1, 5000);
-        QTest::qWait(100);
-        QVERIFY(!provider.ready());
-        QVERIFY(!QFile::exists(waveformCacheFile(m_cache, url)));
+        {
+            WaveformProvider provider(makeEnv(m_cache, state));
+            QSignalSpy failedSpy(&provider, &WaveformProvider::failedChanged);
+            provider.setUrl(url);
+            QVERIFY(!provider.failed());
+            QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 5000);
+            QVERIFY(!provider.ready());
+            QCOMPARE(failedSpy.count(), 1);
+            QCOMPARE(state->decodes.load(), 1);
+        }
+        QFile f(waveformCacheFile(m_cache, url));
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QVERIFY(isWaveformFailedMarker(f.readAll()));
+        f.close();
+
+        // the next play does not decode again, even when the decoder would work now
+        state->fail = false;
+        WaveformProvider again(makeEnv(m_cache, state));
+        again.setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(again.failed(), 5000);
+        QVERIFY(!again.ready());
+        QCOMPARE(state->decodes.load(), 1);
     }
 
-    void emptyDecodeStaysNotReady()
+    void failedMarkerIsIgnoredWhenTheSourceChanged()
+    {
+        auto state = makeState();
+        state->fail = true;
+        const QUrl url = makeFile("song.mp3");
+        {
+            WaveformProvider provider(makeEnv(m_cache, state));
+            provider.setUrl(url);
+            QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 5000);
+        }
+        touchSource(url, 60); // replaced after the marker was written
+        state->fail = false;
+        WaveformProvider again(makeEnv(m_cache, state));
+        again.setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(again.ready(), 5000);
+        QCOMPARE(state->decodes.load(), 2);
+    }
+
+    void failedMarkerExpiresAfterAWeek()
+    {
+        auto state = makeState();
+        state->fail = true;
+        const QUrl url = makeFile("song.mp3");
+        {
+            WaveformProvider provider(makeEnv(m_cache, state));
+            provider.setUrl(url);
+            QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 5000);
+        }
+        // the source is older than the marker, but the marker is older than a week
+        touchSource(url, -9 * 24 * 3600);
+        QFile marker(waveformCacheFile(m_cache, url));
+        QVERIFY(marker.open(QIODevice::Append));
+        QVERIFY(marker.setFileTime(QDateTime::currentDateTime().addDays(-8), QFileDevice::FileModificationTime));
+        marker.close();
+
+        state->fail = false;
+        WaveformProvider again(makeEnv(m_cache, state));
+        again.setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(again.ready(), 5000);
+        QCOMPARE(state->decodes.load(), 2);
+    }
+
+    void interruptedDecodeIsNotRemembered()
+    {
+        auto state = makeState();
+        state->interrupt = true; // a stalled input: transient
+        const QUrl url = makeFile("song.mp3");
+        {
+            WaveformProvider provider(makeEnv(m_cache, state));
+            provider.setUrl(url);
+            QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 5000);
+        }
+        QVERIFY(!QFile::exists(waveformCacheFile(m_cache, url)));
+
+        state->interrupt = false;
+        WaveformProvider again(makeEnv(m_cache, state));
+        again.setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(again.ready(), 5000);
+        QCOMPARE(state->decodes.load(), 2);
+    }
+
+    void emptyDecodeFailsAndIsRemembered()
     {
         auto state = makeState();
         state->samples.clear(); // no audio stream
         const QUrl url = makeFile("clip.mp4");
-        WaveformProvider provider(makeEnv(m_cache, state));
-        provider.setUrl(url);
-        QTRY_COMPARE_WITH_TIMEOUT(state->decodes.load(), 1, 5000);
-        QTest::qWait(100);
-        QVERIFY(!provider.ready());
+        {
+            WaveformProvider provider(makeEnv(m_cache, state));
+            provider.setUrl(url);
+            QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 5000);
+            QVERIFY(!provider.ready());
+        }
+        QFile f(waveformCacheFile(m_cache, url));
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QVERIFY(isWaveformFailedMarker(f.readAll()));
     }
 
-    void missingFileNeverDecodes()
+    void missingFileFailsWithoutDecoding()
     {
         auto state = makeState();
         WaveformProvider provider(makeEnv(m_cache, state));
         provider.setUrl(QUrl::fromLocalFile(m_dir->filePath("nope.mp3")));
-        QTest::qWait(150);
+        QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 5000);
         QVERIFY(!provider.ready());
         QCOMPARE(state->decodes.load(), 0);
     }
 
-    void tooLargeFileIsSkipped()
+    void tooLargeFileFailsWithoutDecoding()
     {
         auto state = makeState();
         const QUrl url = makeFile("big.mp3", 5000);
@@ -453,13 +655,15 @@ private slots:
         env.maxFileBytes = 4096;
         WaveformProvider provider(env);
         provider.setUrl(url);
-        QTest::qWait(150);
+        QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 5000);
         QVERIFY(!provider.ready());
         QCOMPARE(state->decodes.load(), 0);
 
         // the default cap is 1 GiB
         QCOMPARE(WaveformEnvironment().maxFileBytes, qint64(1) << 30);
     }
+
+    // ---- cancellation and sharing ----------------------------------------------------------
 
     void newUrlCancelsRunningJob()
     {
@@ -478,12 +682,13 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(provider.ready(), 5000);
 
         QCOMPARE(provider.url(), second);
+        QVERIFY(!provider.failed()); // the cancelled job did not report a failure
         QCOMPARE(state->maxRunning.load(), 1); // never two jobs at once
         QVERIFY(!QFile::exists(waveformCacheFile(m_cache, first)));
         QVERIFY(QFile::exists(waveformCacheFile(m_cache, second)));
     }
 
-    void changingUrlDropsOldPeaks()
+    void changingUrlDropsOldPeaksAndFailure()
     {
         auto state = makeState();
         const QUrl url = makeFile("song.mp3");
@@ -496,9 +701,17 @@ private slots:
         QVERIFY(!provider.ready());
         QVERIFY(provider.peaks().isEmpty());
         QCOMPARE(changed.count(), 1);
+
+        provider.setUrl(QUrl::fromLocalFile(m_dir->filePath("nope.mp3")));
+        QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 5000);
+        QSignalSpy failedSpy(&provider, &WaveformProvider::failedChanged);
+        provider.setUrl(url);
+        QVERIFY(!provider.failed());
+        QCOMPARE(failedSpy.count(), 1);
+        QTRY_VERIFY_WITH_TIMEOUT(provider.ready(), 5000);
     }
 
-    void destroyingTheProviderCancelsTheJob()
+    void destroyingTheProviderCancelsTheJobWithoutWaiting()
     {
         auto state = makeState();
         state->hold = true;
@@ -507,32 +720,97 @@ private slots:
             provider.setUrl(makeFile("song.mp3"));
             QTRY_COMPARE_WITH_TIMEOUT(state->running.load(), 1, 5000);
         }
-        QCOMPARE(state->running.load(), 0);
+        QTRY_COMPARE_WITH_TIMEOUT(state->running.load(), 0, 5000);
         QCOMPARE(state->cancelled.load(), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(WaveformProvider::activeJobs(), 0, 5000);
+    }
+
+    void twoProvidersOnOneUrlShareOneDecode()
+    {
+        auto state = makeState();
+        state->hold = true;
+        const QUrl url = makeFile("song.mp3");
+        WaveformProvider a(makeEnv(m_cache, state));
+        WaveformProvider b(makeEnv(m_cache, state));
+        a.setUrl(url);
+        QTRY_COMPARE_WITH_TIMEOUT(state->running.load(), 1, 5000);
+        b.setUrl(url); // joins the running job
+        QCOMPARE(WaveformProvider::activeJobs(), 1);
+
+        // one leaving does not cancel the job of the other
+        a.setUrl(QUrl());
+        QTest::qWait(50);
+        QCOMPARE(state->cancelled.load(), 0);
+        a.setUrl(url);
+        state->hold = false;
+        QTRY_VERIFY_WITH_TIMEOUT(a.ready() && b.ready(), 5000);
+        QCOMPARE(state->decodes.load(), 1);
+        QCOMPARE(a.peaks(), b.peaks());
+    }
+
+    void onlyOneJobRunsAtATimeAndTheNewestPendingStartsFirst()
+    {
+        auto state = makeState();
+        state->hold = true;
+        const QUrl u1 = makeFile("one.mp3");
+        const QUrl u2 = makeFile("two.mp3");
+        const QUrl u3 = makeFile("three.mp3");
+        WaveformProvider p1(makeEnv(m_cache, state));
+        WaveformProvider p2(makeEnv(m_cache, state));
+        WaveformProvider p3(makeEnv(m_cache, state));
+        p1.setUrl(u1);
+        QTRY_COMPARE_WITH_TIMEOUT(state->running.load(), 1, 5000);
+        p2.setUrl(u2);
+        p3.setUrl(u3);
+        QCOMPARE(WaveformProvider::activeJobs(), 3);
+        QTest::qWait(50);
+        QCOMPARE(state->decodes.load(), 1);
+
+        state->hold = false;
+        QTRY_VERIFY_WITH_TIMEOUT(p1.ready() && p2.ready() && p3.ready(), 10000);
+        QCOMPARE(state->maxRunning.load(), 1);
+        QCOMPARE(state->order, (QStringList{u1.toLocalFile(), u3.toLocalFile(), u2.toLocalFile()}));
     }
 
     // ---- the real decoder (libvlccore: transcode + smem, no temp file, no output device) --------
+
+    void holderIsolatesThePlayer()
+    {
+        VlcInstance vlc;
+        QVERIFY(vlc.ok());
+        // the default asks the user whether to resume; the holder must say never
+        QVERIFY(var_InheritInteger(vlc.object(), "restore-playback-pos") != VLC_PLAYER_RESTORE_PLAYBACK_POS_NEVER);
+
+        vlc_object_t* holder = createWaveformHolder(vlc.object());
+        QVERIFY(holder);
+        // the input and the player look the variables up from below the holder
+        vlc_object_t* child = static_cast<vlc_object_t*>(vlc_object_create(holder, sizeof(vlc_object_t)));
+        QVERIFY(child);
+        QCOMPARE(var_InheritInteger(child, "restore-playback-pos"), qint64(VLC_PLAYER_RESTORE_PLAYBACK_POS_NEVER));
+        QVERIFY(!var_InheritBool(child, "restore-playback-states"));
+        char* aout = var_InheritString(child, "aout");
+        QCOMPARE(QString::fromUtf8(aout), QString("dummy"));
+        free(aout);
+        char* vout = var_InheritString(child, "vout");
+        QCOMPARE(QString::fromUtf8(vout), QString("dummy"));
+        free(vout);
+        vlc_object_delete(child);
+        vlc_object_delete(holder);
+    }
 
     void decodesAWavEndToEnd()
     {
         VlcInstance vlc;
         QVERIFY(vlc.ok());
+        IdleGuard idle;
 
         // 2 s of silence, then 2 s of a 0.5 amplitude sine; 44.1 kHz stereo
         const QUrl url = makeFile("tone.wav", makeWav(44100, 2, 2.0, 2.0, 0.5));
 
-        WaveformEnvironment env;
-        env.cacheDir = m_cache;
-        env.makeDecoder = [obj = vlc.object()] { return makeVlcWaveformDecoder(obj); };
-        WaveformProvider provider(env);
-
-        QElapsedTimer timer;
-        timer.start();
+        auto probe = std::make_shared<ProbeState>();
+        WaveformProvider provider(realEnv(vlc, probe));
         provider.setUrl(url);
         QTRY_VERIFY_WITH_TIMEOUT(provider.ready(), 30000);
-        qInfo() << "decoded 4 s of stereo 44.1 kHz audio in" << timer.elapsed() << "ms";
-        // faster than real time by a wide margin (4 s of audio)
-        QVERIFY2(timer.elapsed() < 3500, qPrintable(QString::number(timer.elapsed())));
 
         const QVariantList peaks = provider.peaks();
         QCOMPARE(peaks.size(), kWaveformBuckets);
@@ -558,21 +836,14 @@ private slots:
     {
         VlcInstance vlc;
         QVERIFY(vlc.ok());
-
-        WaveformEnvironment env;
-        env.cacheDir = m_cache;
-        env.makeDecoder = [obj = vlc.object()] { return makeVlcWaveformDecoder(obj); };
+        IdleGuard idle;
 
         // the first decode of a process loads the plugins: warm up with a short file
-        {
-            WaveformProvider warm(env);
-            warm.setUrl(makeFile("warm.wav", makeWav(8000, 1, 0.0, 1.0, 0.5)));
-            QTRY_VERIFY_WITH_TIMEOUT(warm.ready(), 30000);
-        }
+        warmUp(vlc);
 
         // 2 minutes of 44.1 kHz stereo
         const QUrl url = makeFile("two-minutes.wav", makeWav(44100, 2, 0.0, 120.0, 0.5));
-        WaveformProvider provider(env);
+        WaveformProvider provider(realEnv(vlc, std::make_shared<ProbeState>()));
         QElapsedTimer timer;
         timer.start();
         provider.setUrl(url);
@@ -581,47 +852,124 @@ private slots:
         QVERIFY2(timer.elapsed() < 10000, qPrintable(QString::number(timer.elapsed())));
     }
 
-    void realDecoderCancels()
+    void realDecoderStopsWhenTheUrlChanges()
     {
         VlcInstance vlc;
         QVERIFY(vlc.ok());
+        IdleGuard idle;
+        warmUp(vlc);
 
-        // 10 minutes of tone: long enough to still run when the url changes
-        const QUrl longUrl = makeFile("long.wav", makeWav(44100, 2, 0.0, 600.0, 0.5));
-        const QUrl shortUrl = makeFile("short.wav", makeWav(44100, 1, 0.0, 1.0, 0.25));
+        // 10 minutes (4.8 M samples at 8 kHz) and 1 s
+        const QUrl longUrl = makeFile("long.wav", makeWav(8000, 1, 0.0, 600.0, 0.5));
+        const QUrl shortUrl = makeFile("short.wav", makeWav(8000, 1, 0.0, 1.0, 0.25));
 
-        WaveformEnvironment env;
-        env.cacheDir = m_cache;
-        env.makeDecoder = [obj = vlc.object()] { return makeVlcWaveformDecoder(obj); };
-        WaveformProvider provider(env);
+        auto probe = std::make_shared<ProbeState>();
+        probe->holdNext = true; // the first decode freezes at its first chunk until it is cancelled
+        WaveformProvider provider(realEnv(vlc, probe));
         provider.setUrl(longUrl);
-        QTest::qWait(30);
+        QTRY_VERIFY_WITH_TIMEOUT(probe->reached.load() > 0, 30000); // samples flow, the input is busy
+
         QElapsedTimer timer;
         timer.start();
         provider.setUrl(shortUrl);
-        QTRY_VERIFY_WITH_TIMEOUT(provider.ready(), 30000);
-        qInfo() << "short file ready" << timer.elapsed() << "ms after the url change (the 10 min file was running)";
+        // the short file can only be decoded after the frozen one was really stopped
+        QTRY_VERIFY_WITH_TIMEOUT(provider.ready(), 20000);
+        QVERIFY2(timer.elapsed() < 10000, qPrintable(QString::number(timer.elapsed())));
         QCOMPARE(provider.url(), shortUrl);
         const QVariantList peaks = provider.peaks();
-        QCOMPARE(peaks.size(), kWaveformBuckets);
         QVERIFY(peaks[500].toDouble() > 0.15 && peaks[500].toDouble() < 0.35);
+
+        QCOMPARE(probe->ended.load(), 2);
+        {
+            std::lock_guard<std::mutex> lock(probe->mutex);
+            qInfo() << "cancelled decode of the 10 min file got" << probe->finals[0] << "of 4.8 M samples";
+            QVERIFY2(probe->finals[0] < 100000, qPrintable(QString::number(probe->finals[0]))); // not 4.8 M
+            QCOMPARE(probe->results[0], int(DecodeResult::Interrupted));
+        }
+        QVERIFY(!QFile::exists(waveformCacheFile(m_cache, longUrl)));
+        QVERIFY(QFile::exists(waveformCacheFile(m_cache, shortUrl)));
     }
 
-    void realDecoderFailsOnGarbage()
+    void realDecoderStopsWhenTheProviderIsDestroyed()
     {
         VlcInstance vlc;
         QVERIFY(vlc.ok());
+        IdleGuard idle;
+        warmUp(vlc);
+
+        const QUrl longUrl = makeFile("long.wav", makeWav(8000, 1, 0.0, 600.0, 0.5));
+        auto probe = std::make_shared<ProbeState>();
+        probe->holdNext = true;
+
+        auto provider = std::make_unique<WaveformProvider>(realEnv(vlc, probe));
+        provider->setUrl(longUrl);
+        QTRY_VERIFY_WITH_TIMEOUT(probe->reached.load() > 0, 30000);
+
+        QElapsedTimer timer;
+        timer.start();
+        provider.reset();
+        QVERIFY2(timer.elapsed() < 1000, qPrintable(QString::number(timer.elapsed()))); // does not wait
+
+        QTRY_COMPARE_WITH_TIMEOUT(probe->ended.load(), 1, 20000); // the decode really stopped
+        {
+            std::lock_guard<std::mutex> lock(probe->mutex);
+            QVERIFY2(probe->finals[0] < 100000, qPrintable(QString::number(probe->finals[0])));
+        }
+        QTRY_COMPARE_WITH_TIMEOUT(WaveformProvider::activeJobs(), 0, 20000);
+        QVERIFY(!QFile::exists(waveformCacheFile(m_cache, longUrl)));
+    }
+
+    void realDecoderFailsOnGarbageAndRemembersIt()
+    {
+        VlcInstance vlc;
+        QVERIFY(vlc.ok());
+        IdleGuard idle;
         const QUrl url = makeFile("garbage.mp3", 3000);
 
-        WaveformEnvironment env;
-        env.cacheDir = m_cache;
-        env.makeDecoder = [obj = vlc.object()] { return makeVlcWaveformDecoder(obj); };
-        WaveformProvider provider(env);
-        QSignalSpy changed(&provider, &WaveformProvider::peaksChanged);
+        auto probe = std::make_shared<ProbeState>();
+        {
+            WaveformProvider provider(realEnv(vlc, probe));
+            provider.setUrl(url);
+            QTRY_COMPARE_WITH_TIMEOUT(probe->ended.load(), 1, 30000);
+            QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 5000);
+            QVERIFY(!provider.ready());
+        }
+        QFile f(waveformCacheFile(m_cache, url));
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QVERIFY(isWaveformFailedMarker(f.readAll()));
+        f.close();
+
+        // not decoded again
+        WaveformProvider again(realEnv(vlc, probe));
+        again.setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(again.failed(), 5000);
+        QCOMPARE(probe->started.load(), 1);
+    }
+
+    void realDecoderRefusesTooLongFilesBeforeDecoding()
+    {
+        VlcInstance vlc;
+        QVERIFY(vlc.ok());
+        IdleGuard idle;
+        warmUp(vlc);
+
+        // 2 h 10 min of 8-bit mono at 1 kHz: 7.8 MB, 62 M samples once resampled to 8 kHz
+        const QUrl url = makeFile("long.wav", makeWav(1000, 1, 0.0, 7800.0, 0.5, 8));
+        auto probe = std::make_shared<ProbeState>();
+        WaveformProvider provider(realEnv(vlc, probe));
         provider.setUrl(url);
-        QTest::qWait(1500);
+        QTRY_VERIFY_WITH_TIMEOUT(provider.failed(), 60000);
         QVERIFY(!provider.ready());
-        QVERIFY(!QFile::exists(waveformCacheFile(m_cache, url)));
+        {
+            std::lock_guard<std::mutex> lock(probe->mutex);
+            QCOMPARE(probe->results[0], int(DecodeResult::Failed));
+            qInfo() << "too long file: samples decoded before the refusal" << probe->finals[0];
+            // refused from the reported length, long before the 57.6 M samples of the sample cap
+            QVERIFY2(probe->finals[0] < 5000000, qPrintable(QString::number(probe->finals[0])));
+        }
+        QFile f(waveformCacheFile(m_cache, url));
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QVERIFY(isWaveformFailedMarker(f.readAll()));
     }
 
 private:
@@ -651,6 +999,34 @@ private:
         QByteArray m_config;
         libvlc_instance_t* m_vlc = nullptr;
     };
+
+    WaveformEnvironment realEnv(const VlcInstance& vlc, const std::shared_ptr<ProbeState>& probe)
+    {
+        WaveformEnvironment env;
+        env.cacheDir = m_cache;
+        env.makeDecoder = [obj = vlc.object(), probe] { return std::make_unique<ProbeDecoder>(obj, probe); };
+        return env;
+    }
+
+    //! one short decode, so that the plugins of the real decoder are loaded
+    void warmUp(const VlcInstance& vlc)
+    {
+        WaveformEnvironment env;
+        env.cacheDir = m_dir->filePath("warm-cache");
+        env.makeDecoder = [obj = vlc.object()] { return makeVlcWaveformDecoder(obj); };
+        WaveformProvider warm(env);
+        warm.setUrl(makeFile("warm.wav", makeWav(8000, 1, 0.0, 1.0, 0.5)));
+        QTRY_VERIFY_WITH_TIMEOUT(warm.ready(), 60000);
+    }
+
+    //! the source file gets a modification time `seconds` in the future
+    void touchSource(const QUrl& url, int seconds)
+    {
+        QFile source(url.toLocalFile());
+        QVERIFY(source.open(QIODevice::Append));
+        QVERIFY(source.setFileTime(QDateTime::currentDateTime().addSecs(seconds),
+                                   QFileDevice::FileModificationTime));
+    }
 
     QUrl makeFile(const QString& name, int size = 64)
     {

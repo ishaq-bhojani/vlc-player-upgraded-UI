@@ -22,10 +22,13 @@
 #include "waveform.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 
+#include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -42,6 +45,8 @@ namespace
 constexpr char kCacheMagic[4] = {'V', 'R', 'W', 'F'};
 constexpr uint8_t kCacheVersion = 1;
 constexpr int kCacheHeaderSize = 5;
+//! a negative marker older than this (a week) is ignored
+constexpr qint64 kFailedMarkerSeconds = qint64(7) * 24 * 3600;
 
 //! the accumulator merges blocks when it holds this many (an even number)
 constexpr size_t kMaxBlocks = size_t(1) << 20;
@@ -123,7 +128,23 @@ QVector<float> decodeWaveformCache(const QByteArray& file)
     if (std::memcmp(file.constData(), kCacheMagic, sizeof(kCacheMagic)) != 0
         || uint8_t(file[sizeof(kCacheMagic)]) != kCacheVersion)
         return {};
-    return decodePeaks(file.mid(kCacheHeaderSize));
+    QVector<float> peaks = decodePeaks(file.mid(kCacheHeaderSize));
+    for (float p : peaks)
+        if (!std::isfinite(p) || p < 0.f || p > 1.f)
+            return {};
+    return peaks;
+}
+
+QByteArray encodeWaveformFailed()
+{
+    QByteArray file(kCacheMagic, sizeof(kCacheMagic));
+    file.append(char(kCacheVersion));
+    return file;
+}
+
+bool isWaveformFailedMarker(const QByteArray& file)
+{
+    return file == encodeWaveformFailed();
 }
 
 QString waveformCacheFile(const QString& cacheDir, const QUrl& url)
@@ -152,7 +173,10 @@ void PeaksAccumulator::append(const int16_t* samples, size_t count)
                 fold();
         }
     }
-    m_total += count;
+    const size_t total = m_total.load() + count;
+    m_total.store(total);
+    if (m_progress)
+        m_progress(total);
 }
 
 void PeaksAccumulator::fold()
@@ -193,21 +217,216 @@ void CancelToken::waitUntil(const std::function<bool()>& pred, std::chrono::mill
     m_cond.wait_for(lock, timeout, [&] { return m_cancelled.load() || pred(); });
 }
 
-// ---- WaveformProvider -------------------------------------------------------------------
+// ---- jobs and their coordinator ---------------------------------------------------------
 
-struct WaveformProvider::Job
+enum class JobOutcome { Ready, Failed, Cancelled };
+
+struct WaveformJob
 {
-    quint64 generation = 0;
+    QString key;
     QUrl url;
-    QThread* thread = nullptr;
+    WaveformEnvironment env;
     CancelToken cancel;
-    bool ok = false;
-    QVector<float> peaks; //!< written by the worker thread, read after QThread::finished
+    QThread* thread = nullptr;
+    std::vector<WaveformProvider*> subscribers;
+    JobOutcome outcome = JobOutcome::Failed; //!< written by the worker, read after it ended
+    QVector<float> peaks;
 };
+
+namespace
+{
+
+void writeCacheFile(const QString& cacheFile, const QByteArray& content)
+{
+    if (cacheFile.isEmpty() || !QDir().mkpath(QFileInfo(cacheFile).absolutePath()))
+        return;
+    QSaveFile out(cacheFile);
+    if (out.open(QIODevice::WriteOnly)) {
+        out.write(content);
+        out.commit();
+    }
+}
+
+//! the whole work of a job, on its worker thread
+JobOutcome runJob(WaveformJob& job)
+{
+    const WaveformEnvironment& env = job.env;
+    const QString file = job.url.toLocalFile();
+    const QFileInfo info(file);
+    if (!info.isFile() || info.size() > env.maxFileBytes)
+        return JobOutcome::Failed;
+
+    // 1. the cache: a file written after the source last changed
+    const QString cacheFile = env.cacheDir.isEmpty() ? QString() : waveformCacheFile(env.cacheDir, job.url);
+    if (!cacheFile.isEmpty()) {
+        const QFileInfo cacheInfo(cacheFile);
+        if (cacheInfo.isFile() && cacheInfo.lastModified() >= info.lastModified()) {
+            QFile f(cacheFile);
+            if (f.open(QIODevice::ReadOnly)) {
+                const QByteArray bytes = f.readAll();
+                const QVector<float> cached = decodeWaveformCache(bytes);
+                if (cached.size() == kWaveformBuckets) {
+                    job.peaks = cached;
+                    return JobOutcome::Ready;
+                }
+                if (isWaveformFailedMarker(bytes)
+                    && cacheInfo.lastModified().secsTo(QDateTime::currentDateTime()) < kFailedMarkerSeconds)
+                    return JobOutcome::Failed;
+            }
+        }
+    }
+    if (job.cancel.cancelled())
+        return JobOutcome::Cancelled;
+    if (!env.makeDecoder)
+        return JobOutcome::Failed;
+
+    // 2. decode
+    std::unique_ptr<WaveformDecoder> decoder = env.makeDecoder();
+    if (!decoder)
+        return JobOutcome::Failed;
+    PeaksAccumulator acc;
+    const DecodeResult result = decoder->decode(file, acc, job.cancel);
+    decoder.reset();
+    if (job.cancel.cancelled())
+        return JobOutcome::Cancelled;
+    if (result == DecodeResult::Interrupted)
+        return JobOutcome::Failed; // transient: no marker
+    if (result == DecodeResult::Failed || acc.exceeded() || acc.sampleCount() == 0) {
+        writeCacheFile(cacheFile, encodeWaveformFailed());
+        return JobOutcome::Failed;
+    }
+
+    // 3. the cache; a failure to write it is not an error
+    job.peaks = acc.finish();
+    writeCacheFile(cacheFile, encodeWaveformCache(job.peaks));
+    return JobOutcome::Ready;
+}
+
+} // namespace
+
+/**
+ * The process-wide queue of the jobs of all providers. It lives in the GUI thread (child of the
+ * application object), runs one job thread at a time and shares a job between the providers of
+ * the same url. Pending jobs are started newest first: the track that plays now is the one
+ * whose waveform matters.
+ */
+class WaveformCoordinator : public QObject
+{
+public:
+    static WaveformCoordinator& instance()
+    {
+        static WaveformCoordinator* coordinator = new WaveformCoordinator(QCoreApplication::instance());
+        return *coordinator;
+    }
+
+    ~WaveformCoordinator() override
+    {
+        // never abandon a thread that runs plugin code: stop it and wait
+        if (m_running && m_running->thread) {
+            m_running->cancel.cancel();
+            m_running->thread->wait();
+            delete m_running->thread;
+            m_running->thread = nullptr;
+        }
+    }
+
+    std::shared_ptr<WaveformJob> subscribe(WaveformProvider* provider, const QUrl& url,
+                                           const WaveformEnvironment& env)
+    {
+        const QString key = url.toString(QUrl::FullyEncoded) + QLatin1Char('\n') + env.cacheDir;
+        std::shared_ptr<WaveformJob> job = find(key);
+        if (!job) {
+            job = std::make_shared<WaveformJob>();
+            job->key = key;
+            job->url = url;
+            job->env = env;
+            m_pending.push_back(job);
+        }
+        job->subscribers.push_back(provider);
+        pump();
+        return job;
+    }
+
+    void unsubscribe(WaveformProvider* provider, const std::shared_ptr<WaveformJob>& job)
+    {
+        auto& subs = job->subscribers;
+        subs.erase(std::remove(subs.begin(), subs.end(), provider), subs.end());
+        if (!subs.empty())
+            return;
+        if (job == m_running)
+            job->cancel.cancel(); // ends by itself, onFinished() cleans up
+        else
+            m_pending.erase(std::remove(m_pending.begin(), m_pending.end(), job), m_pending.end());
+    }
+
+    int jobCount() const { return int(m_pending.size()) + (m_running ? 1 : 0); }
+
+private:
+    explicit WaveformCoordinator(QObject* parent) : QObject(parent) {}
+
+    std::shared_ptr<WaveformJob> find(const QString& key) const
+    {
+        if (m_running && m_running->key == key && !m_running->cancel.cancelled())
+            return m_running;
+        for (const auto& job : m_pending)
+            if (job->key == key)
+                return job;
+        return nullptr;
+    }
+
+    void pump()
+    {
+        if (m_running || m_pending.empty())
+            return;
+        m_running = m_pending.back();
+        m_pending.pop_back();
+
+        std::shared_ptr<WaveformJob> job = m_running;
+        job->thread = QThread::create([this, job] {
+            job->outcome = runJob(*job);
+            QMetaObject::invokeMethod(this, [this, job] { onFinished(job); }, Qt::QueuedConnection);
+        });
+        job->thread->setObjectName(QStringLiteral("waveform"));
+        // Only this waiting thread gets the low priority; the input and decoder threads that VLC
+        // creates for the decode keep the normal one.
+        job->thread->start(QThread::LowPriority);
+    }
+
+    void onFinished(const std::shared_ptr<WaveformJob>& job)
+    {
+        if (job->thread) {
+            job->thread->wait();
+            delete job->thread; // also drops the lambda that holds `job`
+            job->thread = nullptr;
+        }
+        if (m_running == job)
+            m_running.reset();
+
+        // A handler of the signals may change or destroy a provider that is still waiting: take
+        // the subscribers one by one (a provider that leaves removes itself from the list).
+        while (!job->subscribers.empty()) {
+            WaveformProvider* provider = job->subscribers.front();
+            job->subscribers.erase(job->subscribers.begin());
+            if (job->outcome != JobOutcome::Cancelled)
+                provider->jobEnded(job->outcome == JobOutcome::Ready, job->peaks);
+        }
+        pump();
+    }
+
+    std::shared_ptr<WaveformJob> m_running;
+    std::vector<std::shared_ptr<WaveformJob>> m_pending;
+};
+
+// ---- WaveformProvider -------------------------------------------------------------------
 
 void WaveformProvider::setDefaultEnvironment(std::function<WaveformEnvironment()> factory)
 {
     defaultEnvironment() = std::move(factory);
+}
+
+int WaveformProvider::activeJobs()
+{
+    return WaveformCoordinator::instance().jobCount();
 }
 
 WaveformProvider::WaveformProvider(QObject* parent)
@@ -223,13 +442,9 @@ WaveformProvider::WaveformProvider(WaveformEnvironment env, QObject* parent)
 
 WaveformProvider::~WaveformProvider()
 {
-    if (!m_job)
-        return;
-    // the worker only touches its own Job (kept alive by the lambda) and the environment copy
-    m_job->cancel.cancel();
-    m_job->thread->disconnect(this);
-    m_job->thread->wait();
-    delete m_job->thread;
+    // does not wait: a job nobody waits for is cancelled and ends on its own
+    if (m_job)
+        WaveformCoordinator::instance().unsubscribe(this, m_job);
 }
 
 bool WaveformProvider::isAnalysable(const QUrl& url)
@@ -241,102 +456,39 @@ void WaveformProvider::setUrl(const QUrl& url)
 {
     if (url == m_url)
         return;
+    if (m_job) {
+        WaveformCoordinator::instance().unsubscribe(this, m_job);
+        m_job.reset();
+    }
     m_url = url;
-    ++m_generation;
     emit urlChanged();
 
     if (!m_peaks.isEmpty()) {
         m_peaks.clear();
         emit peaksChanged();
     }
-    if (m_job)
-        m_job->cancel.cancel(); // the next job starts when this one has ended
-    startJobIfNeeded();
+    if (m_failed) {
+        m_failed = false;
+        emit failedChanged();
+    }
+    if (isAnalysable(m_url))
+        m_job = WaveformCoordinator::instance().subscribe(this, m_url, m_env);
 }
 
-void WaveformProvider::startJobIfNeeded()
+void WaveformProvider::jobEnded(bool ok, const QVector<float>& peaks)
 {
-    if (m_job || m_handledGeneration == m_generation || !isAnalysable(m_url))
-        return;
-    m_handledGeneration = m_generation;
-
-    auto job = std::make_shared<Job>();
-    job->generation = m_generation;
-    job->url = m_url;
-    const WaveformEnvironment env = m_env;
-    const QString file = m_url.toLocalFile();
-    const QString cacheFile = env.cacheDir.isEmpty() ? QString() : waveformCacheFile(env.cacheDir, m_url);
-
-    job->thread = QThread::create([job, env, file, cacheFile] {
-        const QFileInfo info(file);
-        if (!info.isFile() || info.size() > env.maxFileBytes)
-            return;
-
-        // 1. the cache: a valid file written after the source last changed
-        if (!cacheFile.isEmpty()) {
-            const QFileInfo cacheInfo(cacheFile);
-            if (cacheInfo.isFile() && cacheInfo.lastModified() >= info.lastModified()) {
-                QFile f(cacheFile);
-                if (f.open(QIODevice::ReadOnly)) {
-                    const QVector<float> cached = decodeWaveformCache(f.readAll());
-                    if (cached.size() == kWaveformBuckets) {
-                        job->peaks = cached;
-                        job->ok = true;
-                        return;
-                    }
-                }
-            }
-        }
-        if (job->cancel.cancelled() || !env.makeDecoder)
-            return;
-
-        // 2. decode
-        std::unique_ptr<WaveformDecoder> decoder = env.makeDecoder();
-        if (!decoder)
-            return;
-        PeaksAccumulator acc;
-        const bool decoded = decoder->decode(file, acc, job->cancel);
-        decoder.reset();
-        if (!decoded || job->cancel.cancelled() || acc.exceeded() || acc.sampleCount() == 0)
-            return;
-        job->peaks = acc.finish();
-        job->ok = true;
-
-        // 3. the cache; a failure to write it is not an error
-        if (!cacheFile.isEmpty() && QDir().mkpath(QFileInfo(cacheFile).absolutePath())) {
-            QSaveFile out(cacheFile);
-            if (out.open(QIODevice::WriteOnly)) {
-                out.write(encodeWaveformCache(job->peaks));
-                out.commit();
-            }
-        }
-    });
-    job->thread->setObjectName(QStringLiteral("waveform"));
-    connect(job->thread, &QThread::finished, this, &WaveformProvider::onJobFinished, Qt::QueuedConnection);
-    m_job = job;
-    job->thread->start(QThread::LowPriority);
-}
-
-void WaveformProvider::onJobFinished()
-{
-    if (!m_job)
-        return;
-    std::shared_ptr<Job> job = std::move(m_job);
     m_job.reset();
-    job->thread->wait();
-    delete job->thread;
-    job->thread = nullptr;
-
-    if (job->ok && job->generation == m_generation && !job->cancel.cancelled()
-        && job->peaks.size() == kWaveformBuckets) {
+    if (ok && peaks.size() == kWaveformBuckets) {
         QVariantList list;
-        list.reserve(job->peaks.size());
-        for (float p : job->peaks)
+        list.reserve(peaks.size());
+        for (float p : peaks)
             list.append(double(p));
         m_peaks = list;
         emit peaksChanged();
+    } else {
+        m_failed = true;
+        emit failedChanged();
     }
-    startJobIfNeeded();
 }
 
 } // namespace redesign

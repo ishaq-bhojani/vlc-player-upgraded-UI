@@ -61,6 +61,7 @@ struct PlayerState
     std::atomic_bool started{false};
     std::atomic_bool stopped{false};  //!< back to STOPPED after having been started
     std::atomic_bool error{false};
+    std::atomic_bool tooLong{false};  //!< the reported length is above the cap
 };
 
 void prerender(void* data, uint8_t** pcm, size_t size)
@@ -107,12 +108,22 @@ void onErrorChanged(vlc_player_t*, enum vlc_player_error error, void* data)
     }
 }
 
+void onLengthChanged(vlc_player_t*, vlc_tick_t length, void* data)
+{
+    // VLC_TICK_INVALID: unknown, the sample cap of the accumulator is the backstop
+    PlayerState* ps = static_cast<PlayerState*>(data);
+    if (length != VLC_TICK_INVALID && length > vlc_tick_from_sec(kWaveformMaxSeconds)) {
+        ps->tooLong = true;
+        ps->token->notify();
+    }
+}
+
 class VlcWaveformDecoder final : public WaveformDecoder
 {
 public:
     explicit VlcWaveformDecoder(vlc_object_t* obj) : m_obj(obj) {}
 
-    bool decode(const QString& localFile, PeaksAccumulator& acc, CancelToken& cancel) override
+    DecodeResult decode(const QString& localFile, PeaksAccumulator& acc, CancelToken& cancel) override
     {
         Sink sink;
         sink.acc = &acc;
@@ -120,31 +131,24 @@ public:
         PlayerState state;
         state.token = &cancel;
 
-        // The player is created below this object, which only carries two variables: the audio
-        // output module that vlc_player_New() loads is the dummy one (not the device of the user)
-        // and no video output is ever asked for.
-        vlc_object_t* holder = static_cast<vlc_object_t*>(vlc_object_create(m_obj, sizeof(vlc_object_t)));
+        vlc_object_t* holder = createWaveformHolder(m_obj);
         if (!holder)
-            return false;
-        var_Create(holder, "aout", VLC_VAR_STRING);
-        var_SetString(holder, "aout", "dummy");
-        var_Create(holder, "vout", VLC_VAR_STRING);
-        var_SetString(holder, "vout", "dummy");
+            return DecodeResult::Failed;
 
-        const bool ok = play(holder, localFile, sink, state, cancel);
+        const DecodeResult result = play(holder, localFile, sink, state, cancel);
 
         vlc_object_delete(holder);
-        return ok;
+        return result;
     }
 
 private:
-    bool play(vlc_object_t* holder, const QString& localFile, Sink& sink, PlayerState& state,
+    DecodeResult play(vlc_object_t* holder, const QString& localFile, Sink& sink, PlayerState& state,
               CancelToken& cancel)
     {
         const QByteArray uri = QUrl::fromLocalFile(localFile).toEncoded();
         input_item_t* item = input_item_New(uri.constData(), nullptr);
         if (!item)
-            return false;
+            return DecodeResult::Failed;
 
         // decoded as fast as possible (no-time-sync) to mono 8 kHz s16, handed to the callbacks
         const QByteArray sout = QByteArrayLiteral(
@@ -161,13 +165,14 @@ private:
         vlc_player_t* player = vlc_player_New(holder, VLC_PLAYER_LOCK_NORMAL);
         if (!player) {
             input_item_Release(item);
-            return false;
+            return DecodeResult::Failed;
         }
 
         static const struct vlc_player_cbs cbs = [] {
             struct vlc_player_cbs c = {};
             c.on_state_changed = onStateChanged;
             c.on_error_changed = onErrorChanged;
+            c.on_length_changed = onLengthChanged;
             return c;
         }();
 
@@ -183,9 +188,10 @@ private:
             auto lastProgress = std::chrono::steady_clock::now();
             uint64_t lastSamples = 0;
             for (;;) {
-                cancel.waitUntil([&] { return state.stopped.load() || state.error.load() || sink.bad.load(); },
+                cancel.waitUntil([&] { return state.stopped.load() || state.error.load() || sink.bad.load()
+                                              || state.tooLong.load(); },
                                  std::chrono::seconds(1));
-                if (cancel.cancelled() || state.stopped || state.error || sink.bad)
+                if (cancel.cancelled() || state.stopped || state.error || sink.bad || state.tooLong)
                     break;
                 const auto now = std::chrono::steady_clock::now();
                 const uint64_t samples = sink.samples.load();
@@ -209,13 +215,42 @@ private:
         vlc_player_Delete(player);
         input_item_Release(item);
 
-        return started && !stalled && !cancel.cancelled() && state.stopped && !state.error && !sink.bad;
+        if (cancel.cancelled())
+            return DecodeResult::Interrupted;
+        if (!started || state.error || state.tooLong || sink.bad)
+            return DecodeResult::Failed;
+        // a stall or a stop without reaching the end is transient: not remembered
+        return (!stalled && state.stopped) ? DecodeResult::Ok : DecodeResult::Interrupted;
     }
 
     vlc_object_t* m_obj;
 };
 
 } // namespace
+
+vlc_object_t* createWaveformHolder(vlc_object_t* parent)
+{
+    // The player (and so its input) is created below this object, which only carries variables
+    // that the player and the input inherit:
+    //  - aout/vout: vlc_player_New() loads the audio output module of the configuration (aout_New),
+    //    so it is the dummy one and the device of the user is never opened; no vout is asked for.
+    //  - restore-playback-pos / restore-playback-states: a new input calls
+    //    vlc_player_input_RestoreMlStates() (src/player/input.c:1321, src/player/medialib.c), which
+    //    for a video of the media library can seek to the saved position or select the saved
+    //    tracks. The analysis must start at 0 and must not touch the states of the user.
+    vlc_object_t* holder = static_cast<vlc_object_t*>(vlc_object_create(parent, sizeof(vlc_object_t)));
+    if (!holder)
+        return nullptr;
+    var_Create(holder, "aout", VLC_VAR_STRING);
+    var_SetString(holder, "aout", "dummy");
+    var_Create(holder, "vout", VLC_VAR_STRING);
+    var_SetString(holder, "vout", "dummy");
+    var_Create(holder, "restore-playback-pos", VLC_VAR_INTEGER);
+    var_SetInteger(holder, "restore-playback-pos", VLC_PLAYER_RESTORE_PLAYBACK_POS_NEVER);
+    var_Create(holder, "restore-playback-states", VLC_VAR_BOOL);
+    var_SetBool(holder, "restore-playback-states", false);
+    return holder;
+}
 
 std::unique_ptr<WaveformDecoder> makeVlcWaveformDecoder(vlc_object_t* obj)
 {
