@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 import QtQuick
+import QtCore as QtCore
 import QtQuick.Templates as T
 import QtQuick.Layouts
 
@@ -30,6 +31,11 @@ import VLC.Redesign
  *
  * The track fills the accent colour up to the current position, chapter starts are ticks across
  * it. Click or drag seeks (Player.jumpToPos). Registered as REDESIGN_SEEKBAR.
+ *
+ * For local audio the groove is replaced by the waveform of the file (WaveformTrack) once its
+ * analysis is done and while the "showWaveform" setting is on: the same item, the same height,
+ * and the same seek logic (this is the only seek bar). While the file is analysed, when the
+ * analysis failed, for video and for streams, the groove is shown.
  *
  * Fills the free width of the bar the way the Expanding Spacer does: it asks for far more width
  * than there is (implicitWidth) and gives way to its neighbours down to Layout.minimumWidth, which
@@ -51,6 +57,14 @@ T.Control {
     readonly property bool _canSeek: !paintOnly
                                      && (Player.playingState === Player.PLAYING_STATE_PLAYING
                                          || Player.playingState === Player.PLAYING_STATE_PAUSED)
+
+    // the waveform replaces the groove: local audio, analysed, and the setting is on
+    readonly property bool _showWaveform: _wantWaveform && waveform.ready
+
+    // the waveform of the media is wanted at all (a video, a preview or the setting off: it is not
+    // analysed either); a url that is not a local file is ignored by the provider
+    readonly property bool _wantWaveform: !paintOnly && waveformSettings.showWaveform
+                                          && !Player.hasVideoOutput && Player.videoTracks.count === 0
 
     property real _dragPosition: 0
     property bool _hovered: hoverHandler.hovered
@@ -119,6 +133,20 @@ T.Control {
     }
 
     // Children
+
+    QtCore.Settings {
+        id: waveformSettings
+
+        category: "redesign"
+
+        property bool showWaveform: true
+    }
+
+    WaveformProvider {
+        id: waveform
+
+        url: root._wantWaveform ? Player.url : ""
+    }
 
     TextMetrics {
         id: timeMetrics
@@ -208,6 +236,25 @@ T.Control {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
+            // the waveform, in place of the groove (same height: the bar does not jump), under the chapter ticks
+            WaveformTrack {
+                anchors.fill: parent
+
+                visible: opacity > 0
+                opacity: root._showWaveform ? 1 : 0
+
+                peaks: waveform.peaks
+                position: root.visualPosition
+                playedColor: theme.fg.primary
+                restColor: theme.fg.secondary
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: VLCStyle.duration_short
+                    }
+                }
+            }
+
             // the groove: a thick bar, RedesignStyle.spacingS high
             Rectangle {
                 id: groove
@@ -218,7 +265,17 @@ T.Control {
                 height: RedesignStyle.spacingS
                 radius: height / 2
 
-                color: theme.bg.primary
+                // 1 while the groove is shown, 0 under the waveform: the chapter ticks, which are
+                // children of the groove, stay (that is why this is not the opacity of the item)
+                property real fade: root._showWaveform ? 0 : 1
+
+                Behavior on fade {
+                    NumberAnimation {
+                        duration: VLCStyle.duration_short
+                    }
+                }
+
+                color: Qt.alpha(theme.bg.primary, fade)
 
                 // progress, accent
                 Rectangle {
@@ -226,7 +283,7 @@ T.Control {
                     height: parent.height
                     radius: parent.radius
 
-                    color: theme.fg.primary
+                    color: Qt.alpha(theme.fg.primary, groove.fade)
                 }
 
                 // chapters: a tick at the start of each one (but the first)
@@ -239,10 +296,13 @@ T.Control {
                         visible: startPosition > 0 && startPosition < 1
 
                         x: groove.width * startPosition - width / 2
+                        y: (groove.height - height) / 2
                         width: VLCStyle.dp(2, VLCStyle.scale)
-                        height: groove.height
+                        height: root._showWaveform ? track.height : groove.height
 
-                        color: theme.bg.secondary
+                        // theme.bg.secondary is the tick on the groove; over the bars it is the text colour
+                        color: root._showWaveform ? textTheme.fg.primary : theme.bg.secondary
+                        opacity: root._showWaveform ? 0.6 : 1
                     }
                 }
             }
