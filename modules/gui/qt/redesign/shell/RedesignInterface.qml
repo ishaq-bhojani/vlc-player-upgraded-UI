@@ -294,7 +294,8 @@ Item {
     // The keys no item took: the search shortcut, else a hotkey. The video does not take the keyboard
     // focus, so in the watch and immersive states every key ends up here, which also keeps the bars of
     // the immersive state up while the keyboard is used. (The window does not turn the keys into
-    // hotkeys by itself: that is MainCtx.preferHotkeys, which stays off.)
+    // hotkeys by itself: that is MainCtx.preferHotkeys, which stays off.) A held Space repeats: only
+    // its press is the hotkey (PlayKeyLogic), or each repeat would toggle play/pause again.
     Keys.onPressed: (event) => {
         if (Player.isInteractive)
             // in a DVD menu the keys are for the menu: they do not bring up the bars
@@ -310,7 +311,7 @@ Item {
         } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
             event.accepted = false
             return
-        } else {
+        } else if (PlayKeyLogic.forwardsAsHotkey(event.key, event.isAutoRepeat)) {
             MainCtx.sendHotkey(event.key, event.modifiers)
         }
         event.accepted = true

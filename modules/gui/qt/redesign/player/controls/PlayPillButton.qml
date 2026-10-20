@@ -117,15 +117,28 @@ T.Control {
         Navigation.defaultKeyAction(event)
     }
 
+    // The release toggles only when this button took the press (PlayKeyLogic): a press taken
+    // elsewhere (the window forwards Space as the play/pause hotkey) has toggled already, and its
+    // release must not toggle back when the focus moved here in between.
     Keys.onReleased: (event) => {
         if (KeyHelper.matchOk(event)) {
             if (!event.isAutoRepeat) {
+                const pressTaken = _keyOkPressed
                 _keyOkPressed = false
                 keyHoldTimer.stop()
-                if (Player.playingState !== Player.PLAYING_STATE_STOPPED)
+                if (PlayKeyLogic.releaseToggles(pressTaken, Player.playingState === Player.PLAYING_STATE_STOPPED))
                     MainPlaylistController.togglePlayPause()
             }
             event.accepted = true
+        }
+    }
+
+    // a press that goes on while the focus leaves (the bar hides) has no release here: it is
+    // forgotten, or the hold timer would stop the playback
+    onActiveFocusChanged: {
+        if (!activeFocus) {
+            _keyOkPressed = false
+            keyHoldTimer.stop()
         }
     }
 

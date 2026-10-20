@@ -200,6 +200,7 @@ qml_modules += {
         'theme/RedesignStyle.qml',
         'util/MediaText.qml',
         'util/ReplayLogic.qml',
+        'util/PlayKeyLogic.qml',
         'util/CardCorner.qml',
         'util/ConeMath.qml',
         'util/TrackPopupLogic.qml',
@@ -219,6 +220,7 @@ qml_modules += {
 qml_tests += {
     'tst_MediaText': files('../tests/tst_MediaText.qml'),
     'tst_ReplayLogic': files('../tests/tst_ReplayLogic.qml'),
+    'tst_PlayKeyLogic': files('../tests/tst_PlayKeyLogic.qml'),
     'tst_RailModel': files('../tests/tst_RailModel.qml'),
     'tst_ShellStates': files('../tests/tst_ShellStates.qml'),
     'tst_PinStore': files('../tests/tst_PinStore.qml'),
