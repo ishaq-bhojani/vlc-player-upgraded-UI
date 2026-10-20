@@ -16,7 +16,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 import QtQuick
-import QtCore as QtCore
 import QtQuick.Templates as T
 import QtQuick.Layouts
 
@@ -58,13 +57,24 @@ T.Control {
                                      && (Player.playingState === Player.PLAYING_STATE_PLAYING
                                          || Player.playingState === Player.PLAYING_STATE_PAUSED)
 
-    // the waveform replaces the groove: local audio, analysed, and the setting is on
-    readonly property bool _showWaveform: _wantWaveform && waveform.ready
+    // The waveform replaces the groove: local audio, analysed, and the setting is on. Only the
+    // seek bar of the bar (not the preview of Customize Player) has a provider and a track.
+    readonly property bool _showWaveform: _eligible && !!waveformProvider.item && waveformProvider.item.ready
 
-    // the waveform of the media is wanted at all (a video, a preview or the setting off: it is not
-    // analysed either); a url that is not a local file is ignored by the provider
-    readonly property bool _wantWaveform: !paintOnly && waveformSettings.showWaveform
-                                          && !Player.hasVideoOutput && Player.videoTracks.count === 0
+    // The media can have a waveform: audio only (no video output, no video track, an audio track)
+    // and the setting is on. The provider ignores a url that is not a local file.
+    readonly property bool _eligible: !paintOnly && PlayerPrefs.showWaveform
+                                      && !Player.hasVideoOutput && Player.videoTracks.count === 0
+                                      && Player.audioTracks.count > 0
+
+    readonly property bool _started: Player.playingState === Player.PLAYING_STATE_PLAYING
+                                     || Player.playingState === Player.PLAYING_STATE_PAUSED
+
+    readonly property string _playerUrl: Player.url.toString()
+
+    // The url the provider analyses: the one of the media once it has been playing for a while
+    // (see _inputChanged), "" otherwise. Skipping through a queue never reaches the provider.
+    property string _waveformUrl: ""
 
     property real _dragPosition: 0
     property bool _hovered: hoverHandler.hovered
@@ -100,6 +110,24 @@ T.Control {
 
     // Functions
 
+    // The media, its tracks, its state or the setting changed: a waveform is analysed only for a
+    // media that stays (a settled audio file), so the url is kept back for 500 ms after every
+    // change, and withdrawn at once when it is no longer valid (another media, a video, the
+    // setting off).
+    function _inputChanged() {
+        if (!_eligible || _playerUrl !== _waveformUrl)
+            _waveformUrl = ""
+        if (_eligible && _started)
+            settleTimer.restart()
+        else
+            settleTimer.stop()
+    }
+
+    on_EligibleChanged: _inputChanged()
+    on_StartedChanged: _inputChanged()
+    on_PlayerUrlChanged: _inputChanged()
+    Component.onCompleted: _inputChanged()
+
     function _clamp(value) {
         return Math.min(1, Math.max(0, value))
     }
@@ -134,18 +162,25 @@ T.Control {
 
     // Children
 
-    QtCore.Settings {
-        id: waveformSettings
+    Timer {
+        id: settleTimer
 
-        category: "redesign"
+        interval: 500
 
-        property bool showWaveform: true
+        onTriggered: {
+            if (root._eligible && root._started)
+                root._waveformUrl = root._playerUrl
+        }
     }
 
-    WaveformProvider {
-        id: waveform
+    Loader {
+        id: waveformProvider
 
-        url: root._wantWaveform ? Player.url : ""
+        active: !root.paintOnly
+
+        sourceComponent: WaveformProvider {
+            url: root._waveformUrl
+        }
     }
 
     TextMetrics {
@@ -237,20 +272,29 @@ T.Control {
             Layout.fillHeight: true
 
             // the waveform, in place of the groove (same height: the bar does not jump), under the chapter ticks
-            WaveformTrack {
+            Loader {
                 anchors.fill: parent
 
-                visible: opacity > 0
-                opacity: root._showWaveform ? 1 : 0
+                active: !root.paintOnly
 
-                peaks: waveform.peaks
-                position: root.visualPosition
-                playedColor: theme.fg.primary
-                restColor: theme.fg.secondary
+                sourceComponent: WaveformTrack {
+                    visible: opacity > 0
+                    opacity: root._showWaveform ? 1 : 0
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: VLCStyle.duration_short
+                    peaks: waveformProvider.item ? waveformProvider.item.peaks : []
+                    position: root.visualPosition
+                    // the played part is the accent itself (Slider Fg Primary is the dim accent-tint)
+                    playedColor: theme.accent
+                    restColor: theme.fg.secondary
+
+                    barWidth: VLCStyle.dp(2, VLCStyle.scale)
+                    gap: VLCStyle.dp(2, VLCStyle.scale)
+                    minBarHeight: VLCStyle.dp(2, VLCStyle.scale)
+
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: VLCStyle.duration_short
+                        }
                     }
                 }
             }

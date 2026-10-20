@@ -94,6 +94,14 @@ TestCase {
         compare(WaveformMath.playedBars(100, -1), 0)
         compare(WaveformMath.playedBars(100, NaN), 0)
         compare(WaveformMath.playedBars(0, 0.5), 0)
+        // rounded to the nearest bar, a half goes up
+        compare(WaveformMath.playedBars(10, 0.05), 1)
+        compare(WaveformMath.playedBars(10, 0.049), 0)
+        compare(WaveformMath.playedBars(10, 0.95), 10)
+        compare(WaveformMath.playedBars(10, 0.949), 9)
+        compare(WaveformMath.playedBars(3, 0.5), 2)
+        compare(WaveformMath.playedBars(3, 1 / 3), 1)
+        compare(WaveformMath.playedBars(23, 1), 23)
     }
 
     function test_barHeight() {

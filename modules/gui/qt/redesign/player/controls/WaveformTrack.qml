@@ -17,7 +17,6 @@
  *****************************************************************************/
 import QtQuick
 
-import VLC.Style
 import VLC.Redesign
 
 /**
@@ -31,6 +30,10 @@ import VLC.Redesign
  * WaveformMath.maxBars of them, the model of the Repeater is the decimated array itself, so the
  * number of bars can never differ from what the delegates read. The played part is one number
  * computed from `position`; a bar only compares its index with it.
+ *
+ * The bars are rebuilt when the peaks or the number of bars that fit change, not on every pixel
+ * of a resize. The last non-empty peaks are kept: when the peaks go away the bars stay (while
+ * the owner fades this out) instead of vanishing at once.
  */
 Item {
     id: root
@@ -46,31 +49,51 @@ Item {
     property color playedColor: "white"
     property color restColor: "gray"
 
+    // sizes, in pixels: the bars are barWidth wide at best, gap apart, at least minBarHeight high
+    property real barWidth: 2
+    property real gap: 2
+    property real minBarHeight: 2
+
+    // the number of bars that fit
+    readonly property int _count: WaveformMath.barCount(width, barWidth, gap)
+
+    // the peaks drawn: the last non-empty ones
+    property var _shown: []
+
     // the decimated peaks, one per bar (length == number of bars)
-    readonly property var bars: WaveformMath.decimate(
-        peaks, WaveformMath.barCount(width, _barWidth, _gap))
+    readonly property var bars: WaveformMath.decimate(_shown, _count)
 
     readonly property int _played: WaveformMath.playedBars(bars.length, position)
 
-    readonly property real _barWidth: VLCStyle.dp(2, VLCStyle.scale)
-    readonly property real _gap: VLCStyle.dp(2, VLCStyle.scale)
-    readonly property real _minBarHeight: VLCStyle.dp(2, VLCStyle.scale)
+    // how many bars the Repeater made (== bars.length)
+    readonly property int delegateCount: repeater.count
+
+    function _sync() {
+        if (peaks && peaks.length > 0)
+            _shown = peaks
+    }
+
+    onPeaksChanged: _sync()
+    Component.onCompleted: _sync()
 
     // Children
 
     Repeater {
+        id: repeater
+
         model: root.bars
 
         delegate: Rectangle {
             required property int index
             required property real modelData
 
-            // the bars share the width evenly, so the last one ends at the right edge
+            // the bars share the width evenly, the gap is split on both sides of a bar so the
+            // first and the last are as far from the edges as from each other
             readonly property real _pitch: root.width / Math.max(1, root.bars.length)
 
-            x: index * _pitch
-            width: Math.max(1, _pitch - root._gap)
-            height: WaveformMath.barHeight(modelData, root.height, root._minBarHeight)
+            x: index * _pitch + root.gap / 2
+            width: Math.max(1, _pitch - root.gap)
+            height: WaveformMath.barHeight(modelData, root.height, root.minBarHeight)
             y: (root.height - height) / 2
             radius: width / 2
 
