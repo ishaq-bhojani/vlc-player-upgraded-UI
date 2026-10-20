@@ -203,9 +203,13 @@ Item {
                     id: sidebar
 
                     Layout.fillHeight: true
-                    // a narrow window: the sidebar keeps a third of the modal at most, the page
-                    // needs the rest (the sidebar is 220 dp wide, in a modal of 1040 dp at most)
-                    Layout.preferredWidth: Math.min(implicitWidth, popup.width / 3)
+                    // A narrow window: the sidebar and its margins keep a third of the modal at
+                    // most, the page needs the rest (the sidebar is 220 dp wide, in a modal of
+                    // 1040 dp at most), but never less than the floor, or the names of the pages
+                    // do not fit.
+                    Layout.preferredWidth: Math.max(VLCStyle.dp(140, VLCStyle.scale),
+                                                    Math.min(implicitWidth,
+                                                             popup.width / 3 - 2 * RedesignStyle.spacingL))
                     Layout.margins: RedesignStyle.spacingL
 
                     currentPage: root.shortcutsOpen ? "controls" : root.page

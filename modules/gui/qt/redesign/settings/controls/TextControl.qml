@@ -55,8 +55,12 @@ Widgets.TextFieldExt {
     //! the text typed differs from the stored value (there is an edit to take back)
     readonly property bool _pendingEdit: root.text !== ((root.value === undefined || root.value === null) ? "" : String(root.value))
 
-    //! the press of Escape was used to take back an edit: its release is ours too
-    property bool _escapeTaken: false
+    // Escape takes back a pending edit (and then does not close the modal), see EscapeRevert
+    readonly property EscapeRevert _escape: EscapeRevert {
+        pending: root._pendingEdit
+
+        onRevert: root._showValue()
+    }
 
     // Functions
 
@@ -87,27 +91,12 @@ Widgets.TextFieldExt {
         _showValue()
     }
 
-    // The modal closes on the release of Escape: when the press took an edit back, the release has
-    // to be taken too, or it would reach the popup and close the whole modal.
-    Keys.onEscapePressed: (event) => {
-        if (!root._pendingEdit) {
-            event.accepted = false
-            return
-        }
-        _showValue()
-        root._escapeTaken = true
-        event.accepted = true
-    }
+    Keys.onEscapePressed: (event) => root._escape.press(event)
 
-    Keys.onReleased: (event) => {
-        if (event.key === Qt.Key_Escape && root._escapeTaken && !event.isAutoRepeat) {
-            root._escapeTaken = false
-            event.accepted = true
-        }
-    }
+    Keys.onReleased: (event) => root._escape.release(event)
 
     onActiveFocusChanged: {
         if (!activeFocus)
-            root._escapeTaken = false
+            root._escape.reset()
     }
 }

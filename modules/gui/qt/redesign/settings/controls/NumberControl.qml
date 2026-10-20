@@ -65,8 +65,12 @@ Widgets.TextFieldExt {
     //! the text typed differs from the stored value (there is an edit to take back)
     readonly property bool _pendingEdit: root.text !== root._format(root.value)
 
-    //! the press of Escape was used to take back an edit: its release is ours too
-    property bool _escapeTaken: false
+    // Escape takes back a pending edit (and then does not close the modal), see EscapeRevert
+    readonly property EscapeRevert _escape: EscapeRevert {
+        pending: root._pendingEdit
+
+        onRevert: root._showValue()
+    }
 
     // Functions
 
@@ -106,6 +110,11 @@ Widgets.TextFieldExt {
 
     // Settings
 
+    // The width of the design, also the narrowest a control can be beside its label (the 160 dp
+    // `minControl` that SettingRow gives ControlChooser.controlFit): the number field is exactly
+    // as wide as it may be at least, so beside the label it gets its full width or none (the row
+    // stacks). Should this change, controlFit still keeps the field beside the label at its own
+    // width when that is below the minimum (it uses min(minControl, implicitWidth)).
     implicitWidth: VLCStyle.dp(160, VLCStyle.scale)
     implicitHeight: VLCStyle.dp(36, VLCStyle.scale)
 
@@ -128,28 +137,13 @@ Widgets.TextFieldExt {
             _report(parsed)
     }
 
-    // The modal closes on the release of Escape: when the press took an edit back, the release has
-    // to be taken too, or it would reach the popup and close the whole modal.
-    Keys.onEscapePressed: (event) => {
-        if (!root._pendingEdit) {
-            event.accepted = false
-            return
-        }
-        _showValue()
-        root._escapeTaken = true
-        event.accepted = true
-    }
+    Keys.onEscapePressed: (event) => root._escape.press(event)
 
-    Keys.onReleased: (event) => {
-        if (event.key === Qt.Key_Escape && root._escapeTaken && !event.isAutoRepeat) {
-            root._escapeTaken = false
-            event.accepted = true
-        }
-    }
+    Keys.onReleased: (event) => root._escape.release(event)
 
     onActiveFocusChanged: {
         if (!activeFocus)
-            root._escapeTaken = false
+            root._escape.reset()
     }
 
     Keys.onUpPressed: (event) => {

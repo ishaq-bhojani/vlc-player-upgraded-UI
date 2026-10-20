@@ -50,6 +50,12 @@ FocusScope {
     implicitWidth: layout.implicitWidth
     implicitHeight: VLCStyle.dp(36, VLCStyle.scale)
 
+    // In a row too narrow for the segments at their width the segments shrink (to this) rather than
+    // overflow; in a wider one the control keeps its own width.
+    Layout.fillWidth: true
+    Layout.minimumWidth: model.length * VLCStyle.dp(40, VLCStyle.scale)
+    Layout.maximumWidth: implicitWidth
+
     Accessible.role: Accessible.RadioButton
     Accessible.name: label
 
@@ -84,6 +90,8 @@ FocusScope {
                 readonly property bool chosen: modelData.value === root.current
 
                 Layout.fillHeight: true
+                Layout.fillWidth: true
+                Layout.minimumWidth: VLCStyle.dp(40, VLCStyle.scale)
 
                 focus: chosen
                 focusPolicy: segment.chosen ? Qt.StrongFocus : Qt.NoFocus

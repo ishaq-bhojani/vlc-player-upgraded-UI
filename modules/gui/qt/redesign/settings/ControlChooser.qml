@@ -169,7 +169,8 @@ QtObject {
      * - `rowWidth`: the width of the row; `infoWidth`: the width of the info button, 0 if it is
      *   not shown; `spacing`: the gap between the items of the row
      * - `implicitWidth`: the width the control would like (320 for a field of the design)
-     * - `minControl`: below this width the control is not usable beside the label
+     * - `minControl`: below this width the control is not usable beside the label (a control
+     *   that would like less than this, `implicitWidth` < `minControl`, is usable at its own width)
      * - `minLabel`: the width the label always keeps
      *
      * Beside the label the control takes its implicit width, but never more than controlShare of
@@ -182,7 +183,7 @@ QtObject {
         // what the label and the control share, less the gap between them
         const free = rowWidth - info - spacing
         const width = Math.min(implicitWidth, Math.floor(rowWidth * controlShare), free - minLabel)
-        if (width < minControl)
+        if (width < Math.min(minControl, implicitWidth))
             return { stacked: true, width: Math.max(0, Math.min(implicitWidth, rowWidth)) }
         return { stacked: false, width: width }
     }

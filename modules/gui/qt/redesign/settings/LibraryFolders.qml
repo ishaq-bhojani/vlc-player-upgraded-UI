@@ -119,13 +119,26 @@ ColumnLayout {
         color: theme.fg.secondary
     }
 
-    RowLayout {
+    // The field for the path of a folder, and the two buttons. In a narrow page (the owner's window
+    // is 600 dp wide: the page is about 320) the field would get ~110 dp between the buttons, so it
+    // takes a line of its own and the buttons share the line under it.
+    GridLayout {
+        id: addRow
+
+        readonly property bool narrow: root.width < VLCStyle.dp(440, VLCStyle.scale)
+
         Layout.fillWidth: true
 
-        spacing: RedesignStyle.spacingS
+        columns: narrow ? 2 : 3
+        columnSpacing: RedesignStyle.spacingS
+        rowSpacing: RedesignStyle.spacingS
 
         Widgets.ButtonExt {
             id: browseButton
+
+            Layout.row: addRow.narrow ? 1 : 0
+            Layout.column: 0
+            Layout.fillWidth: addRow.narrow
 
             text: qsTr("Browse...")
 
@@ -137,6 +150,9 @@ ColumnLayout {
         Widgets.TextFieldExt {
             id: field
 
+            Layout.row: 0
+            Layout.column: addRow.narrow ? 0 : 1
+            Layout.columnSpan: addRow.narrow ? 2 : 1
             Layout.fillWidth: true
             Layout.preferredHeight: VLCStyle.dp(36, VLCStyle.scale)
 
@@ -151,6 +167,10 @@ ColumnLayout {
         }
 
         Widgets.ButtonExt {
+            Layout.row: addRow.narrow ? 1 : 0
+            Layout.column: addRow.narrow ? 1 : 2
+            Layout.fillWidth: addRow.narrow
+
             text: qsTr("Add folder")
 
             enabled: field.text.trim().length > 0

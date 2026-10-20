@@ -16,7 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 import QtQuick
+import QtQuick.Layouts
 
+import VLC.Style
 import VLC.Redesign
 
 /**
@@ -41,9 +43,14 @@ RowFrame {
     title: spec ? spec.title : ""
     description: spec ? (spec.description ?? "") : ""
 
+    // the list of a wide row: bounded (see RowFrame), usable from 160 dp
+    controlMinimum: VLCStyle.dp(160, VLCStyle.scale)
+
     // Children
 
     DropdownControl {
+        Layout.fillWidth: true
+
         ready: true
         label: root.title
         description: root.description

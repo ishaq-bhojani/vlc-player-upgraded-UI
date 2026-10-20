@@ -16,7 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 import QtQuick
+import QtQuick.Layouts
 
+import VLC.Style
 import VLC.Redesign
 
 /**
@@ -38,9 +40,14 @@ RowFrame {
 
     title: setting ? setting.text : ""
 
+    // the slider of a wide row: bounded (see RowFrame), usable from 160 dp
+    controlMinimum: VLCStyle.dp(160, VLCStyle.scale)
+
     // Children
 
     SliderControl {
+        Layout.fillWidth: true
+
         from: root.setting && root.setting.min !== undefined ? root.setting.min : 0
         to: root.setting && root.setting.max !== undefined ? root.setting.max : 1
         stepSize: ControlChooser.sliderStep(!root.setting || root.setting.type === ControlChooser.type.Float,

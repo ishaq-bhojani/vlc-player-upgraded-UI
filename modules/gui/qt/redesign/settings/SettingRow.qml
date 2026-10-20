@@ -207,6 +207,11 @@ Item {
                 delay: VLCStyle.delayToolTipAppear
                 text: root._description
 
+                // A tooltip is a popup, outside the ColorContext of the window: the palette is set
+                // by hand on its own context (the background and the border use it) and on the
+                // one of its content (tipTheme below), or both are magenta.
+                colorContext.palette: VLCStyle.palette
+
                 // wraps at _tipMaxWidth (the stock tooltip only wraps at the window width)
                 contentItem: Item {
                     implicitWidth: tipText.width
@@ -233,6 +238,7 @@ Item {
                     ColorContext {
                         id: tipTheme
 
+                        palette: VLCStyle.palette
                         colorSet: ColorContext.Tooltip
                     }
                 }

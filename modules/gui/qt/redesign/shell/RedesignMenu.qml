@@ -41,6 +41,11 @@ T.Menu {
     //! Where the menu is anchored, the y of its top edge in the window; NaN for a menu that is not
     //! (a submenu: Qt places it beside its entry). A menu opened below a button sets it before it
     //! opens (MainMenu.openAtGlobal) and the menu keeps its top there: it is made to fit under it.
+    //!
+    //! CALLERS MUST SET IT BEFORE `popup()`: the height of the menu is computed from it when the
+    //! popup opens. Without it the room is taken from the top margin (the whole window), so a menu
+    //! opened lower in the window is not shortened to fit under its anchor: Qt then shifts it up to
+    //! keep it inside the window, and it covers what is above the point it was opened at.
     property real anchorTop: Number.NaN
 
     // The room of the popup: the height of the window less where the popup starts and the margin
@@ -61,12 +66,14 @@ T.Menu {
     }
 
     // What the entries need: their heights (a ListView that has not created every entry yet only
-    // estimates its contentHeight), and the padding and background around them.
+    // estimates its contentHeight), and the padding and background around them. Every entry
+    // counts, whether it is visible or not: the list gives a hidden entry its place like any other
+    // (a hidden entry would need `height: 0`), and the menus of the redesign hide none.
     readonly property real _wantedHeight: {
         let entries = 0
         for (let i = 0; i < count; ++i) {
             const entry = itemAt(i)
-            if (entry && entry.visible)
+            if (entry)
                 entries += entry.implicitHeight
         }
         return Math.max(implicitBackgroundHeight + topInset + bottomInset,

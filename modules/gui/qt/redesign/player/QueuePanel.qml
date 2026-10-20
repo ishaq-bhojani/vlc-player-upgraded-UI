@@ -32,10 +32,12 @@ import VLC.Redesign
  * context menu and the drag and drop of the media of the library into the queue are its own).
  *
  * Clear is what the context menu of the play queue does (MainPlaylistController.clear(), no
- * confirmation, no undo). Save puts the queue into a playlist of the media library, with the New
- * playlist dialog of the shell that asks the name (ShellActions.newPlaylistRequested, hosted by
- * DialogHost.qml), or, without a media library, saves it to a file (the "Save Play Queue to File"
- * action). The media library types are not used here: they do not exist without a media library.
+ * confirmation, no undo). Save puts the queue into a playlist of the media library: a small menu
+ * offers "New playlist..." (the New playlist dialog of the shell that asks the name,
+ * ShellActions.newPlaylistRequested, hosted by DialogHost.qml) and "Add to existing playlist..."
+ * (DialogsProvider.playlistsDialog, the dialog of the classic interface). Without a media library
+ * Save saves the queue to a file (the "Save Play Queue to File" action). The media library types
+ * are not used here: they do not exist without a media library.
  *
  * Media dropped on the header (outside of the list) are appended to the queue.
  */
@@ -54,19 +56,40 @@ FocusScope {
         MainPlaylistController.clear()
     }
 
-    // Saves the queue: into a playlist of the media library when there is one, else to a file.
+    // Saves the queue. With a media library the Save button offers a menu (a new playlist, or an
+    // existing one); without, the queue is saved to a file.
     function save() {
         if (count <= 0)
             return
 
         if (MainCtx.mediaLibraryAvailable) {
-            const indexes = []
-            for (let i = 0; i < count; ++i)
-                indexes.push(i)
-            ShellActions.newPlaylistRequested(pane.model.getItemsForIndexes(indexes))
+            // the menu is anchored under the button, at its end (the button is at the end of the panel)
+            saveMenu.anchorTop = saveButton.mapToItem(null, 0, saveButton.height).y
+            saveMenu.popup(Math.min(0, saveButton.width - saveMenu.implicitWidth), saveButton.height)
         } else {
             DialogsProvider.savePlayingToPlaylist()
         }
+    }
+
+    // the whole queue, as the items the playlist dialogs take
+    function _allItems() {
+        const indexes = []
+        for (let i = 0; i < count; ++i)
+            indexes.push(i)
+        return pane.model.getItemsForIndexes(indexes)
+    }
+
+    // the shell's New playlist dialog asks the name
+    function saveToNewPlaylist() {
+        if (count > 0)
+            ShellActions.newPlaylistRequested(_allItems())
+    }
+
+    // the dialog of the media library to pick the playlist the queue is added to (the one of the
+    // classic interface: a window of its own)
+    function saveToExistingPlaylist() {
+        if (count > 0)
+            DialogsProvider.playlistsDialog(_allItems())
     }
 
     // The pane has its own "Play Queue" title: this header has one, so the title of the pane is
@@ -202,6 +225,26 @@ FocusScope {
             Navigation.downItem: pane
 
             onClicked: root.save()
+
+            // the choice of the playlist (media library only)
+            RedesignMenu {
+                id: saveMenu
+
+                accessibleName: qsTr("Save the queue as a playlist")
+
+                RedesignMenuItem {
+                    text: qsTr("New playlist...")
+
+                    // once the menu is closed: the dialog opens over nothing
+                    onTriggered: Qt.callLater(root.saveToNewPlaylist)
+                }
+
+                RedesignMenuItem {
+                    text: qsTr("Add to existing playlist...")
+
+                    onTriggered: Qt.callLater(root.saveToExistingPlaylist)
+                }
+            }
         }
     }
 

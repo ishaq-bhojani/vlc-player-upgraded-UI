@@ -29,7 +29,8 @@ import VLC.Redesign
  *
  *   networkStreamRequested()      -> OpenNetworkStreamDialog
  *   newPlaylistRequested(ids)     -> NewPlaylistDialog (media library only)
- *   settingsRequested(page)       -> SettingsModal (also Ctrl+P, see the Shortcut below)
+ *   settingsRequested(page)       -> SettingsModal (also Ctrl+P, see the Shortcut below); an empty
+ *                                    page opens the page the modal showed last
  *
  * The dialogs are based on RedesignModalDialog (a palette for what is in a popup); SettingsModal
  * is not a dialog but its popup has the same need and does it itself.
@@ -78,6 +79,11 @@ Item {
     // the page the Settings modal opens on
     property string _settingsPage: ""
 
+    // The page the Settings modal showed last (updated when it changes page and when it closes).
+    // The modal is destroyed when it is closed, so it can not remember it: a request without a
+    // page ("Settings" of the main menu, Ctrl+P) opens on this one.
+    property string _lastSettingsPage: ""
+
     // Signals
 
     //! a dialog was closed
@@ -117,11 +123,12 @@ Item {
         }
     }
 
-    //! `page`: an id of SettingsData.pages, "shortcuts" or "" (see SettingsModal.open)
+    //! `page`: an id of SettingsData.pages, "shortcuts", or "" for the page shown last (the first
+    //! one the first time, see SettingsModal.open)
     function openSettings(page) {
         if (active)
             return
-        _settingsPage = page ?? ""
+        _settingsPage = (page ?? "") !== "" ? page : _lastSettingsPage
         _settingsOpen = true
         if (settingsLoader.item)
             settingsLoader.item.open(_settingsPage)
@@ -240,7 +247,12 @@ Item {
     Connections {
         target: settingsLoader.item
 
+        function onPageChanged() {
+            root._lastSettingsPage = settingsLoader.item.page
+        }
+
         function onClosed() {
+            root._lastSettingsPage = settingsLoader.item.page
             root._settingsOpen = false
             root._settingsRelease()
             root.closed()

@@ -212,21 +212,33 @@ TestCase {
     }
 
     // whatever the width of the row: a control beside the label leaves the label its room and at
-    // most the share of the row, a stacked one never overflows
+    // most the share of the row, a stacked one never overflows. The sizes are the ones of a field or
+    // a list (320 dp, usable from 160 dp), a number field (160, usable from 160) and a path (320,
+    // usable from 200: its field and the Browse button).
     function test_controlFit_neverOverflows() {
-        for (const implicit of [160, 320]) {
+        for (const [implicit, minControl] of [[160, 160], [320, 160], [320, 200]]) {
             for (let row = 150; row <= 1600; row += 7) {
-                const r = fit(row, implicit)
-                verify(r.width <= row, "row " + row + ": " + JSON.stringify(r))
-                verify(r.width <= implicit)
+                const r = fit(row, implicit, undefined, minControl)
+                const tag = "row " + row + ", implicit " + implicit + ", min " + minControl + ": " + JSON.stringify(r)
+                verify(r.width <= row, tag)
+                verify(r.width <= implicit, tag)
                 if (!r.stacked) {
-                    verify(r.width >= 160, "row " + row)
-                    verify(r.width <= row * ControlChooser.controlShare, "row " + row)
+                    verify(r.width >= Math.min(minControl, implicit), tag)
+                    verify(r.width <= row * ControlChooser.controlShare, tag)
                     // the label, the info button and the two gaps
-                    verify(row - r.width - 24 - 12 - 12 >= 120, "label room at row " + row)
+                    verify(row - r.width - 24 - 12 - 12 >= 120, tag)
                 }
             }
         }
+    }
+
+    // a control that would like less than the minimum is not pushed under the label for that
+    function test_controlFit_smallImplicit() {
+        const beside = fit(555, 100, undefined, 160)
+        compare(beside.stacked, false)
+        compare(beside.width, 100)
+        // ...but it stacks in a row too narrow for the label
+        compare(fit(200, 100, undefined, 160).stacked, true)
     }
 
     function test_controlFit_monotonic() {

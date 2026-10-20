@@ -25,7 +25,6 @@ import VLC.MainInterface
 import VLC.Style
 import VLC.Widgets as Widgets
 import VLC.Util
-import VLC.Dialogs
 import VLC.Redesign
 
 /**
@@ -726,8 +725,8 @@ FocusScope {
 
                 Navigation.parentItem: emptyState
 
-                // the media library page of the preferences lists the folders of the library
-                onClicked: DialogsProvider.prefsDialog()
+                // the Library page of the Settings modal lists the folders of the library
+                onClicked: ShellActions.settingsRequested("library")
             }
         }
     }

@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 import QtQuick
+import QtQuick.Layouts
 import QtQuick.Templates as T
 
 import VLC.Style
@@ -68,7 +69,14 @@ RowFrame {
                                            || (index === 0 && root.current === "default")
 
             implicitWidth: VLCStyle.dp(28, VLCStyle.scale)
-            implicitHeight: implicitWidth
+            implicitHeight: VLCStyle.dp(28, VLCStyle.scale)
+
+            // In a row too narrow for nine swatches of 28 dp they shrink (to half) rather than
+            // overflow. They stay round: the circle is the smaller side of the button.
+            Layout.fillWidth: true
+            Layout.minimumWidth: implicitHeight / 2
+            Layout.maximumWidth: implicitWidth
+            Layout.preferredHeight: implicitHeight
 
             focusPolicy: Qt.StrongFocus
             hoverEnabled: true
@@ -92,18 +100,32 @@ RowFrame {
                 hovered: swatch.hovered
             }
 
-            background: Rectangle {
-                radius: width / 2
-                color: "transparent"
+            background: Item {
+                Rectangle {
+                    anchors.centerIn: parent
 
-                // the ring of the chosen swatch, or the focus
-                border.width: (swatch.chosen || swatch.visualFocus) ? VLCStyle.dp(2, VLCStyle.scale) : 0
-                border.color: swatch.visualFocus ? theme.visualFocus : theme.fg.primary
+                    width: Math.min(parent.width, parent.height)
+                    height: width
+
+                    radius: width / 2
+                    color: "transparent"
+
+                    // the ring of the chosen swatch, or the focus
+                    border.width: (swatch.chosen || swatch.visualFocus) ? VLCStyle.dp(2, VLCStyle.scale) : 0
+                    border.color: swatch.visualFocus ? theme.visualFocus : theme.fg.primary
+                }
             }
 
-            contentItem: Rectangle {
-                radius: width / 2
-                color: swatch.modelData
+            contentItem: Item {
+                Rectangle {
+                    anchors.centerIn: parent
+
+                    width: Math.min(parent.width, parent.height)
+                    height: width
+
+                    radius: width / 2
+                    color: swatch.modelData
+                }
             }
 
             // the gap between the ring and the color

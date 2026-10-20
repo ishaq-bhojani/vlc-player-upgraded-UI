@@ -43,6 +43,11 @@ FocusScope {
     //! the filter typed by the user
     property string filterText
 
+    // A narrow page (the owner's window is 600 dp wide: the page is about 320): an action does not
+    // fit in a line with its two key buttons of 160 dp and keeps 120 dp for its name, so the name
+    // takes the line and the buttons the line under it, and the filter goes under the title.
+    readonly property bool narrow: width < VLCStyle.dp(500, VLCStyle.scale)
+
     // the key being asked for: the action, its label and the scope; "" for none
     property string _actionKey
     property string _actionLabel
@@ -137,10 +142,12 @@ FocusScope {
 
         spacing: RedesignStyle.spacingM
 
-        RowLayout {
+        GridLayout {
             Layout.fillWidth: true
 
-            spacing: RedesignStyle.spacingM
+            columns: root.narrow ? 2 : 3
+            columnSpacing: RedesignStyle.spacingM
+            rowSpacing: RedesignStyle.spacingS
 
             Widgets.ButtonExt {
                 text: qsTr("Back")
@@ -164,6 +171,8 @@ FocusScope {
             }
 
             Widgets.TextFieldExt {
+                Layout.fillWidth: root.narrow
+                Layout.columnSpan: root.narrow ? 2 : 1
                 Layout.preferredWidth: VLCStyle.dp(220, VLCStyle.scale)
                 Layout.preferredHeight: VLCStyle.dp(36, VLCStyle.scale)
 
@@ -304,10 +313,13 @@ FocusScope {
             }
         }
 
-        // the names of the two key columns
+        // the names of the two key columns (the narrow page has the buttons under the names, the
+        // global key says so)
         RowLayout {
             Layout.fillWidth: true
             Layout.rightMargin: RedesignStyle.spacingM
+
+            visible: !root.narrow
 
             spacing: RedesignStyle.spacingM
 
@@ -367,7 +379,7 @@ FocusScope {
                 Accessible.role: Accessible.Grouping
                 Accessible.name: name
 
-                RowLayout {
+                GridLayout {
                     id: row
 
                     anchors {
@@ -377,10 +389,14 @@ FocusScope {
                         verticalCenter: parent.verticalCenter
                     }
 
-                    spacing: RedesignStyle.spacingM
+                    // the name, the key, the global key; in a narrow page the name over the keys
+                    columns: root.narrow ? 2 : 3
+                    columnSpacing: RedesignStyle.spacingM
+                    rowSpacing: RedesignStyle.spacingS
 
                     Text {
                         Layout.fillWidth: true
+                        Layout.columnSpan: root.narrow ? 2 : 1
 
                         text: cell.name
                         font.pixelSize: VLCStyle.fontSize_normal
@@ -391,7 +407,9 @@ FocusScope {
                     }
 
                     Widgets.ButtonExt {
+                        Layout.fillWidth: root.narrow
                         Layout.preferredWidth: VLCStyle.dp(160, VLCStyle.scale)
+                        Layout.maximumWidth: VLCStyle.dp(160, VLCStyle.scale)
 
                         text: root.keysText(cell.hotkey)
 
@@ -402,20 +420,25 @@ FocusScope {
 
                     // the global key: the keys that work when the player has no focus
                     Widgets.ButtonExt {
+                        Layout.fillWidth: root.narrow
                         Layout.preferredWidth: VLCStyle.dp(160, VLCStyle.scale)
+                        Layout.maximumWidth: VLCStyle.dp(160, VLCStyle.scale)
 
                         visible: cell.globalKey.length > 0
 
-                        text: root.keysText(cell.globalHotkey)
+                        text: root.narrow ? qsTr("Global: %1").arg(root.keysText(cell.globalHotkey))
+                                          : root.keysText(cell.globalHotkey)
 
-                        Accessible.name: qsTr("%1, global key: %2").arg(cell.name).arg(text)
+                        Accessible.name: qsTr("%1, global key: %2").arg(cell.name).arg(root.keysText(cell.globalHotkey))
 
                         onClicked: root.startCapture(cell.actionKey, cell.name, true)
                     }
 
                     // keeps the key column aligned for an action without a global key
                     Item {
+                        Layout.fillWidth: root.narrow
                         Layout.preferredWidth: VLCStyle.dp(160, VLCStyle.scale)
+                        Layout.maximumWidth: VLCStyle.dp(160, VLCStyle.scale)
 
                         visible: cell.globalKey.length === 0
                     }

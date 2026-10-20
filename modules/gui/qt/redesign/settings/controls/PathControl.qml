@@ -94,8 +94,12 @@ FocusScope {
             //! the text typed differs from the stored value (there is an edit to take back)
             readonly property bool pendingEdit: field.text !== ((root.value === undefined || root.value === null) ? "" : String(root.value))
 
-            //! the press of Escape was used to take back an edit: its release is ours too
-            property bool escapeTaken: false
+            // Escape takes back a pending edit (and then does not close the modal), see EscapeRevert
+            readonly property EscapeRevert escapeRevert: EscapeRevert {
+                pending: field.pendingEdit
+
+                onRevert: field.showValue()
+            }
 
             function showValue() {
                 field.text = Qt.binding(() => (root.value === undefined || root.value === null) ? "" : String(root.value))
@@ -108,28 +112,13 @@ FocusScope {
                 showValue()
             }
 
-            // The modal closes on the release of Escape: when the press took an edit back, the
-            // release has to be taken too, or it would reach the popup and close the whole modal.
-            Keys.onEscapePressed: (event) => {
-                if (!field.pendingEdit) {
-                    event.accepted = false
-                    return
-                }
-                showValue()
-                field.escapeTaken = true
-                event.accepted = true
-            }
+            Keys.onEscapePressed: (event) => field.escapeRevert.press(event)
 
-            Keys.onReleased: (event) => {
-                if (event.key === Qt.Key_Escape && field.escapeTaken && !event.isAutoRepeat) {
-                    field.escapeTaken = false
-                    event.accepted = true
-                }
-            }
+            Keys.onReleased: (event) => field.escapeRevert.release(event)
 
             onActiveFocusChanged: {
                 if (!activeFocus)
-                    field.escapeTaken = false
+                    field.escapeRevert.reset()
             }
         }
 
