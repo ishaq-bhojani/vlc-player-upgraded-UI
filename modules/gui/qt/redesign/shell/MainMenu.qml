@@ -91,7 +91,7 @@ RedesignMenu {
     function _syncRecentEntry() {
         let at = -1
         for (let i = 0; i < count; ++i) {
-            if (itemAt(i).subMenu === recentMenu) {
+            if (itemAt(i)?.subMenu === recentMenu) {
                 at = i
                 break
             }

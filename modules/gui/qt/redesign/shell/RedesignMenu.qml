@@ -38,9 +38,11 @@ T.Menu {
     // the name of the menu for the assistive technologies, the title of a submenu by default
     property string accessibleName: title
 
-    // the room of the popup: the height of the window, less the margins that keep it inside
+    // The room of the popup: the height of the window less where the popup starts (y: it opens
+    // below the button) and the margin that keeps it inside, but room for a few entries at least.
     readonly property real _maxHeight: (contentItem && contentItem.Window.window)
-                                       ? (contentItem.Window.window.height - topMargin - bottomMargin)
+                                       ? Math.max(MainCtx.dp(96, RedesignStyle.scale),
+                                                  contentItem.Window.window.height - y - bottomMargin)
                                        : Number.POSITIVE_INFINITY
 
     // Settings
