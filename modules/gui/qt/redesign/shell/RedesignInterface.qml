@@ -966,6 +966,16 @@ Item {
                 }
             }
 
+            // The modal dialogs of the redesign (network stream, new playlist...), opened by the requests
+            // of ShellActions; the keyboard goes back to where it belongs when one closes.
+            DialogHost {
+                id: dialogHost
+
+                backdrop: content
+
+                onClosed: Qt.callLater(root._focusState)
+            }
+
             // The stock control-bar control LangButton (a profile may contain it) opens its tracks menu in
             // the item with this id (`rootPlayer` in the stock player), above `positionSliderY`.
             Item {

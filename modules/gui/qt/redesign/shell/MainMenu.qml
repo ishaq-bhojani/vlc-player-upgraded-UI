@@ -36,7 +36,8 @@ import VLC.Redesign
  *   Keyboard shortcuts, Settings, Help >  (Help, About, Messages)
  *
  * Each entry opens the dialog of VLC (DialogsProvider), the same one as the matching entry of the
- * classic menu. The recent media come from the media library (see MainMenuRecent.qml). As in the
+ * classic menu; "Network stream" asks the shell for its own dialog (ShellActions, DialogHost.qml).
+ * The recent media come from the media library (see MainMenuRecent.qml). As in the
  * classic menu, the entry is there only with a media library and with the "save-recentplay"
  * setting on, which is read each time the menu opens (see `openAtGlobal`). The menu closes when
  * the window loses the focus, and before an entry opens its dialog, so it never stays over it.
@@ -159,8 +160,8 @@ RedesignMenu {
     RedesignMenuItem {
         text: qsTr("Network stream…")
 
-        // OpenNetworkStreamDialog replaces it when it exists
-        onTriggered: root._launch(() => DialogsProvider.openNetDialog())
+        // the redesign dialog, opened by DialogHost.qml
+        onTriggered: root._launch(() => ShellActions.networkStreamRequested())
     }
 
     RedesignMenuItem {

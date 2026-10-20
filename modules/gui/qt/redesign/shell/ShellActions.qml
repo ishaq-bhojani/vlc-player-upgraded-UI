@@ -31,6 +31,16 @@ QtObject {
     // the Settings button was clicked: toggle the watch sidebar
     signal sidebarRequested()
 
+    // Dialogs: the redesign dialogs are hosted once, by DialogHost.qml; whoever wants one emits the
+    // request and knows nothing about the dialog.
+
+    // open the "Open network stream" dialog (title bar menu, the Add menu of the rail)
+    signal networkStreamRequested()
+
+    // open the "New playlist" dialog, which puts the media of `mediaIds` (a list of media library
+    // ids, [] for an empty playlist) into the playlist it creates. It needs the media library.
+    signal newPlaylistRequested(var mediaIds)
+
     // open the track popup on `tab` ("subtitles", "audio" or "video"), placed at `anchor`
     signal trackPopupRequested(string tab, Item anchor)
 
