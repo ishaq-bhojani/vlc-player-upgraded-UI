@@ -36,6 +36,10 @@ import VLC.Redesign
  * `item.choices` is only read when the control is a dropdown: for an option that is not a
  * Choice reading it may load the plugin that declares the option, and when that gives no
  * values the row falls back to the plain control of the type.
+ *
+ * Every control this row loads MUST declare `property bool ready` (see controls/): the value
+ * Binding below waits for `ready === true`, so a control without the property never receives
+ * its value, and no error says so. Keep that for any control added to ControlChooser.
  */
 Item {
     id: root
