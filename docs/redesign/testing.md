@@ -41,6 +41,18 @@ upstream's `debian-meson` CI job uses; Qt 6.10.2 with QuickTest, meson 1.11):
    or, when names are given, `meson test ... NAME...` (no `--suite`, so exactly
    those tests run).
 
+Before step 1, on the host and in about a second, the script runs
+`extras/redesign/comment-lint.sh` and stops at once, printing `file:line`, if a
+`*.qml`, `*.cpp` or `*.hpp` file under `modules/gui/qt/redesign/` or
+`modules/gui/qt/tests/` (tracked, or new and not ignored) has a `/*` that is
+never closed, a `/*` that starts a line inside another comment (the way a lost
+`*/` of a licence header usually hides), or a string left open at the end of a
+line or file. A C++ compiler reports such a file, but QML is only parsed when it
+is loaded, so a broken page that the interface does not open at startup passed
+every earlier check. The lint is a small scanner, not a parser (comments,
+strings, raw strings, template strings, regex literals); run it alone with
+`bash extras/redesign/comment-lint.sh [FILE...]`.
+
 There is no explicit `meson setup --reconfigure` on later runs: meson/ninja
 regenerate the build files by themselves when a `meson.build` or
 `meson_options.txt` changed. The exit status is meson test's (non-zero on a
@@ -130,6 +142,57 @@ read-only, no network and no access to the host display or profile. The script
 lists what each run wrote below that temp directory (Qt/QML caches, fontconfig,
 the Mesa shader cache, `vlc-qt-interface.conf`).
 
+### The type-load pass (every redesign QML file)
+
+The startup run only loads what the root item needs. The Settings modal, its
+pages, the dialogs and the other lazily created components are loaded on demand,
+so a file that cannot load (an unterminated licence comment made
+`RedesignModalDialog.qml` "unavailable" and every Settings page with it) used to
+pass the smoke run. The redesign run therefore also carries a probe:
+
+* `extras/redesign/qml-typeload.cpp` is compiled inside the container (g++ and
+  the Qt 6 development files are in the image; about 3 s) and injected into the
+  redesign run only, with `LD_PRELOAD`. It is tooling: it is not part of the VLC
+  build and no product code changes. It does nothing in any process whose
+  executable is not named `vlc`.
+* Once the interface has registered its QML types (`VLC.MainInterface`'s
+  `MainCtx` exists), it creates a second `QQmlEngine` in the same process, so
+  `VLC.MainInterface`, `VLC.Style`, `VLC.Player`, the C++ types of `VLC.Redesign`
+  and the rest resolve exactly as in the app, and loads **every** file of the
+  `VLC.Redesign` module as a `Component`, with the import path the app uses.
+  Nothing is instantiated: `Component.Ready` is the pass criterion. It takes about
+  1 s, inside the run that already exists (the whole pass adds about 4 s to the
+  smoke test: the probe compile plus the load).
+* The list of files comes from the built `VLC/Redesign/qmldir` (the sources and
+  singletons of `redesign/meson.build`; the module is flat, files are loaded as
+  `qrc:/qt/qml/VLC/Redesign/<name>.qml`). A `.qml` file below `redesign/` that
+  the module does not list, or two files with the same name, are errors too: such
+  a file would not be shipped nor checked.
+* Every file that does not reach `Ready` is an error of the redesign run (exit
+  status 1), printed as `typeload: <path>: <errors>`. A file that depends on a
+  broken one fails too and the chain is in its message (`Type X unavailable | ...`),
+  so the first broken file is the last one named. No result from the probe (for
+  example the interface never started, or `--seconds` below ~8) is an error as well.
+* **Media library files.** Files that use `ML*` types are only loaded behind
+  `MainCtx.mediaLibraryAvailable`, and the image has no media library, so they
+  cannot load here. The list `ML_ONLY` in `qml-smoke.sh` (currently
+  `dialogs/NewPlaylistDialog.qml`, `dialogs/RecentStreams.qml`,
+  `library/HomeContent.qml`, `settings/LibraryFolders.qml`,
+  `shell/MainMenuRecent.qml`: the files that import `VLC.MediaLibrary`, except
+  `RedesignInterface.qml`, which loads at startup) may fail, but only with a
+  missing `ML*` type, the missing `VLC.MediaLibrary` module, or a `Type ...
+  unavailable` cascade. They are printed as `skipped (ML-only)`. Any other error in
+  these files (a syntax error, an unterminated comment, a missing non-ML type)
+  still fails. When you add a file that names `ML*` types, add it to `ML_ONLY`.
+
+```text
+typeload: 101 files, 96 ready, 5 skipped (ML-only), 0 errors
+```
+
+What it does not do: create the components (a binding that is wrong only at run
+time, a missing context property, a `Loader` source that is wrong still pass),
+or exercise the ML-only files.
+
 ### Reading the summary
 
 ```text
@@ -142,6 +205,8 @@ redesign: 2 errors, 2 warnings; stock: 0 errors, 2 warnings; env: 2 + 3 SVG-plug
   `Binding loop`, `qml loading`, `no root item`, `unable to create main
   interface`, `no suitable compositor` or other Qt `generic error` line in the redesign run that the
   stock run does not have. In the stock run, the patterns above are errors too.
+  Each file of the type-load pass that fails to load (`typeload: ...`) is an error
+  of the redesign run as well and is counted in its N.
 * **warning**: any other QML/Qt diagnostic, printed so you can see it. Upstream's
   own noise, identical in both runs, lands here. Currently known and harmless in
   this container: `propagateSizeHints()` and `unknown Qt platform: offscreen`.
@@ -159,8 +224,8 @@ Exit status: 0 clean, 1 errors, 2 a run did not start, 64 usage error.
 
 The container compiles the live working tree, so an error in a file you did not
 touch may be another agent's work in progress: report it, do not fix it.
-A run takes about 45 s (nothing to compile, 2 x 15 s); raise `--seconds` on a
-slow machine.
+A run takes about 50 s (nothing to compile, 2 x 15 s, about 4 s for the type-load
+probe); raise `--seconds` on a slow machine.
 
 Compare the redesign line with the stock line: a new redesign error with a clean
 stock run is ours. The matching log lines are printed under each count.
@@ -180,8 +245,11 @@ stock run is ours. The matching log lines are printed under each count.
   the load aborts at the first such error, so QML that is created after it is
   not exercised in that run. Such an error is reported as an error, whether or
   not the same QML would load on Windows: decide that case by hand.
-* Only the code reached within N seconds is exercised: pages, dialogs and
-  popups that need a click are not opened.
+* Only the code reached within N seconds is *run*: pages, dialogs and popups that
+  need a click are not opened or created. Every redesign file is at least
+  *loaded* by the type-load pass (syntax, imports, types, "unavailable" chains),
+  except the ML-only files (see above), but a problem that appears only when a
+  component is created is invisible.
 
 ## Adding a C++ test
 

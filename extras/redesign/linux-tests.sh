@@ -15,6 +15,10 @@
 #
 # The exit status is meson test's. Tests run with QT_QPA_PLATFORM=offscreen.
 #
+# Before anything is built, comment-lint.sh scans the redesign sources for an
+# unterminated /* comment (file:line) and stops at once if it finds one: such a file
+# only fails at run time in QML, and in a page the startup run never opens.
+#
 # Layout:
 #   source tree   bind-mounted read/write at /vlc (the build never writes there)
 #   build tree    docker named volume mounted at /build (/build/linux); a build
@@ -40,6 +44,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/linux-common.sh"   # IMAGE, REPO, REPO_MO
 case "${1:-}" in
     -h|--help) sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
+
+# fail fast, before the volume and the build (a second; prints file:line)
+bash "$(dirname "${BASH_SOURCE[0]}")/comment-lint.sh"
 
 linux_prepare_volume linux-tests.sh
 

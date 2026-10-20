@@ -12,7 +12,14 @@
 #   1. redesign on (--qt-redesign, passed explicitly),
 #   2. with --no-qt-redesign (the stock interface),
 #
-# and scans the captured logs for QML diagnostics. Nothing touches the host: the
+# and scans the captured logs for QML diagnostics. The startup run only loads what
+# the root item needs; the Settings modal, dialogs and other pages load on demand
+# and would never be seen. So the redesign run also carries a type-load pass: a
+# probe (qml-typeload.cpp, compiled in the container and injected with LD_PRELOAD)
+# loads EVERY file of the VLC.Redesign module as a Component in a second QML engine
+# of the same process, once the interface registered its types, and reports each
+# file that does not reach Component.Ready (see "Type-load pass" below).
+# Nothing touches the host: the
 # run happens in a container whose HOME/XDG_* point to a fresh temp dir, the
 # repository is mounted read-only, there is no network and no access to the
 # host display (QT_QPA_PLATFORM=offscreen on a virtual X server, dummy
@@ -44,7 +51,20 @@
 #            "ImageHelper: svg image plugin is not found."): printed separately
 #            as "env:", counted in neither errors nor warnings.
 #
-# Summary line:  redesign: N errors, M warnings; stock: N errors, M warnings; env: R + S SVG-plugin lines
+# Summary lines: typeload: N files, R ready, S skipped (ML-only), E errors
+#                redesign: N errors, M warnings; stock: N errors, M warnings; env: R + S SVG-plugin lines
+#
+# Type-load pass: every file listed in the built VLC/Redesign/qmldir (that is the
+# sources and singletons of redesign/meson.build) is loaded as a Component
+# (Component.Ready is the pass criterion, nothing is instantiated). Every file that
+# fails is an error of the redesign run, whatever its message. Also an error: a
+# .qml file under modules/gui/qt/redesign that the module does not list (it would
+# not be in the resources, so it would be neither shipped nor checked), and a probe
+# that printed no result (needs the interface to be up, so ~8 s or more per run).
+# Files that use media library types, which this image does not register, may
+# fail ONLY with a missing ML* type or the missing module ("MLFolderModel is not a
+# type", "module VLC.MediaLibrary is not installed", "Type ... unavailable") and
+# are then printed as "skipped (ML-only)"; the list is ML_ONLY below.
 #
 # Full logs are kept in the container only; the matching lines are printed.
 # Set QML_SMOKE_FULL_LOG=1 to print the complete logs as well.
@@ -112,7 +132,64 @@ XVFB_PID=$!
 export DISPLAY=:77
 for _ in $(seq 50); do [ -S /tmp/.X11-unix/X77 ] && break; sleep 0.1; done
 
+# --- type-load probe ----------------------------------------------------------
+# Files that name media library types (the image has no libmedialibrary, so
+# MainUI::registerQMLTypes does not register them) and are only loaded behind
+# MainCtx.mediaLibraryAvailable. Derived with
+#   grep -rl 'VLC.MediaLibrary' modules/gui/qt/redesign --include=*.qml
+# minus shell/RedesignInterface.qml (it only names the module in a URL/comment and
+# loads at startup) and confirmed by the run itself: every other file must reach
+# Component.Ready, and these may only fail with a missing type or module.
+ML_ONLY=(
+    dialogs/NewPlaylistDialog.qml
+    dialogs/RecentStreams.qml
+    library/HomeContent.qml
+    settings/LibraryFolders.qml
+    shell/MainMenuRecent.qml
+)
+QMLDIR="$B/modules/gui/qt/VLC/Redesign/qmldir"
+[ -f "$QMLDIR" ] || { echo "qml-smoke.sh: $QMLDIR was not generated" >&2; exit 2; }
+# The module is flat: genqrc.py puts every file at qrc:/qt/qml/VLC/Redesign/<basename>,
+# so the probe loads by basename. typeload.list = the files the module ships (the
+# "Name 1.0 file" and "singleton Name 1.0 file" lines of the built qmldir);
+# typeload.ondisk = "basename<TAB>path below redesign/" of the tree, to show paths.
+awk 'NF >= 3 && $1 != "module" && $1 != "prefer" { print $NF }' "$QMLDIR" | sort > "$ROOT/typeload.list"
+(cd /vlc/modules/gui/qt/redesign && find . -name '*.qml' | sed 's|^\./||' | awk -F/ '{ print $NF "\t" $0 }' | sort) > "$ROOT/typeload.ondisk"
+: > "$ROOT/typeload.problems"
+# two files with one basename would shadow each other in the flat module
+cut -f1 "$ROOT/typeload.ondisk" | uniq -d | while IFS= read -r f; do
+    echo "typeload: $f exists more than once below redesign/ (the module is flat, one would shadow the other)" >> "$ROOT/typeload.problems"
+done
+# a .qml file of the tree that the module does not list is never shipped nor loaded
+comm -13 "$ROOT/typeload.list" <(cut -f1 "$ROOT/typeload.ondisk" | sort -u) | while IFS= read -r f; do
+    echo "typeload: $(awk -F'\t' -v f="$f" '$1 == f { print $2; exit }' "$ROOT/typeload.ondisk") is not listed in the VLC.Redesign module (redesign/meson.build); it is neither shipped nor checked" >> "$ROOT/typeload.problems"
+done
+comm -23 "$ROOT/typeload.list" <(cut -f1 "$ROOT/typeload.ondisk" | sort -u) | while IFS= read -r f; do
+    echo "typeload: the module lists $f but the tree has no such file" >> "$ROOT/typeload.problems"
+done
+: > "$ROOT/typeload.mlonly"
+for f in "${ML_ONLY[@]}"; do
+    if [ -f "/vlc/modules/gui/qt/redesign/$f" ]; then
+        basename "$f" >> "$ROOT/typeload.mlonly"
+    else
+        echo "typeload: ML_ONLY names $f, which is not a file of the tree (update ML_ONLY in qml-smoke.sh)" >> "$ROOT/typeload.problems"
+    fi
+done
+# The probe is compiled here (the image has g++ and the Qt 6 development files)
+# and injected into the redesign run only. It lives in /vlc/extras/redesign, is
+# never part of the VLC build and changes nothing in the product.
+echo "==> type-load probe: g++ qml-typeload.cpp ($(wc -l < "$ROOT/typeload.list" | tr -d ' ') QML files listed)"
+PROBE_SECONDS=$SECONDS
+if ! g++ -std=c++17 -fPIC -shared -O1 -Wall $(pkg-config --cflags Qt6Qml Qt6Core) \
+        /vlc/extras/redesign/qml-typeload.cpp -o "$ROOT/libqml-typeload.so" \
+        $(pkg-config --libs Qt6Qml Qt6Core); then
+    echo "qml-smoke.sh: the type-load probe did not compile" >&2
+    exit 2
+fi
+PROBE_SECONDS=$((SECONDS - PROBE_SECONDS))
+
 # run_vlc NAME [vlc args...]  ->  $ROOT/NAME.log, $ROOT/NAME.rc, $ROOT/NAME.home
+# RUN_PRELOAD=lib (optional): LD_PRELOAD for vlc itself (the type-load probe).
 run_vlc() {
     local name="$1"; shift
     local home="$ROOT/$name.home"
@@ -131,7 +208,9 @@ run_vlc() {
         ${QML_SMOKE_QUICK_BACKEND:+QT_QUICK_BACKEND=$QML_SMOKE_QUICK_BACKEND} \
         VLC_PLUGIN_PATH="$B/modules" VLC_LIB_PATH="$B/modules" VLC_LIBEXEC_PATH="$B/modules" \
         PATH="$B/bin:$PATH" \
-        timeout -k 10 "$SMOKE_SECONDS" "$B/bin/vlc" \
+        timeout -k 10 "$SMOKE_SECONDS" \
+        ${RUN_PRELOAD:+env LD_PRELOAD="$RUN_PRELOAD" QML_TYPELOAD_LIST="$ROOT/typeload.list" QML_TYPELOAD_ML_ONLY="$ROOT/typeload.mlonly"} \
+        "$B/bin/vlc" \
             -I qt --verbose=2 --no-qt-privacy-ask \
             --qt-compositor=dummy --aout=dummy --vout=dummy --no-video-title-show \
             --no-plugins-cache --no-metadata-network-access \
@@ -140,7 +219,7 @@ run_vlc() {
     echo "$rc" >"$ROOT/$name.rc"
 }
 
-run_vlc redesign --qt-redesign
+RUN_PRELOAD="$ROOT/libqml-typeload.so" run_vlc redesign --qt-redesign
 run_vlc stock --no-qt-redesign
 
 # --- analysis -----------------------------------------------------------------
@@ -176,7 +255,7 @@ for name in redesign stock; do
         echo "!! run '$name': the Qt interface did not start (no 'using interface module \"qt\"' in the log)"
         echo "$name" >> "$ROOT/notstarted"
     fi
-    { grep -avE ' debug: ' "$log" | grep -aE "$DIAG_RE" | norm | sort -u; } > "$ROOT/$name.alldiag" || true
+    { grep -avE ' debug: |TYPELOAD ' "$log" | grep -aE "$DIAG_RE" | norm | sort -u; } > "$ROOT/$name.alldiag" || true
     { grep -aE "$ENV_RE" "$ROOT/$name.alldiag" || true; } > "$ROOT/$name.env"
     { grep -avE "$ENV_RE" "$ROOT/$name.alldiag" || true; } > "$ROOT/$name.diag"
 done
@@ -196,11 +275,38 @@ while IFS= read -r line; do
     fi
 done < "$ROOT/redesign.diag"
 
+# Type-load pass: its result lines are in the redesign log (TYPELOAD lines).
+# Every failing file is an error of the redesign run, as is a missing result.
+{ grep -a 'TYPELOAD ' "$ROOT/redesign.log" || true; } | sed -E 's/^.*TYPELOAD /TYPELOAD /' > "$ROOT/typeload.out"
+tl_summary="$(grep -a '^TYPELOAD summary ' "$ROOT/typeload.out" | tail -n 1 || true)"
+# (the probe names files by basename; show the path below redesign/)
+{ grep -a '^TYPELOAD error ' "$ROOT/typeload.out" || true; } | sed 's/^TYPELOAD error //' |
+    awk -F '\t' 'NR == FNR { path[$1] = $2; next }
+                 { name = $0; sub(/: .*/, "", name); rest = substr($0, length(name) + 1)
+                   print "typeload: " ((name in path) ? path[name] : name) rest }' \
+        "$ROOT/typeload.ondisk" - >> "$ROOT/redesign.errors"
+cat "$ROOT/typeload.problems" >> "$ROOT/redesign.errors"
+if [ -z "$tl_summary" ] && ! grep -qx redesign "$ROOT/notstarted"; then
+    echo "typeload: no result from the probe ($(grep -a '^TYPELOAD notrun ' "$ROOT/typeload.out" | head -n 1 | sed 's/^TYPELOAD notrun //' || true)); the redesign run must reach the registered interface" >> "$ROOT/redesign.errors"
+fi
+tl_ready="$(grep -ac '^TYPELOAD ready ' "$ROOT/typeload.out" || true)"
+tl_skipped="$(grep -ac '^TYPELOAD skipped-ml ' "$ROOT/typeload.out" || true)"
+tl_errors="$(grep -ac '^TYPELOAD error ' "$ROOT/typeload.out" || true)"
+tl_files="$(count "$ROOT/typeload.list")"
+
 # Stock run: failure patterns are errors, the rest is upstream noise (printed).
 { grep -aE "$FAIL_RE" "$ROOT/stock.diag" || true; } > "$ROOT/stock.errors"
 { grep -avE "$FAIL_RE" "$ROOT/stock.diag" || true; } > "$ROOT/stock.warnings"
 
 status=0
+echo
+tl_ms="did not report"
+[ -z "$tl_summary" ] || tl_ms="loaded in ${tl_summary##* ms=} ms"
+echo "---- typeload: every file of the VLC.Redesign module loaded as a Component (probe built in $PROBE_SECONDS s, $tl_ms) ----"
+{ grep -a '^TYPELOAD skipped-ml ' "$ROOT/typeload.out" || true; } | sed 's/^TYPELOAD skipped-ml //' |
+    awk -F '\t' 'NR == FNR { path[$1] = $2; next }
+                 { print "skipped (ML-only): " (($0 in path) ? path[$0] : $0) }' "$ROOT/typeload.ondisk" -
+echo "typeload: $tl_files files, $tl_ready ready, $tl_skipped skipped (ML-only), $tl_errors errors"
 for name in redesign stock; do
     echo
     echo "---- $name: $(count "$ROOT/$name.errors") error line(s) ----"
