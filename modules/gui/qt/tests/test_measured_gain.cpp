@@ -620,6 +620,38 @@ private slots:
         aout_Release(aout);
     }
 
+    void releaseRemovesAGainCreatedAfterTheMediaChangeCleared()
+    {
+        VlcRig rig(this);
+        QVERIFY(rig.ok());
+        const QUrl first = writeWav("one.wav", 1.0, 0.2);
+        const QUrl second = writeWav("two.wav", 1.0, 0.2);
+        audio_output_t* aout = vlc_player_aout_Hold(rig.player);
+        QVERIFY(aout);
+
+        // the sequence of the race: the media change (listener) runs while the variable does not
+        // exist yet, and the gain is created right after it, for the new media
+        rig.setMedia(first);
+        rig.setMedia(second);
+        QTRY_COMPARE_WITH_TIMEOUT(rig.backend->currentMedia().url, second, 5000);
+        QCOMPARE(var_Type(aout, "gain"), 0);
+        rig.backend->setOutputGain(0.5f);
+        QCOMPARE(var_Type(aout, "gain") != 0, true);
+
+        // the following release removes it, whatever the listener did before
+        rig.backend->setOutputGain(std::nullopt);
+        QCOMPARE(var_Type(aout, "gain"), 0);
+        QCOMPARE(gainOf(aout), 1.0);
+
+        // and a variable that this backend knows nothing about (made after the listener ran) goes too
+        var_Create(aout, "gain", VLC_VAR_FLOAT);
+        var_SetFloat(aout, "gain", 3.f);
+        rig.backend->setOutputGain(std::nullopt);
+        QCOMPARE(var_Type(aout, "gain"), 0);
+        QCOMPARE(gainOf(aout), 1.0);
+        aout_Release(aout);
+    }
+
     void backendDropsTheGainWhenTheMediaChanges()
     {
         VlcRig rig(this);

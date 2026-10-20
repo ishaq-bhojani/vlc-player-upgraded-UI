@@ -44,8 +44,11 @@ namespace
 constexpr const char* kGainVar = "gain";
 constexpr const char* kModeVar = "audio-replay-gain-mode";
 
-//! Gives the audio output its own gain back. Safe from any thread (the variables are locked);
-//! the player is not needed to be locked for vlc_player_aout_Hold().
+//! Gives the audio output its own gain back. Always looks at the output (a variable lookup): no
+//! flag decides whether there is something to clear, because a flag consumed by the media change
+//! before the variable exists would leave a variable created after it behind. Safe from any
+//! thread (the variables are locked); the player is not needed to be locked for
+//! vlc_player_aout_Hold().
 void clearGain(vlc_player_t* player)
 {
     audio_output_t* aout = vlc_player_aout_Hold(player);
@@ -162,19 +165,17 @@ public:
     void setOutputGain(std::optional<float> factor) override
     {
         if (!factor) {
-            if (m_hasGain.exchange(false))
-                clearGain(m_player);
+            clearGain(m_player);
             return;
         }
         audio_output_t* aout = vlc_player_aout_Hold(m_player);
         if (!aout)
             return;
-        // Flag first: a media change on the player thread that runs from here on always finds
-        // something to clear. If it runs between the flag and the variable it clears nothing, and
-        // the gain set below then plays on the new media until the refresh that the change of
-        // media causes (MeasuredGain::refresh(), from PlayerController::inputChanged) takes it
-        // back: that refresh is the self-heal.
-        m_hasGain = true;
+        // If a media change on the player thread runs before the variable exists, it clears nothing
+        // and the gain set below plays on the new media until the refresh that the change of media
+        // causes (MeasuredGain::refresh(), from PlayerController::inputChanged) takes it back. That
+        // refresh is the self-heal, and it works because the clear never depends on a flag: it
+        // always removes the variable if there is one.
         if (var_Type(aout, kGainVar) == 0) {
             // DOINHERIT: the variable is born with the value the option has (the user's own gain),
             // not with 0.0, which would mute the output if the decoder triggers the replay gain
@@ -188,8 +189,6 @@ public:
 
     std::optional<float> outputGain() override
     {
-        if (!m_hasGain)
-            return std::nullopt;
         std::optional<float> value;
         if (audio_output_t* aout = vlc_player_aout_Hold(m_player)) {
             if (var_Type(aout, kGainVar) != 0)
@@ -204,15 +203,13 @@ private:
     //! ends does not stay for the next one
     static void onCurrentMediaChanged(vlc_player_t* player, input_item_t*, void* data)
     {
-        VlcMeasuredGainBackend* self = static_cast<VlcMeasuredGainBackend*>(data);
-        if (self->m_hasGain.exchange(false))
-            clearGain(player);
+        (void)data;
+        clearGain(player);
     }
 
     vlc_player_t* m_player;
     vlc_object_t* m_obj;
     vlc_player_listener_id* m_listener = nullptr;
-    std::atomic_bool m_hasGain{false}; //!< this backend created the variable of the output
 };
 
 } // namespace
