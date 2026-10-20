@@ -45,6 +45,21 @@ constexpr int kWaveformRate = 8000;
 //! files longer than this are not analysed (2 hours)
 constexpr int kWaveformMaxSeconds = 2 * 3600;
 
+//! the RMS level of digital silence, and the floor of rmsDbfs()
+constexpr float kRmsFloorDbfs = -120.f;
+//! the RMS level a measured track is brought to (the replay gain reference, -18, taken as dBFS RMS)
+constexpr float kMeasuredTargetDbfs = -18.f;
+//! the limits of measuredGainDb(): a very quiet track is not lifted by more, a loud one not cut by more
+constexpr float kMeasuredGainMinDb = -12.f;
+constexpr float kMeasuredGainMaxDb = 4.f;
+
+//! RMS level of 16-bit samples in dB relative to full scale (a full-scale sine is -3.01 dB),
+//! at least kRmsFloorDbfs (also for no samples)
+float rmsDbfs(const int16_t* samples, size_t count);
+//! the gain that brings a track of RMS level `rms` to kMeasuredTargetDbfs, limited to
+//! [kMeasuredGainMinDb, kMeasuredGainMaxDb]: clamp(-18 - rms, -12, +4)
+float measuredGainDb(float rms);
+
 //! max |s| / 32768 of every bucket; size() == buckets. The samples are spread evenly over the
 //! buckets; with fewer samples than buckets, sample i is bucket i and the trailing buckets are 0.
 QVector<float> computePeaks(const int16_t* samples, size_t count, int buckets);
@@ -54,17 +69,28 @@ QByteArray encodePeaks(const QVector<float>& peaks);
 //! empty when the size is not a multiple of 4
 QVector<float> decodePeaks(const QByteArray& bytes);
 
-//! The cache file: "VRWF", one version byte (1), then encodePeaks() of exactly kWaveformBuckets
-//! values. A later version may append fields (the loudness gain): bump the byte, old files are
-//! then rejected by decodeWaveformCache() and decoded again.
-QByteArray encodeWaveformCache(const QVector<float>& peaks);
-//! empty on a wrong magic, a version other than the one this build writes, a wrong size, or a
-//! value that is not a finite number in [0, 1]
-QVector<float> decodeWaveformCache(const QByteArray& file);
+//! What the decode pass of a file gives, and what the cache file holds
+struct WaveformCache
+{
+    QVector<float> peaks;  //!< kWaveformBuckets values in [0, 1]; empty: nothing (decodeWaveformCache())
+    float gainDb = 0.f;    //!< measuredGainDb() of the whole file
+
+    bool isEmpty() const { return peaks.isEmpty(); }
+};
+
+//! The cache file: "VRWF", one version byte (2), encodePeaks() of exactly kWaveformBuckets values,
+//! then the gain as a little-endian float32 (dB). The peak of the file is the largest value of the
+//! peaks. A later version may append fields: bump the byte, files of another version are then
+//! rejected by decodeWaveformCache() and decoded again (version 1 held the peaks alone).
+QByteArray encodeWaveformCache(const QVector<float>& peaks, float gainDb);
+//! empty (no peaks) on a wrong magic, a version other than the one this build writes, a wrong
+//! size, a peak that is not a finite number in [0, 1], or a gain that is not a finite number in
+//! [kMeasuredGainMinDb, kMeasuredGainMaxDb]
+WaveformCache decodeWaveformCache(const QByteArray& file);
 //! The negative marker, stored in the cache file of a url that can not be analysed (too long, no
 //! audio, undecodable): "VRWF" + the version byte and nothing else. It stops the file from being
 //! decoded again at every play; the provider ignores it when the source changed after it was
-//! written, and after a week.
+//! written, and after a week. The marker of another version is stale, like a cache of it.
 QByteArray encodeWaveformFailed();
 bool isWaveformFailedMarker(const QByteArray& file);
 //! <cacheDir>/<sha1 of the url, hex>.bin
@@ -87,6 +113,10 @@ public:
     bool exceeded() const { return m_total.load() > m_maxSamples; }
     //! the peaks of everything appended so far (kWaveformBuckets values)
     QVector<float> finish() const;
+    //! rmsDbfs() of everything appended so far (kRmsFloorDbfs when nothing)
+    float levelDbfs() const;
+    //! measuredGainDb() of levelDbfs()
+    float gainDb() const { return measuredGainDb(levelDbfs()); }
     //! called on the feeding thread after every append() with sampleCount() (progress, tests)
     void setProgressCallback(std::function<void(size_t)> cb) { m_progress = std::move(cb); }
 
@@ -99,6 +129,7 @@ private:
     size_t m_inBlock = 0;
     int16_t m_blockMax = 0;
     std::vector<int16_t> m_blocks;
+    uint64_t m_sumSquares = 0; //!< of the samples, exact: 2 hours of 8 kHz stay far below 2^64
     std::function<void(size_t)> m_progress;
 };
 
@@ -173,6 +204,8 @@ class WaveformProvider : public QObject
     //! kWaveformBuckets values in [0, 1], empty until ready
     Q_PROPERTY(QVariantList peaks READ peaks NOTIFY peaksChanged)
     Q_PROPERTY(bool ready READ ready NOTIFY peaksChanged)
+    //! measuredGainDb() of the file, from the same pass that gives the peaks (0 until ready)
+    Q_PROPERTY(double gainDb READ gainDb NOTIFY peaksChanged)
     //! the analysis of a file url ended without peaks
     Q_PROPERTY(bool failed READ failed NOTIFY failedChanged)
 
@@ -181,6 +214,14 @@ public:
     static void setDefaultEnvironment(std::function<WaveformEnvironment()> factory);
     //! jobs that are running or waiting, all providers together (tests)
     static int activeJobs();
+    /**
+     * Stops the running job (and waits for it), forgets the waiting ones and drops the queue of
+     * the process; the next provider that asks for a file starts a new one. This is what the end
+     * of the QCoreApplication does by itself, so that an interface that is opened again in the
+     * same process gets a working queue; tests call it to check that. Providers that exist
+     * stay valid but get no result of the dropped jobs.
+     */
+    static void shutdown();
 
     explicit WaveformProvider(QObject* parent = nullptr);
     explicit WaveformProvider(WaveformEnvironment env, QObject* parent = nullptr);
@@ -190,6 +231,9 @@ public:
     void setUrl(const QUrl& url);
     QVariantList peaks() const { return m_peaks; }
     bool ready() const { return !m_peaks.isEmpty(); }
+    double gainDb() const { return m_gainDb; }
+    //! the largest peak value of the file in [0, 1] (0 until ready)
+    double peak() const { return m_peak; }
     bool failed() const { return m_failed; }
 
 signals:
@@ -200,12 +244,16 @@ signals:
 private:
     friend class WaveformCoordinator;
     //! the job of the url ended (not called for a cancelled one)
-    void jobEnded(bool ok, const QVector<float>& peaks);
+    void jobEnded(bool ok, const QVector<float>& peaks, float gainDb);
     static bool isAnalysable(const QUrl& url);
+    //! leaves the job this provider waits for (if any)
+    void leaveJob();
 
     WaveformEnvironment m_env;
     QUrl m_url;
     QVariantList m_peaks;
+    double m_gainDb = 0.0;
+    double m_peak = 0.0;
     bool m_failed = false;
     std::shared_ptr<WaveformJob> m_job; //!< the job this provider waits for
 };

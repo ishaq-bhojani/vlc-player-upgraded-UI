@@ -35,6 +35,8 @@ import QtQml
  * - "effectSlider" a parameter of an Effects filter: `group` (the Effects map), `name` (its key
  *                  there) and `key` (the configuration item that gives the range and the default)
  * - "filterToken"  a video filter in the `key` list (video-filter): `token`
+ * - "replayGain"   the Replay gain choice (None, Track, Album, Measured): the mode `key` plus the
+ *                  redesign's flag, through MeasuredGain
  * - "libraryFolders", "extensions", "toolConsent": the three rows that are not configuration items
  * Every row has an `id` (unique in its page, used to scroll to the row of a search result) and a
  * `title` (the label of the rows that are not configuration items).
@@ -218,7 +220,9 @@ QtObject {
                 choice("mmdevice-passthrough"),
                 s("audio-language"),
                 s("volume-save"),
-                choice("audio-replay-gain-mode"),
+                special("replayGain", qsTr("Replay gain"),
+                        { key: "audio-replay-gain-mode",
+                          description: qsTr("Track and Album use the replay gain tags of a file. Measured also levels the files that have none: their loudness is measured while the file is analysed, and the volume is matched to it. The first play of a file is levelled after about a second, the next ones at once. Your volume setting is not changed.") }),
                 s("audio-replay-gain-preamp"),
                 s("audio-replay-gain-default"),
                 s("audio-time-stretch"),

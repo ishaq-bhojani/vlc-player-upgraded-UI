@@ -27,7 +27,7 @@ import VLC.Redesign
  *
  * It works on the data of the rows and not on the delegates: a page shows only the rows in view
  * (a ListView), but "Reset to defaults" and the search are about all of them. It needs the C++
- * singletons of the qt plugin (RedesignSettings, Effects, SettingsBridge, ToolManager), so it is
+ * singletons of the qt plugin (RedesignSettings, Effects, MeasuredGain, SettingsBridge, ToolManager), so it is
  * not loaded by qml_test: the pure part is SettingsData and SettingsSearch.
  */
 QtObject {
@@ -52,6 +52,7 @@ QtObject {
         case "accent":
         case "effectSlider":
         case "filterToken":
+        case "replayGain":
             return hasKey(row.key)
         case "effectToggle":
         case "equalizer":
@@ -123,6 +124,10 @@ QtObject {
         }
         case "theme":
             return SettingsBridge.colorSchemeIndex !== schemeIndex("system")
+        case "replayGain": {
+            const setting = item(row.key)
+            return MeasuredGain.choice !== String(setting ? setting.defaultValue : "none")
+        }
         case "effectToggle":
             return Effects[row.prop] === true
         case "effectSlider": {
@@ -155,6 +160,11 @@ QtObject {
         case "theme":
             SettingsBridge.colorSchemeIndex = schemeIndex("system")
             break
+        case "replayGain": {
+            const setting = item(row.key)
+            MeasuredGain.choice = String(setting ? setting.defaultValue : "none")
+            break
+        }
         case "effectToggle":
             Effects[row.prop] = false
             break

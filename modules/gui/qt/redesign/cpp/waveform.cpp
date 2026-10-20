@@ -32,6 +32,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QPointer>
 #include <QSaveFile>
 #include <QThread>
 #include <QtEndian>
@@ -43,7 +44,7 @@ namespace
 {
 
 constexpr char kCacheMagic[4] = {'V', 'R', 'W', 'F'};
-constexpr uint8_t kCacheVersion = 1;
+constexpr uint8_t kCacheVersion = 2;
 constexpr int kCacheHeaderSize = 5;
 //! a negative marker older than this (a week) is ignored
 constexpr qint64 kFailedMarkerSeconds = qint64(7) * 24 * 3600;
@@ -55,6 +56,21 @@ std::function<WaveformEnvironment()>& defaultEnvironment()
 {
     static std::function<WaveformEnvironment()> factory;
     return factory;
+}
+
+//! RMS level in dBFS of `count` samples whose squares add up to `sumSquares`
+float levelFromSum(uint64_t sumSquares, size_t count)
+{
+    if (count == 0 || sumSquares == 0)
+        return kRmsFloorDbfs;
+    const double meanSquare = double(sumSquares) / double(count);
+    const double db = 10.0 * std::log10(meanSquare / (32768.0 * 32768.0));
+    return float(std::max(db, double(kRmsFloorDbfs)));
+}
+
+inline uint64_t squareOf(int16_t s)
+{
+    return uint64_t(int32_t(s) * int32_t(s)); // at most 2^30
 }
 
 inline int16_t absSample(int16_t s)
@@ -113,26 +129,50 @@ QVector<float> decodePeaks(const QByteArray& bytes)
     return peaks;
 }
 
-QByteArray encodeWaveformCache(const QVector<float>& peaks)
+float rmsDbfs(const int16_t* samples, size_t count)
+{
+    if (!samples)
+        return kRmsFloorDbfs;
+    uint64_t sum = 0;
+    for (size_t i = 0; i < count; ++i)
+        sum += squareOf(samples[i]);
+    return levelFromSum(sum, count);
+}
+
+float measuredGainDb(float rms)
+{
+    if (std::isnan(rms))
+        return 0.f;
+    return std::clamp(kMeasuredTargetDbfs - rms, kMeasuredGainMinDb, kMeasuredGainMaxDb);
+}
+
+QByteArray encodeWaveformCache(const QVector<float>& peaks, float gainDb)
 {
     QByteArray file(kCacheMagic, sizeof(kCacheMagic));
     file.append(char(kCacheVersion));
     file.append(encodePeaks(peaks));
+    file.append(encodePeaks({gainDb}));
     return file;
 }
 
-QVector<float> decodeWaveformCache(const QByteArray& file)
+WaveformCache decodeWaveformCache(const QByteArray& file)
 {
-    if (file.size() != kCacheHeaderSize + kWaveformBuckets * int(sizeof(uint32_t)))
+    constexpr int peaksBytes = kWaveformBuckets * int(sizeof(uint32_t));
+    if (file.size() != kCacheHeaderSize + peaksBytes + int(sizeof(uint32_t)))
         return {};
     if (std::memcmp(file.constData(), kCacheMagic, sizeof(kCacheMagic)) != 0
         || uint8_t(file[sizeof(kCacheMagic)]) != kCacheVersion)
         return {};
-    QVector<float> peaks = decodePeaks(file.mid(kCacheHeaderSize));
-    for (float p : peaks)
+    WaveformCache out;
+    out.peaks = decodePeaks(file.mid(kCacheHeaderSize, peaksBytes));
+    for (float p : out.peaks)
         if (!std::isfinite(p) || p < 0.f || p > 1.f)
             return {};
-    return peaks;
+    const QVector<float> gain = decodePeaks(file.mid(kCacheHeaderSize + peaksBytes));
+    if (gain.size() != 1 || !std::isfinite(gain[0]) || gain[0] < kMeasuredGainMinDb || gain[0] > kMeasuredGainMaxDb)
+        return {};
+    out.gainDb = gain[0];
+    return out;
 }
 
 QByteArray encodeWaveformFailed()
@@ -164,6 +204,7 @@ PeaksAccumulator::PeaksAccumulator(size_t maxSamples)
 void PeaksAccumulator::append(const int16_t* samples, size_t count)
 {
     for (size_t i = 0; i < count; ++i) {
+        m_sumSquares += squareOf(samples[i]);
         m_blockMax = std::max(m_blockMax, absSample(samples[i]));
         if (++m_inBlock == m_blockSize) {
             m_blocks.push_back(m_blockMax);
@@ -186,6 +227,11 @@ void PeaksAccumulator::fold()
         m_blocks[i] = std::max(m_blocks[2 * i], m_blocks[2 * i + 1]);
     m_blocks.resize(half);
     m_blockSize *= 2;
+}
+
+float PeaksAccumulator::levelDbfs() const
+{
+    return levelFromSum(m_sumSquares, m_total.load());
 }
 
 QVector<float> PeaksAccumulator::finish() const
@@ -231,6 +277,7 @@ struct WaveformJob
     std::vector<WaveformProvider*> subscribers;
     JobOutcome outcome = JobOutcome::Failed; //!< written by the worker, read after it ended
     QVector<float> peaks;
+    float gainDb = 0.f;
 };
 
 namespace
@@ -264,9 +311,10 @@ JobOutcome runJob(WaveformJob& job)
             QFile f(cacheFile);
             if (f.open(QIODevice::ReadOnly)) {
                 const QByteArray bytes = f.readAll();
-                const QVector<float> cached = decodeWaveformCache(bytes);
-                if (cached.size() == kWaveformBuckets) {
-                    job.peaks = cached;
+                const WaveformCache cached = decodeWaveformCache(bytes);
+                if (cached.peaks.size() == kWaveformBuckets) {
+                    job.peaks = cached.peaks;
+                    job.gainDb = cached.gainDb;
                     return JobOutcome::Ready;
                 }
                 if (isWaveformFailedMarker(bytes)
@@ -298,7 +346,8 @@ JobOutcome runJob(WaveformJob& job)
 
     // 3. the cache; a failure to write it is not an error
     job.peaks = acc.finish();
-    writeCacheFile(cacheFile, encodeWaveformCache(job.peaks));
+    job.gainDb = acc.gainDb();
+    writeCacheFile(cacheFile, encodeWaveformCache(job.peaks, job.gainDb));
     return JobOutcome::Ready;
 }
 
@@ -313,10 +362,45 @@ JobOutcome runJob(WaveformJob& job)
 class WaveformCoordinator : public QObject
 {
 public:
+    /**
+     * The queue of the process. It is a child of the QCoreApplication, so it is deleted (and its
+     * running job joined) with it; the QPointer tells the next caller that it is gone, so an
+     * interface that is opened again in the same process (with a new application object) gets a
+     * new queue instead of a dangling one. Without an application object (a tool, a test that
+     * has none) the queue has no parent and a static guard deletes it when the process ends.
+     * Used from the GUI thread, like the providers.
+     */
     static WaveformCoordinator& instance()
     {
-        static WaveformCoordinator* coordinator = new WaveformCoordinator(QCoreApplication::instance());
-        return *coordinator;
+        QPointer<WaveformCoordinator>& slot = instanceSlot();
+        if (!slot) {
+            QCoreApplication* app = QCoreApplication::instance();
+            slot = new WaveformCoordinator(app);
+            if (!app)
+                orphanGuard().reset(slot.data());
+        }
+        return *slot;
+    }
+
+    //! the queue if there is one
+    static WaveformCoordinator* existing() { return instanceSlot().data(); }
+
+    //! deletes the queue (stops and joins the running job); the next instance() makes a new one
+    static void shutdown()
+    {
+        WaveformCoordinator* coordinator = instanceSlot().data();
+        if (!coordinator)
+            return;
+        if (orphanGuard().get() == coordinator)
+            orphanGuard().release();
+        delete coordinator; // the slot sees it go
+    }
+
+    //! no new queue is made just to ask
+    static int jobsOfTheProcess()
+    {
+        const WaveformCoordinator* coordinator = instanceSlot().data();
+        return coordinator ? coordinator->jobCount() : 0;
     }
 
     ~WaveformCoordinator() override
@@ -364,6 +448,18 @@ public:
 private:
     explicit WaveformCoordinator(QObject* parent) : QObject(parent) {}
 
+    static QPointer<WaveformCoordinator>& instanceSlot()
+    {
+        static QPointer<WaveformCoordinator> slot;
+        return slot;
+    }
+
+    static std::unique_ptr<WaveformCoordinator>& orphanGuard()
+    {
+        static std::unique_ptr<WaveformCoordinator> guard;
+        return guard;
+    }
+
     std::shared_ptr<WaveformJob> find(const QString& key) const
     {
         if (m_running && m_running->key == key && !m_running->cancel.cancelled())
@@ -408,7 +504,7 @@ private:
             WaveformProvider* provider = job->subscribers.front();
             job->subscribers.erase(job->subscribers.begin());
             if (job->outcome != JobOutcome::Cancelled)
-                provider->jobEnded(job->outcome == JobOutcome::Ready, job->peaks);
+                provider->jobEnded(job->outcome == JobOutcome::Ready, job->peaks, job->gainDb);
         }
         pump();
     }
@@ -426,7 +522,12 @@ void WaveformProvider::setDefaultEnvironment(std::function<WaveformEnvironment()
 
 int WaveformProvider::activeJobs()
 {
-    return WaveformCoordinator::instance().jobCount();
+    return WaveformCoordinator::jobsOfTheProcess();
+}
+
+void WaveformProvider::shutdown()
+{
+    WaveformCoordinator::shutdown();
 }
 
 WaveformProvider::WaveformProvider(QObject* parent)
@@ -443,8 +544,17 @@ WaveformProvider::WaveformProvider(WaveformEnvironment env, QObject* parent)
 WaveformProvider::~WaveformProvider()
 {
     // does not wait: a job nobody waits for is cancelled and ends on its own
-    if (m_job)
-        WaveformCoordinator::instance().unsubscribe(this, m_job);
+    leaveJob();
+}
+
+void WaveformProvider::leaveJob()
+{
+    if (!m_job)
+        return;
+    // a queue that is gone (shutdown) has nothing to tell; do not make one just for that
+    if (WaveformCoordinator* coordinator = WaveformCoordinator::existing())
+        coordinator->unsubscribe(this, m_job);
+    m_job.reset();
 }
 
 bool WaveformProvider::isAnalysable(const QUrl& url)
@@ -456,15 +566,14 @@ void WaveformProvider::setUrl(const QUrl& url)
 {
     if (url == m_url)
         return;
-    if (m_job) {
-        WaveformCoordinator::instance().unsubscribe(this, m_job);
-        m_job.reset();
-    }
+    leaveJob();
     m_url = url;
     emit urlChanged();
 
     if (!m_peaks.isEmpty()) {
         m_peaks.clear();
+        m_gainDb = 0.0;
+        m_peak = 0.0;
         emit peaksChanged();
     }
     if (m_failed) {
@@ -475,7 +584,7 @@ void WaveformProvider::setUrl(const QUrl& url)
         m_job = WaveformCoordinator::instance().subscribe(this, m_url, m_env);
 }
 
-void WaveformProvider::jobEnded(bool ok, const QVector<float>& peaks)
+void WaveformProvider::jobEnded(bool ok, const QVector<float>& peaks, float gainDb)
 {
     m_job.reset();
     if (ok && peaks.size() == kWaveformBuckets) {
@@ -484,6 +593,8 @@ void WaveformProvider::jobEnded(bool ok, const QVector<float>& peaks)
         for (float p : peaks)
             list.append(double(p));
         m_peaks = list;
+        m_gainDb = double(gainDb);
+        m_peak = double(*std::max_element(peaks.begin(), peaks.end()));
         emit peaksChanged();
     } else {
         m_failed = true;

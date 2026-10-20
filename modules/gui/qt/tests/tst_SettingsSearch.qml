@@ -111,6 +111,19 @@ TestCase {
         verify(SettingsData.curatedKeys["qt-privacy-ask"] !== true)
     }
 
+    function test_replay_gain_is_one_row_with_measured() {
+        // None / Track / Album / Measured is one row of the Audio page (the mode of VLC plus the
+        // redesign's flag); the key still counts as curated, so the Advanced section does not repeat it
+        const audio = SettingsData.pages.find(p => p.id === "audio")
+        const rows = audio.rows.filter(r => r.kind === "replayGain")
+        compare(rows.length, 1)
+        compare(rows[0].key, "audio-replay-gain-mode")
+        compare(audio.rows.filter(r => r.kind === "setting" && r.key === "audio-replay-gain-mode").length, 0)
+        verify(rows[0].description.indexOf("Measured") >= 0)
+        verify(SettingsData.curatedKeys["audio-replay-gain-mode"] === true)
+        verify(SettingsData.curatedKeys["audio-replay-gain-preamp"] === true)
+    }
+
     function test_every_row_has_a_unique_id_per_page() {
         for (const page of SettingsData.pages) {
             const ids = page.rows.map(r => r.id)

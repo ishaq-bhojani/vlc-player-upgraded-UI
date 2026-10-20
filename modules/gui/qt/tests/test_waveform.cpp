@@ -119,6 +119,16 @@ std::shared_ptr<FakeState> makeState()
     return state;
 }
 
+//! 80000 samples of +-3277 (0.1 of full scale): RMS -20 dBFS, so the measured gain is +2 dB
+std::shared_ptr<FakeState> makeLoudState()
+{
+    auto state = std::make_shared<FakeState>();
+    state->samples.assign(80000, 3277);
+    for (size_t i = 0; i < state->samples.size(); i += 2)
+        state->samples[i] = -3277;
+    return state;
+}
+
 WaveformEnvironment makeEnv(const QString& cacheDir, const std::shared_ptr<FakeState>& state)
 {
     WaveformEnvironment env;
@@ -355,10 +365,13 @@ private slots:
     void cacheFileRoundTripAndRejection()
     {
         QVector<float> peaks(kWaveformBuckets, 0.25f);
-        const QByteArray file = encodeWaveformCache(peaks);
-        QCOMPARE(file.size(), 5 + 4000);
+        const QByteArray file = encodeWaveformCache(peaks, 1.5f);
+        QCOMPARE(file.size(), 5 + 4000 + 4);
         QCOMPARE(file.left(4), QByteArray("VRWF"));
-        QCOMPARE(decodeWaveformCache(file), peaks);
+        QCOMPARE(uint8_t(file[4]), uint8_t(2));
+        const WaveformCache decoded = decodeWaveformCache(file);
+        QCOMPARE(decoded.peaks, peaks);
+        QCOMPARE(decoded.gainDb, 1.5f);
 
         QByteArray badMagic = file;
         badMagic[0] = 'X';
@@ -369,11 +382,125 @@ private slots:
         QVERIFY(decodeWaveformCache(otherVersion).isEmpty());
 
         QVERIFY(decodeWaveformCache(file.left(file.size() - 4)).isEmpty());
+        QVERIFY(decodeWaveformCache(file.left(file.size() - 1)).isEmpty());
         QVERIFY(decodeWaveformCache(file + QByteArray(4, 0)).isEmpty());
         QVERIFY(decodeWaveformCache(file.left(3)).isEmpty());
         QVERIFY(decodeWaveformCache(QByteArray()).isEmpty());
         // a file of the right size without the header (the raw payload of a plain encodePeaks)
-        QVERIFY(decodeWaveformCache(encodePeaks(peaks) + QByteArray(5, 0)).isEmpty());
+        QVERIFY(decodeWaveformCache(encodePeaks(peaks) + QByteArray(5 + 4, 0)).isEmpty());
+    }
+
+    void cacheFileVersion1IsStale()
+    {
+        // what the previous build wrote: "VRWF", 1, the peaks and nothing else
+        const QVector<float> peaks(kWaveformBuckets, 0.25f);
+        QByteArray v1("VRWF\x01", 5);
+        v1.append(encodePeaks(peaks));
+        QCOMPARE(v1.size(), 4005);
+        QVERIFY(decodeWaveformCache(v1).isEmpty());
+        QVERIFY(!isWaveformFailedMarker(v1));
+        // the old failure marker is stale too: the file is analysed again
+        QVERIFY(!isWaveformFailedMarker(QByteArray("VRWF\x01", 5)));
+        // the same bytes with the version of this build and the gain appended are a cache file
+        QByteArray v2 = v1;
+        v2[4] = char(2);
+        v2.append(QByteArray(4, 0));
+        QCOMPARE(decodeWaveformCache(v2).peaks, peaks);
+        QCOMPARE(decodeWaveformCache(v2).gainDb, 0.f);
+    }
+
+    void cacheFileKeepsTheGain()
+    {
+        const QVector<float> peaks(kWaveformBuckets, 0.5f);
+        for (float gain : {-12.f, -3.25f, 0.f, 2.5f, 4.f}) {
+            const WaveformCache decoded = decodeWaveformCache(encodeWaveformCache(peaks, gain));
+            QCOMPARE(decoded.peaks, peaks);
+            QCOMPARE(decoded.gainDb, gain);
+        }
+    }
+
+    void cacheFileRejectsAGainOutOfRange()
+    {
+        const QVector<float> peaks(kWaveformBuckets, 0.5f);
+        const float bad[] = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity(),
+                             4.5f, -12.5f, 100.f};
+        for (float gain : bad)
+            QVERIFY2(decodeWaveformCache(encodeWaveformCache(peaks, gain)).isEmpty(),
+                     qPrintable(QString::number(gain)));
+    }
+
+    // ---- loudness ---------------------------------------------------------------------
+
+    void rmsOfAFullScaleSine()
+    {
+        std::vector<int16_t> samples(8000);
+        for (size_t i = 0; i < samples.size(); ++i)
+            samples[i] = int16_t(std::lround(32767.0 * std::sin(2.0 * 3.14159265358979323846 * 100.0 * i / 8000.0)));
+        QVERIFY(std::abs(rmsDbfs(samples.data(), samples.size()) - (-3.01f)) < 0.05f);
+    }
+
+    void rmsOfAHalfScaleSine()
+    {
+        std::vector<int16_t> samples(8000);
+        for (size_t i = 0; i < samples.size(); ++i)
+            samples[i] = int16_t(std::lround(16384.0 * std::sin(2.0 * 3.14159265358979323846 * 100.0 * i / 8000.0)));
+        QVERIFY(std::abs(rmsDbfs(samples.data(), samples.size()) - (-9.03f)) < 0.05f);
+    }
+
+    void rmsOfAFullScaleSquare()
+    {
+        std::vector<int16_t> samples(1000, 32767);
+        for (size_t i = 0; i < samples.size(); i += 2)
+            samples[i] = -32768;
+        QVERIFY(std::abs(rmsDbfs(samples.data(), samples.size())) < 0.01f); // 0 dBFS
+    }
+
+    void rmsOfSilenceIsTheFloor()
+    {
+        std::vector<int16_t> samples(5000, 0);
+        QVERIFY(rmsDbfs(samples.data(), samples.size()) <= -90.f);
+        QVERIFY(std::isfinite(rmsDbfs(samples.data(), samples.size())));
+        QCOMPARE(rmsDbfs(samples.data(), samples.size()), kRmsFloorDbfs);
+        QVERIFY(rmsDbfs(nullptr, 0) <= -90.f);
+        QVERIFY(rmsDbfs(samples.data(), 0) <= -90.f);
+        // a single least-significant bit is very low but above the floor
+        std::vector<int16_t> ones(5000, 1);
+        QVERIFY(rmsDbfs(ones.data(), ones.size()) < -90.f);
+        QVERIFY(rmsDbfs(ones.data(), ones.size()) > kRmsFloorDbfs);
+    }
+
+    void measuredGainFormula()
+    {
+        QCOMPARE(measuredGainDb(-30.f), 4.f);   // 12 dB wanted, limited to +4
+        QCOMPARE(measuredGainDb(-18.f), 0.f);
+        QCOMPARE(measuredGainDb(-3.f), -12.f);  // -15 dB wanted, limited to -12
+        QCOMPARE(measuredGainDb(-22.f), 4.f);
+        QCOMPARE(measuredGainDb(-21.f), 3.f);
+        QCOMPARE(measuredGainDb(-12.f), -6.f);
+        QCOMPARE(measuredGainDb(-6.f), -12.f);
+        QCOMPARE(measuredGainDb(kRmsFloorDbfs), 4.f);
+    }
+
+    void accumulatorMeasuresTheLevelInOnePass()
+    {
+        // the same samples appended in pieces give the level of a single rmsDbfs() call
+        std::vector<int16_t> samples(20000);
+        for (size_t i = 0; i < samples.size(); ++i)
+            samples[i] = int16_t(std::lround(8000.0 * std::sin(0.05 * double(i))));
+        PeaksAccumulator acc;
+        for (size_t at = 0; at < samples.size(); at += 3000)
+            acc.append(samples.data() + at, std::min<size_t>(3000, samples.size() - at));
+        QVERIFY(std::abs(acc.levelDbfs() - rmsDbfs(samples.data(), samples.size())) < 0.001f);
+        QCOMPARE(acc.gainDb(), measuredGainDb(acc.levelDbfs()));
+        // far more samples than the blocks of the peaks hold: the level does not depend on the folds
+        PeaksAccumulator quiet;
+        std::vector<int16_t> chunk(10000, 100);
+        for (int i = 0; i < 300; ++i)
+            quiet.append(chunk.data(), chunk.size());
+        QVERIFY(std::abs(quiet.levelDbfs() - rmsDbfs(chunk.data(), chunk.size())) < 0.001f);
+        PeaksAccumulator nothing;
+        QCOMPARE(nothing.levelDbfs(), kRmsFloorDbfs);
+        QCOMPARE(nothing.gainDb(), kMeasuredGainMaxDb);
     }
 
     void cacheFileRejectsValuesOutsideZeroToOne()
@@ -383,20 +510,20 @@ private slots:
         for (float value : bad) {
             QVector<float> peaks(kWaveformBuckets, 0.25f);
             peaks[17] = value;
-            QVERIFY2(decodeWaveformCache(encodeWaveformCache(peaks)).isEmpty(), qPrintable(QString::number(value)));
+            QVERIFY2(decodeWaveformCache(encodeWaveformCache(peaks, 0.f)).isEmpty(), qPrintable(QString::number(value)));
         }
         QVector<float> edges(kWaveformBuckets, 0.f);
         edges[0] = 1.f;
-        QCOMPARE(decodeWaveformCache(encodeWaveformCache(edges)), edges);
+        QCOMPARE(decodeWaveformCache(encodeWaveformCache(edges, 0.f)).peaks, edges);
     }
 
     void failedMarkerIsNotAPeaksFile()
     {
         const QByteArray marker = encodeWaveformFailed();
-        QCOMPARE(marker, QByteArray("VRWF\x01", 5));
+        QCOMPARE(marker, QByteArray("VRWF\x02", 5));
         QVERIFY(isWaveformFailedMarker(marker));
         QVERIFY(decodeWaveformCache(marker).isEmpty());
-        QVERIFY(!isWaveformFailedMarker(encodeWaveformCache(QVector<float>(kWaveformBuckets, 0.f))));
+        QVERIFY(!isWaveformFailedMarker(encodeWaveformCache(QVector<float>(kWaveformBuckets, 0.f), 0.f)));
         QVERIFY(!isWaveformFailedMarker(QByteArray()));
     }
 
@@ -508,7 +635,7 @@ private slots:
         // the broken file was replaced by a valid one
         QFile f(cacheFile);
         QVERIFY(f.open(QIODevice::ReadOnly));
-        QCOMPARE(decodeWaveformCache(f.readAll()).size(), kWaveformBuckets);
+        QCOMPARE(decodeWaveformCache(f.readAll()).peaks.size(), kWaveformBuckets);
     }
 
     void cacheOlderThanSourceIsDecodedAgain()
@@ -527,6 +654,134 @@ private slots:
         second.setUrl(url);
         QTRY_VERIFY_WITH_TIMEOUT(second.ready(), 5000);
         QCOMPARE(state->decodes.load(), 1);
+    }
+
+    // ---- loudness through the provider and the cache ------------------------------------
+
+    void providerReportsTheMeasuredGainAndPeak()
+    {
+        auto state = makeLoudState();
+        const QUrl url = makeFile("song.mp3");
+        WaveformProvider provider(makeEnv(m_cache, state));
+        QCOMPARE(provider.gainDb(), 0.0);
+        QCOMPARE(provider.peak(), 0.0);
+        provider.setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(provider.ready(), 5000);
+        // +-3277 is -20 dBFS RMS: 2 dB to the target
+        QVERIFY2(std::abs(provider.gainDb() - 2.0) < 0.01, qPrintable(QString::number(provider.gainDb())));
+        QVERIFY2(std::abs(provider.peak() - 3277.0 / 32768.0) < 1e-6, qPrintable(QString::number(provider.peak())));
+
+        // a new url forgets them
+        provider.setUrl(QUrl("http://example.com/a.mp3"));
+        QVERIFY(!provider.ready());
+        QCOMPARE(provider.gainDb(), 0.0);
+        QCOMPARE(provider.peak(), 0.0);
+    }
+
+    void gainSurvivesTheCacheWithoutDecoding()
+    {
+        const QUrl url = makeFile("song.mp3");
+        {
+            auto state = makeLoudState();
+            WaveformProvider first(makeEnv(m_cache, state));
+            first.setUrl(url);
+            QTRY_VERIFY_WITH_TIMEOUT(first.ready(), 5000);
+            QCOMPARE(state->decodes.load(), 1);
+        }
+        auto state = makeLoudState();
+        WaveformProvider second(makeEnv(m_cache, state));
+        second.setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(second.ready(), 5000);
+        QCOMPARE(state->decodes.load(), 0);
+        QVERIFY2(std::abs(second.gainDb() - 2.0) < 0.01, qPrintable(QString::number(second.gainDb())));
+        QVERIFY(std::abs(second.peak() - 3277.0 / 32768.0) < 1e-6);
+    }
+
+    void cacheOfVersion1IsDecodedAgainAndReplaced()
+    {
+        const QUrl url = makeFile("song.mp3");
+        QVERIFY(QDir().mkpath(m_cache));
+        const QString cacheFile = waveformCacheFile(m_cache, url);
+        {
+            // a valid file of the previous build, written after the source
+            QByteArray v1("VRWF\x01", 5);
+            v1.append(encodePeaks(QVector<float>(kWaveformBuckets, 0.25f)));
+            QFile f(cacheFile);
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write(v1);
+        }
+
+        auto state = makeLoudState();
+        WaveformProvider provider(makeEnv(m_cache, state));
+        provider.setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(provider.ready(), 5000);
+        QCOMPARE(state->decodes.load(), 1); // the old file was not used
+        QVERIFY(std::abs(provider.peak() - 3277.0 / 32768.0) < 1e-6);
+
+        QFile f(cacheFile);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        const WaveformCache stored = decodeWaveformCache(f.readAll());
+        QCOMPARE(stored.peaks.size(), kWaveformBuckets);
+        QVERIFY(std::abs(stored.gainDb - 2.0f) < 0.01f);
+    }
+
+    void failureMarkerOfVersion1IsDecodedAgain()
+    {
+        auto state = makeLoudState();
+        const QUrl url = makeFile("song.mp3");
+        QVERIFY(QDir().mkpath(m_cache));
+        {
+            QFile f(waveformCacheFile(m_cache, url));
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write(QByteArray("VRWF\x01", 5)); // the marker of the previous build
+        }
+        WaveformProvider provider(makeEnv(m_cache, state));
+        provider.setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(provider.ready(), 5000);
+        QCOMPARE(state->decodes.load(), 1);
+    }
+
+    // ---- the queue of the process survives the end of the application object -------------------
+
+    void queueWorksAgainAfterShutdown()
+    {
+        const QUrl url = makeFile("song.mp3");
+        auto state = makeLoudState();
+        auto old = std::make_unique<WaveformProvider>(makeEnv(m_cache, state));
+        old->setUrl(url);
+        QTRY_VERIFY_WITH_TIMEOUT(old->ready(), 5000);
+
+        // what the end of an application does: the queue is gone, a provider of the old interface
+        // that is still alive must not touch it any more
+        WaveformProvider::shutdown();
+        QCOMPARE(WaveformProvider::activeJobs(), 0);
+
+        const QUrl url2 = makeFile("other.mp3");
+        auto state2 = makeLoudState();
+        WaveformProvider fresh(makeEnv(m_cache, state2));
+        fresh.setUrl(url2);
+        QTRY_VERIFY_WITH_TIMEOUT(fresh.ready(), 5000);
+        QCOMPARE(state2->decodes.load(), 1);
+
+        old->setUrl(QUrl()); // unsubscribes from the queue that no longer knows it
+        old.reset();
+    }
+
+    void shutdownCancelsTheRunningJobAndWaitsForIt()
+    {
+        auto state = makeLoudState();
+        state->hold = true; // the decode blocks until it is cancelled
+        const QUrl url = makeFile("song.mp3");
+        WaveformProvider provider(makeEnv(m_cache, state));
+        provider.setUrl(url);
+        QTRY_COMPARE_WITH_TIMEOUT(state->running.load(), 1, 5000);
+
+        WaveformProvider::shutdown();
+        // the join is part of it: the decode is over when it returns
+        QCOMPARE(state->running.load(), 0);
+        QCOMPARE(state->cancelled.load(), 1);
+        QCOMPARE(WaveformProvider::activeJobs(), 0);
+        QVERIFY(!provider.ready());
     }
 
     // ---- failures are remembered ------------------------------------------------------

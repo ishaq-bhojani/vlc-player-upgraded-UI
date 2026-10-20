@@ -29,6 +29,8 @@
 
 #include "currentmediafavorite.hpp"
 #include "effectscontroller.hpp"
+#include "measuredgain.hpp"
+#include "measuredgainvlc.hpp"
 #include "mlfavoritebackend.hpp"
 #include "mlrecentaudiomodel.hpp"
 #include "pinnavigation.hpp"
@@ -41,6 +43,7 @@
 #include "waveformvlc.hpp"
 
 #include "../../maininterface/mainctx.hpp"
+#include "../../player/player_controller.hpp"
 #include "../../qt.hpp"
 
 namespace redesign
@@ -51,6 +54,34 @@ static_assert(SettingItem::Bool == 0 && SettingItem::Integer == 1 && SettingItem
               && SettingItem::String == 3 && SettingItem::Choice == 4 && SettingItem::Path == 5
               && SettingItem::Hotkey == 6,
               "SettingItem::Type changed: update ControlChooser.type in redesign/settings/ControlChooser.qml");
+
+namespace
+{
+
+/**
+ * The measured loudness of this interface: made once (a child of the MainCtx), wired to the
+ * player controller. It decides again when the media, the state or the metadata of the player
+ * change. Only created for the redesign (see registerQmlTypes); never in mainui.cpp.
+ */
+MeasuredGain* measuredGainOf(MainCtx* ctx)
+{
+    if (MeasuredGain* existing = ctx->findChild<MeasuredGain*>(QString(), Qt::FindDirectChildrenOnly))
+        return existing;
+
+    qt_intf_t* intf = ctx->getIntf();
+    auto* measured = new MeasuredGain(makeVlcMeasuredGainBackend(intf->p_player, VLC_OBJECT(intf)),
+                                      makeVlcWaveformEnvironment(VLC_OBJECT(intf)), nullptr, ctx);
+    if (PlayerController* player = intf->p_mainPlayerController) {
+        QObject::connect(player, &PlayerController::inputChanged, measured, &MeasuredGain::refresh);
+        QObject::connect(player, &PlayerController::playingStateChanged, measured, &MeasuredGain::refresh);
+        QObject::connect(player, &PlayerController::currentMetaChanged, measured, &MeasuredGain::refresh);
+        QObject::connect(player, &PlayerController::infoChanged, measured, &MeasuredGain::refresh);
+    }
+    measured->refresh();
+    return measured;
+}
+
+} // namespace
 
 /*
  * Every C++ type of the "VLC.Redesign" module 1.0, in registration order:
@@ -67,6 +98,9 @@ static_assert(SettingItem::Bool == 0 && SettingItem::Integer == 1 && SettingItem
  *   ShortcutsModel         singleton, the keyboard shortcuts page (call reload() when it opens)
  *   ToolManager            singleton, verified yt-dlp / ffmpeg downloads (consent, pinned manifest)
  *   WaveformProvider       creatable type, the peaks of a file:// url (seek bar waveform, loudness)
+ *   MeasuredGain           singleton, the measured loudness (Settings > Audio > Replay gain
+ *                          "Measured"); also created at start when the redesign is on, because it
+ *                          must work with no QML that mentions it (a child of MainCtx)
  * plus, only when the interface has a media library, the default backend
  * factory of CurrentMediaFavorite (MLFavoriteBackend), and the
  * qmlRegisterModule/qmlProtectModule pair of the URI.
@@ -105,6 +139,14 @@ void registerQmlTypes(MainCtx* ctx)
         [intf](QQmlEngine*, QJSEngine*) { return createToolManager(VLC_OBJECT(intf)); });
     WaveformProvider::setDefaultEnvironment([intf] { return makeVlcWaveformEnvironment(VLC_OBJECT(intf)); });
     qmlRegisterType<WaveformProvider>(uri, versionMajor, versionMinor, "WaveformProvider");
+    qmlRegisterSingletonType<MeasuredGain>(uri, versionMajor, versionMinor, "MeasuredGain",
+        [ctx](QQmlEngine*, QJSEngine*) {
+            MeasuredGain* measured = measuredGainOf(ctx);
+            QQmlEngine::setObjectOwnership(measured, QQmlEngine::CppOwnership);
+            return measured;
+        });
+    if (ctx->isRedesign())
+        measuredGainOf(ctx);
     if (ctx->hasMediaLibrary()) {
         CurrentMediaFavorite::setDefaultBackendFactory([ml = ctx->getMediaLibrary()] {
             return std::make_unique<MLFavoriteBackend>(ml);

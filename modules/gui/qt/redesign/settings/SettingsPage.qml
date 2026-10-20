@@ -176,6 +176,7 @@ FocusScope {
         case "libraryFolders": return libraryFoldersComponent
         case "extensions": return extensionsComponent
         case "toolConsent": return toolConsentComponent
+        case "replayGain": return replayGainComponent
         default: return settingComponent
         }
     }
@@ -268,6 +269,7 @@ FocusScope {
     Component { id: filterTokenComponent; FilterTokenRow {} }
     Component { id: libraryFoldersComponent; LibraryFoldersRow {} }
     Component { id: toolConsentComponent; ToolConsentRow {} }
+    Component { id: replayGainComponent; ReplayGainRow {} }
 
     Component {
         id: equalizerComponent

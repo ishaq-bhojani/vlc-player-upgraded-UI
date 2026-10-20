@@ -342,6 +342,37 @@ vlc_tests += {
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
 
+# MeasuredGain (replay gain from the measured loudness of files that have none): the decision,
+# the value handed to the audio output and the logic against a fake player and decoder, plus the
+# VLC backend on a real player whose audio output is the dummy one or the "file" one (the level of
+# what is played is measured on the written samples: a gain set during playback must change it).
+vlc_tests += {
+    'name': 'test_qt_measured_gain',
+    'sources': files(
+        '../../tests/test_measured_gain.cpp',
+        '../cpp/measuredgain.hpp',
+        '../cpp/measuredgain.cpp',
+        '../cpp/measuredgainvlc.hpp',
+        '../cpp/measuredgainvlc.cpp',
+        '../cpp/waveform.hpp',
+        '../cpp/waveform.cpp',
+        '../cpp/waveformvlc.hpp',
+        '../cpp/waveformvlc.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_measured_gain.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/measuredgain.hpp',
+        '../cpp/waveform.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore, libvlc],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}
+
 # LRC parser and SidecarLyrics (lyrics next to the media), against temporary directories
 vlc_tests += {
     'name': 'test_qt_lrc_parser',
