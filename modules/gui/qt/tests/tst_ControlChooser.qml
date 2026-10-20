@@ -168,4 +168,76 @@ TestCase {
     function test_sliderStep(data) {
         fuzzyCompare(ControlChooser.sliderStep(data.isFloat, data.min, data.max), data.expected, 1e-9)
     }
+
+    function test_isWide_data() {
+        return [
+            { tag: "path", file: "PathControl.qml", wide: true },
+            { tag: "text", file: "TextControl.qml", wide: true },
+            { tag: "number", file: "NumberControl.qml", wide: true },
+            { tag: "dropdown", file: "DropdownControl.qml", wide: true },
+            { tag: "slider", file: "SliderControl.qml", wide: true },
+            { tag: "toggle", file: "ToggleControl.qml", wide: false },
+            { tag: "none", file: "", wide: false },
+        ]
+    }
+
+    function test_isWide(data) {
+        compare(ControlChooser.isWide(data.file), data.wide)
+    }
+
+    // the sizes of the design at 100%: a field of 320, an info button of 24, gaps of 12, a label
+    // that keeps 120, a control that is not usable under 160 (a path under 200)
+    function fit(rowWidth, implicitWidth, info, minControl) {
+        return ControlChooser.controlFit(rowWidth, info === undefined ? 24 : info, 12, implicitWidth,
+                                         minControl ?? 160, 120)
+    }
+
+    function test_controlFit_data() {
+        return [
+            { tag: "narrow row stacks", row: 291, implicit: 320, stacked: true, width: 291 },
+            { tag: "stacked, field narrower than the row", row: 291, implicit: 160, minControl: 200, stacked: true, width: 160 },
+            { tag: "just wide enough for a path", row: 420, implicit: 320, minControl: 200, stacked: false, width: 231 },
+            { tag: "settings page at 900", row: 555, implicit: 320, stacked: false, width: 305 },
+            { tag: "wide row: the implicit width", row: 743, implicit: 320, stacked: false, width: 320 },
+            { tag: "small field is not stretched", row: 555, implicit: 160, stacked: false, width: 160 },
+            { tag: "no info button gives the room", row: 300, implicit: 320, info: 0, stacked: false, width: 165 },
+            { tag: "empty row", row: 0, implicit: 320, stacked: true, width: 0 },
+        ]
+    }
+
+    function test_controlFit(data) {
+        const r = fit(data.row, data.implicit, data.info, data.minControl)
+        compare(r.stacked, data.stacked)
+        compare(r.width, data.width)
+    }
+
+    // whatever the width of the row: a control beside the label leaves the label its room and at
+    // most the share of the row, a stacked one never overflows
+    function test_controlFit_neverOverflows() {
+        for (const implicit of [160, 320]) {
+            for (let row = 150; row <= 1600; row += 7) {
+                const r = fit(row, implicit)
+                verify(r.width <= row, "row " + row + ": " + JSON.stringify(r))
+                verify(r.width <= implicit)
+                if (!r.stacked) {
+                    verify(r.width >= 160, "row " + row)
+                    verify(r.width <= row * ControlChooser.controlShare, "row " + row)
+                    // the label, the info button and the two gaps
+                    verify(row - r.width - 24 - 12 - 12 >= 120, "label room at row " + row)
+                }
+            }
+        }
+    }
+
+    function test_controlFit_monotonic() {
+        // a wider row never makes the control narrower while it stays beside the label
+        let last = 0
+        for (let row = 300; row <= 1600; row += 5) {
+            const r = fit(row, 320)
+            if (r.stacked)
+                continue
+            verify(r.width >= last, "row " + row)
+            last = r.width
+        }
+    }
 }

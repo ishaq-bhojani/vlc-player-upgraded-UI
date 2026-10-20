@@ -78,6 +78,9 @@ RedesignMenu {
         _syncRecentEntry()
 
         const pos = (parent ? parent.mapFromGlobal(globalPos.x, globalPos.y) : globalPos)
+        // the top of the menu stays where it was asked for (under the button): it is the height that
+        // is made to fit under it, see RedesignMenu.anchorTop
+        root.anchorTop = parent ? parent.mapToItem(null, pos.x, pos.y).y : pos.y
         popup(pos.x, pos.y)
     }
 

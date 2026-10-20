@@ -38,17 +38,39 @@ T.Menu {
     // the name of the menu for the assistive technologies, the title of a submenu by default
     property string accessibleName: title
 
-    // The room of the popup: the height of the window less where the popup starts (y: it opens
-    // below the button) and the margin that keeps it inside, but room for a few entries at least.
-    // The window is the one of the parent (the item the menu opens in): the content has none until
-    // the menu is open, and by then the popup has already moved up to fit its full height. `y` is
-    // relative to the parent, so it is mapped to the window.
+    //! Where the menu is anchored, the y of its top edge in the window; NaN for a menu that is not
+    //! (a submenu: Qt places it beside its entry). A menu opened below a button sets it before it
+    //! opens (MainMenu.openAtGlobal) and the menu keeps its top there: it is made to fit under it.
+    property real anchorTop: Number.NaN
+
+    // The room of the popup: the height of the window less where the popup starts and the margin
+    // that keeps it inside, but room for a few entries at least. The window is the one of the parent
+    // (the item the menu opens in): the content has none until the menu is open.
+    //
+    // It is NOT computed from `y`. The popup moves itself to fit its window (it is shifted up while
+    // it is taller than the room under it) and writes the new position into `y`; a room that follows
+    // `y` then grows with the shift, and the menu ends up over the title bar. `anchorTop` is what was
+    // asked for, and nothing moves it. A submenu has no anchor: its room is the window less the
+    // margins, Qt shifts it to fit.
     readonly property real _maxHeight: {
         const win = parent ? parent.Window.window : null
         if (!win)
             return Number.POSITIVE_INFINITY
-        const top = parent.mapToItem(null, 0, y).y
+        const top = isNaN(anchorTop) ? topMargin : anchorTop
         return Math.max(MainCtx.dp(96, RedesignStyle.scale), win.height - top - bottomMargin)
+    }
+
+    // What the entries need: their heights (a ListView that has not created every entry yet only
+    // estimates its contentHeight), and the padding and background around them.
+    readonly property real _wantedHeight: {
+        let entries = 0
+        for (let i = 0; i < count; ++i) {
+            const entry = itemAt(i)
+            if (entry && entry.visible)
+                entries += entry.implicitHeight
+        }
+        return Math.max(implicitBackgroundHeight + topInset + bottomInset,
+                        entries + topPadding + bottomPadding)
     }
 
     // Settings
@@ -58,10 +80,12 @@ T.Menu {
 
     implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset,
                             contentWidth + leftPadding + rightPadding)
-    // a menu taller than the window scrolls
-    implicitHeight: Math.min(Math.max(implicitBackgroundHeight + topInset + bottomInset,
-                                      contentHeight + topPadding + bottomPadding),
-                             _maxHeight)
+
+    // The height is set, not left to the implicit one: a menu taller than the room scrolls (the
+    // list is interactive then), and one that fits has the height of its entries. A popup that is
+    // not given a height that fits is moved up over what is above it.
+    implicitHeight: Math.min(_wantedHeight, _maxHeight)
+    height: implicitHeight
 
     // used for the entries made from a model, and for the entry of a submenu
     delegate: RedesignMenuItem {}

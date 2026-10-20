@@ -133,4 +133,57 @@ QtObject {
         const range = max - min
         return range > 0 ? range / 100 : 0.01
     }
+
+    // --- Where the control goes in a row (SettingRow) ---
+
+    //! the share of the row a control may take at most, the rest is for the label
+    readonly property real controlShare: 0.55
+
+    //! the control is one that was made for a wide row (a field, a list, a slider): it must be bounded
+    function isWide(controlFile: string): bool {
+        switch (controlFile) {
+        case "PathControl.qml":
+        case "TextControl.qml":
+        case "NumberControl.qml":
+        case "DropdownControl.qml":
+        case "SliderControl.qml":
+            return true
+        default:
+            return false
+        }
+    }
+
+    /**
+     * The narrowest a control can be and still be usable beside its label (see controlFit), in
+     * the unit of the two arguments: `minPath` for a path (its field and the Browse button),
+     * `minOther` for the others (a field or a list of a few characters).
+     */
+    function minControlWidth(controlFile: string, minPath: real, minOther: real): real {
+        return controlFile === "PathControl.qml" ? minPath : minOther
+    }
+
+    /**
+     * Where the control of a row goes: `stacked` (under the label, in the row below) or beside it
+     * with `width`. Everything is in pixels.
+     *
+     * - `rowWidth`: the width of the row; `infoWidth`: the width of the info button, 0 if it is
+     *   not shown; `spacing`: the gap between the items of the row
+     * - `implicitWidth`: the width the control would like (320 for a field of the design)
+     * - `minControl`: below this width the control is not usable beside the label
+     * - `minLabel`: the width the label always keeps
+     *
+     * Beside the label the control takes its implicit width, but never more than controlShare of
+     * the row and never so much that the label has less than minLabel. A row too narrow for that
+     * stacks: the control goes under the label and takes the row, up to its implicit width.
+     */
+    function controlFit(rowWidth: real, infoWidth: real, spacing: real, implicitWidth: real,
+                        minControl: real, minLabel: real): var {
+        const info = infoWidth > 0 ? infoWidth + spacing : 0
+        // what the label and the control share, less the gap between them
+        const free = rowWidth - info - spacing
+        const width = Math.min(implicitWidth, Math.floor(rowWidth * controlShare), free - minLabel)
+        if (width < minControl)
+            return { stacked: true, width: Math.max(0, Math.min(implicitWidth, rowWidth)) }
+        return { stacked: false, width: width }
+    }
 }

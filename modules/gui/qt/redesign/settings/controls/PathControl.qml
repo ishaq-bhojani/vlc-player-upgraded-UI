@@ -77,6 +77,8 @@ FocusScope {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // the field gives way, the Browse button does not
+            Layout.minimumWidth: VLCStyle.dp(80, VLCStyle.scale)
 
             focus: true
 
@@ -133,6 +135,7 @@ FocusScope {
 
         Widgets.ButtonExt {
             Layout.preferredWidth: VLCStyle.dp(100, VLCStyle.scale)
+            Layout.minimumWidth: VLCStyle.dp(100, VLCStyle.scale)
             Layout.fillHeight: true
 
             visible: root.canBrowse

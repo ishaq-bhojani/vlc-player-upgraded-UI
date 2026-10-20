@@ -85,6 +85,27 @@ Item {
     // the info tooltip does not grow wider than this, longer lines wrap
     readonly property real _tipMaxWidth: VLCStyle.dp(320, VLCStyle.scale)
 
+    // Where the control goes (see ControlChooser.controlFit): the controls that were made for a
+    // wide row (a field, a list, a slider: 320) would take the whole of a narrow one and leave the
+    // label no width, and the row would overflow the page. Beside the label they get a bounded
+    // width; when the row is too narrow for that they go under the label.
+    readonly property bool _boundedControl: ControlChooser.isWide(controlFile)
+
+    readonly property var _fit: ControlChooser.controlFit(
+        root.width,
+        infoButton.visible ? infoButton.implicitWidth : 0,
+        row.columnSpacing,
+        loader.implicitWidth,
+        ControlChooser.minControlWidth(controlFile, VLCStyle.dp(200, VLCStyle.scale),
+                                       VLCStyle.dp(160, VLCStyle.scale)),
+        VLCStyle.dp(120, VLCStyle.scale))
+
+    // the control is under the label
+    readonly property bool _stacked: _boundedControl && _fit.stacked
+
+    // the width of the control: what the rule gives a bounded one, its own for the others (a toggle)
+    readonly property real _controlWidth: _boundedControl ? _fit.width : loader.implicitWidth
+
     // Settings
 
     visible: item !== null
@@ -105,7 +126,9 @@ Item {
         colorSet: ColorContext.View
     }
 
-    RowLayout {
+    // the label and the info button, then the control: beside them, or under them in a row that is
+    // too narrow (stacked)
+    GridLayout {
         id: row
 
         anchors {
@@ -114,7 +137,9 @@ Item {
             verticalCenter: parent.verticalCenter
         }
 
-        spacing: RedesignStyle.spacingM
+        columns: root._stacked ? 2 : 3
+        columnSpacing: RedesignStyle.spacingM
+        rowSpacing: RedesignStyle.spacingS
 
         ColumnLayout {
             Layout.fillWidth: true
@@ -217,7 +242,12 @@ Item {
         Loader {
             id: loader
 
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: Qt.AlignVCenter | (root._stacked ? Qt.AlignLeft : Qt.AlignRight)
+            Layout.columnSpan: root._stacked ? 2 : 1
+
+            Layout.preferredWidth: root._controlWidth
+            Layout.minimumWidth: root._controlWidth
+            Layout.maximumWidth: root._controlWidth
 
             source: root.controlFile
 
