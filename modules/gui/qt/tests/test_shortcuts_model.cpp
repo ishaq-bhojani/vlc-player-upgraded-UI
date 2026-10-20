@@ -324,6 +324,18 @@ private slots:
         QCOMPARE(changed.count(), 0);
     }
 
+    void reloadResetsTheModel()
+    {
+        // a change made behind the model's back (the QWidgets preferences) is read again
+        const int rows = m_model->rowCount();
+        config_PutPsz("key-stop", "Ctrl+Alt+Shift+F10");
+        QSignalSpy reset(m_model.get(), &QAbstractItemModel::modelReset);
+        QMetaObject::invokeMethod(m_model.get(), "reload");
+        QCOMPARE(reset.count(), 1);
+        QCOMPARE(m_model->rowCount(), rows);
+        QCOMPARE(hotkeyOf("key-stop"), QString("Ctrl+Alt+Shift+F10"));
+    }
+
     void assignEmptyClears()
     {
         QVERIFY(!hotkeyOf("key-play-pause").isEmpty());

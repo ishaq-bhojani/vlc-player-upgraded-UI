@@ -21,6 +21,8 @@
 
 #include "settingsmodel.hpp"
 
+#include "../../style/redesignpalette.hpp"
+
 #include <vlc_messages.h>
 #include <vlc_modules.h>
 #include <vlc_plugin.h>
@@ -378,6 +380,24 @@ SettingItem* SettingsModel::item(const QString& key)
     });
     m_items.insert(key, item);
     return item;
+}
+
+bool SettingsModel::hasItem(const QString& key) const
+{
+    if (key.isEmpty())
+        return false;
+    if (m_items.contains(key))
+        return true;
+    const QByteArray name = key.toUtf8();
+    return config_FindConfig(name.constData()) != nullptr;
+}
+
+QVariantList SettingsModel::accentSwatches() const
+{
+    QVariantList swatches;
+    for (const QColor& color : redesign::accentSwatches())
+        swatches.append(color.name(QColor::HexRgb));
+    return swatches;
 }
 
 QStringList SettingsModel::keysInSubcategory(int subcategory) const

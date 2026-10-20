@@ -257,7 +257,9 @@ vlc_tests += {
     'sources': [files(
         '../../tests/test_settings_model.cpp',
         '../cpp/settingsmodel.hpp',
-        '../cpp/settingsmodel.cpp'
+        '../cpp/settingsmodel.cpp',
+        '../../style/redesignpalette.hpp',
+        '../../style/redesignpalette.cpp'
     ), redesign_qrc],
     'moc_sources': files(
         '../../tests/test_settings_model.cpp'

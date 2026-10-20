@@ -123,6 +123,12 @@ class SettingsModel : public QObject
     //! true once an item that needs a restart was changed
     Q_PROPERTY(bool restartPending READ restartPending NOTIFY restartPendingChanged)
 
+    /**
+     * The 9 accent colors of Settings > Interface, as "#rrggbb" strings in Figma order (the first
+     * is the default). A swatch is stored as the value of "qt-accent-color" unchanged.
+     */
+    Q_PROPERTY(QVariantList accentSwatches READ accentSwatches CONSTANT)
+
 public:
     explicit SettingsModel(vlc_object_t* obj, QObject* parent = nullptr);
 
@@ -136,6 +142,13 @@ public:
     Q_INVOKABLE SettingItem* item(const QString& key);
 
     /**
+     * True if the configuration has an item with this key, i.e. item() would not be null. Unlike
+     * item() it logs nothing and creates nothing: a page uses it to leave out the rows of the
+     * options that its build does not have (a Windows-only option on Linux, a missing plugin).
+     */
+    Q_INVOKABLE bool hasItem(const QString& key) const;
+
+    /**
      * Every non-obsolete, non-private key whose item sits under the VLC subcategory
      * (a vlc_config_subcat value), in declaration order: the core options first, then the
      * options of the plugins.
@@ -143,6 +156,8 @@ public:
     Q_INVOKABLE QStringList keysInSubcategory(int subcategory) const;
 
     bool restartPending() const { return m_restartPending; }
+
+    QVariantList accentSwatches() const;
 
     //! keys marked `restart` in docs/redesign/settings-map.md
     static bool keyRequiresRestart(const QString& key);

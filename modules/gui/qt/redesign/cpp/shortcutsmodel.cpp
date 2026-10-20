@@ -127,6 +127,13 @@ QHash<int, QByteArray> ShortcutsModel::roleNames() const
     };
 }
 
+void ShortcutsModel::reload()
+{
+    // the actions are fixed, only the keys they hold are read live
+    beginResetModel();
+    endResetModel();
+}
+
 QStringList ShortcutsModel::splitKeys(const QString& value)
 {
     return value.split(QLatin1Char('\t'), Qt::SkipEmptyParts);

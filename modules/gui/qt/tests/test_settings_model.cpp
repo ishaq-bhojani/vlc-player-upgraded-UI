@@ -24,6 +24,7 @@
 #include <memory>
 
 #include <QFile>
+#include <QRegularExpression>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -109,6 +110,18 @@ private slots:
     {
         QVERIFY(m_model->item("no-such-key") == nullptr);
         QVERIFY(m_model->item(QString()) == nullptr);
+    }
+
+    void hasItemIsQuiet()
+    {
+        // for a page that hides the rows of the options its build does not have: no item, so
+        // no error is logged for a missing key
+        QVERIFY(m_model->hasItem("qt-pip-mode"));
+        QVERIFY(m_model->hasItem("qt-privacy-ask"));
+        QVERIFY(!m_model->hasItem("no-such-key"));
+        QVERIFY(!m_model->hasItem(QString()));
+        // asking does not create the item
+        QVERIFY(m_model->item("qt-pip-mode"));
     }
 
     void sameObjectPerKey()
@@ -420,6 +433,22 @@ private slots:
 
         QVERIFY(m_model->keysInSubcategory(SUBCAT_UNKNOWN).isEmpty());
         QVERIFY(m_model->keysInSubcategory(-12345).isEmpty());
+    }
+
+    void accentSwatches()
+    {
+        // the 9 swatches of Settings > Interface, as "#rrggbb" for qt-accent-color
+        const QVariantList swatches = m_model->property("accentSwatches").toList();
+        QCOMPARE(swatches.size(), 9);
+        const QRegularExpression rgb("^#[0-9a-f]{6}$");
+        for (const QVariant& swatch : swatches) {
+            QCOMPARE(swatch.typeId(), int(QMetaType::QString));
+            QVERIFY2(rgb.match(swatch.toString()).hasMatch(), qPrintable(swatch.toString()));
+        }
+        // Table C of docs/redesign/tokens.md: orange first
+        QCOMPARE(swatches.first().toString(), QString("#d37918"));
+        // the property is a constant: the same list every time
+        QCOMPARE(m_model->property("accentSwatches").toList(), swatches);
     }
 
 private:

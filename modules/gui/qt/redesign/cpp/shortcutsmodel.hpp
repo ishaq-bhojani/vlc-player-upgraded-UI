@@ -86,6 +86,13 @@ public:
      */
     Q_INVOKABLE void assign(const QString& actionKey, const QString& hotkey, bool global);
 
+    /**
+     * Makes the views read the configuration again (modelReset). The model does not follow a
+     * change made behind its back (the QWidgets preferences, another settings page): call this
+     * when the page that shows it opens.
+     */
+    Q_INVOKABLE void reload();
+
 private:
     struct Action
     {

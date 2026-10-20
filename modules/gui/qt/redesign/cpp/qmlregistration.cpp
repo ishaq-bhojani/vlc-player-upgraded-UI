@@ -31,7 +31,9 @@
 #include "mlfavoritebackend.hpp"
 #include "mlrecentaudiomodel.hpp"
 #include "pinnavigation.hpp"
+#include "settingsbridge.hpp"
 #include "settingsmodel.hpp"
+#include "shortcutsmodel.hpp"
 #include "toolmanagervlc.hpp"
 
 #include "../../maininterface/mainctx.hpp"
@@ -55,6 +57,9 @@ static_assert(SettingItem::Bool == 0 && SettingItem::Integer == 1 && SettingItem
  *   SettingItem            uncreatable, returned by RedesignSettings.item()
  *   RedesignSettings       singleton, SettingsModel (not "Settings": that would
  *                          clash with QtCore.Settings)
+ *   SettingsBridge         singleton, the color scheme and the key strings of the settings
+ *                          modal (what QML can not reach in the upstream code)
+ *   ShortcutsModel         singleton, the keyboard shortcuts page (call reload() when it opens)
  *   ToolManager            singleton, verified yt-dlp / ffmpeg downloads (consent, pinned manifest)
  * plus, only when the interface has a media library, the default backend
  * factory of CurrentMediaFavorite (MLFavoriteBackend), and the
@@ -81,6 +86,10 @@ void registerQmlTypes(MainCtx* ctx)
         "SettingItem is returned by RedesignSettings.item()");
     qmlRegisterSingletonType<SettingsModel>(uri, versionMajor, versionMinor, "RedesignSettings",
         [intf](QQmlEngine*, QJSEngine*) { return new SettingsModel(VLC_OBJECT(intf)); });
+    qmlRegisterSingletonType<SettingsBridge>(uri, versionMajor, versionMinor, "SettingsBridge",
+        [colorScheme = ctx->getColorScheme()](QQmlEngine*, QJSEngine*) { return new SettingsBridge(colorScheme); });
+    qmlRegisterSingletonType<ShortcutsModel>(uri, versionMajor, versionMinor, "ShortcutsModel",
+        [intf](QQmlEngine*, QJSEngine*) { return new ShortcutsModel(VLC_OBJECT(intf)); });
     qmlRegisterSingletonType<ToolManager>(uri, versionMajor, versionMinor, "ToolManager",
         [intf](QQmlEngine*, QJSEngine*) { return createToolManager(VLC_OBJECT(intf)); });
     if (ctx->hasMediaLibrary()) {
