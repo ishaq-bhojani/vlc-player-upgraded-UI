@@ -13,6 +13,8 @@ nsi_conf.set('HAVE_ARM64_TRUE',  host_machine.cpu_family() == 'aarch64' or host_
 nsi_conf.set('HAVE_ARM64_FALSE', host_machine.cpu_family() == 'aarch64' or host_machine.cpu() == 'arm64' ? ';' : '')
 nsi_conf.set('PROGRAMFILES', have_win64 ? 'PROGRAMFILES64' : 'PROGRAMFILES')
 nsi_conf.set('HAVE_NLS_TRUE', nsi_conf.get('ENABLE_NLS', 0) == 1 ? '' : ';')
+# Vireo: display version of the installer (Apps & Features); the engine VERSION stays 4.0.0-dev style
+nsi_conf.set('REDESIGN_RELEASE_VERSION', get_option('redesign_release_version'))
 
 nsProcess_cargs = ['-D_UNICODE=1', '-DUNICODE=1']
 if not have_win64
@@ -73,7 +75,7 @@ spad_nsi = configure_file(
 )
 
 install_data('nsProcess.nsh',    install_dir : 'NSIS')
-install_data('vlc_branding.bmp', install_dir : 'NSIS')
+install_data('vireo_branding.bmp', install_dir : 'NSIS')
 install_subdir('languages',      install_dir : '.')
 install_subdir('helpers',        install_dir : '.')
 
@@ -96,7 +98,7 @@ if makensis.found()
     vlc_nsis = custom_target(
         command: [makensis, nsi_script_dir / 'vlc.win32.nsi'],
         input: vlc_nsi,
-        output: 'vlc-' + vlc_version + '-' + winstaller_suffix + '.exe', # real name but root build folder
+        output: 'vireo-' + vlc_version + '-' + winstaller_suffix + '.exe', # real name but root build folder
         build_by_default: false,
         console: true,
         depends: nsProcess)

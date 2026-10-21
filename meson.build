@@ -1211,6 +1211,9 @@ if host_system == 'windows'
     rc_conf.merge_from(cdata)
     rc_conf.set('VERSION', vlc_version)
     rc_conf.set('COPYRIGHT_YEARS', vlc_copyright_years)
+    # Vireo: product name and release version of the exe / plugin version resources
+    rc_conf.set('REDESIGN_PRODUCT_NAME', get_option('redesign_product_name'))
+    rc_conf.set('REDESIGN_RELEASE_VERSION', get_option('redesign_release_version'))
 endif
 
 # libvlccore

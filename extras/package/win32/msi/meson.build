@@ -102,7 +102,7 @@ foreach wxsobj : wxs_files
     compiled_winpath += out_winpath
 endforeach
 
-msi_name = 'vlc-' + vlc_version + '-' + winstaller_suffix + '.msi'
+msi_name = 'vireo-' + vlc_version + '-' + winstaller_suffix + '.msi'
 msi_output = custom_target(
     command: [x86_runner, lightx86, '-nologo',
         '-sval', '-spdb', '-ext', 'WixUIExtension', '-ext', 'WixUtilExtension', '-cultures:en-us',

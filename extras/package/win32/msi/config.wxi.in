@@ -1,11 +1,11 @@
 <?xml version='1.0'?>
 <Include>
-    <?define ShortProductName = "VLC" ?>
-    <?define ProductName = "VLC media player" ?>
-    <?define Manufacturer = "VideoLAN" ?>
-    <?define AboutURL = "https://www.videolan.org/vlc/" ?>
-    <?define SupportURL = "https://www.videolan.org/support/" ?>
-    <?define UpdatesURL = "https://www.videolan.org/vlc/" ?>
+    <?define ShortProductName = "Vireo" ?>
+    <?define ProductName = "Vireo" ?>
+    <?define Manufacturer = "Vireo contributors" ?>
+    <?define AboutURL = "https://github.com/ishaq-bhojani/vlc-player-upgraded-UI" ?>
+    <?define SupportURL = "https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/issues" ?>
+    <?define UpdatesURL = "https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/releases" ?>
 
     <?define VerMajor = "@VERSION_MAJOR@" ?>
     <?define VerMinor = "@VERSION_MINOR@" ?>
@@ -41,10 +41,10 @@
         <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
     <?endif ?>
 
-    <?define AppFolder = "VLC" ?>
+    <?define AppFolder = "Vireo" ?>
 
 
-    <?define BaseGuid = "d2e0205b-0d3a-46e2-adf7-0504ff48cf" ?>
+    <?define BaseGuid = "ee2f4b33-b1d3-435b-9c54-8fb546afa8" ?>
     <?define CompInstallRegDir = "$(var.BaseGuid)10" ?>
     <?define CompVLCexe = "$(var.BaseGuid)11" ?>
 </Include>

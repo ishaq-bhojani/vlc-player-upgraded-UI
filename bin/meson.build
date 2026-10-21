@@ -33,7 +33,7 @@ if build_vlc and (host_system != 'darwin' or have_osx) and not have_win_store an
 
         vlc_manifest = configure_file(
             input: files('../extras/package/win32/vlc.exe.manifest.in'),
-            output: 'vlc.exe.manifest',
+            output: 'vireo.exe.manifest',
             configuration: rc_conf,
         )
 
@@ -46,7 +46,8 @@ if build_vlc and (host_system != 'darwin' or have_osx) and not have_win_store an
         )
     endif
 
-    executable('vlc',
+    # Vireo: the Windows launcher ships as vireo.exe (the Linux test build keeps bin/vlc)
+    executable(host_system == 'windows' ? 'vireo' : 'vlc',
         vlc_sources + vlc_win_extra,
         link_with: [libvlc, libvlccore],
         link_args: gc_sections_linkargs,

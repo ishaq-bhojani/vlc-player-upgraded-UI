@@ -3,18 +3,19 @@
 ; (http://nsis.sourceforge.net) ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; VLC Reborn: values from docs/redesign/branding.md
-!define PRODUCT_NAME "VLC Reborn"
+; Vireo: values from docs/redesign/branding.md
+!define PRODUCT_NAME "Vireo"
 !define VERSION @VERSION@
-!define PRODUCT_VERSION @VERSION@
-!define PRODUCT_GROUP "VLC Reborn"
-!define PRODUCT_PUBLISHER "VLC Reborn contributors"
+; display version (Apps & Features); VERSION above stays the engine version used for OutFile and upgrade checks
+!define PRODUCT_VERSION "@REDESIGN_RELEASE_VERSION@"
+!define PRODUCT_GROUP "Vireo"
+!define PRODUCT_PUBLISHER "Vireo contributors"
 !define PRODUCT_WEB_SITE "https://github.com/ishaq-bhojani/vlc-player-upgraded-UI"
 ; own key root: never read, write or delete Software\VideoLAN (stock VLC may be installed side by side)
-!define PRODUCT_DIR_REGKEY "Software\VLC Reborn"
+!define PRODUCT_DIR_REGKEY "Software\Vireo"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
-!define PRODUCT_ID "{ea92ef52-afe4-4212-bacb-dfe9fca94cd6}"
+!define PRODUCT_ID "{ab4a9427-0088-405d-92d2-599cd3752765}"
 
 !define MUI_LANGDLL_REGISTRY_ROOT "HKLM"
 !define MUI_LANGDLL_REGISTRY_KEY "${PRODUCT_DIR_REGKEY}"
@@ -46,9 +47,9 @@ Var 32bitPath
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Name "${PRODUCT_NAME}"
-@HAVE_WIN64_FALSE@                   OutFile ..\vlc-${VERSION}-win32.exe
-@HAVE_WIN64_TRUE@ @HAVE_ARM64_FALSE@ OutFile ..\vlc-${VERSION}-win64.exe
-@HAVE_WIN64_TRUE@ @HAVE_ARM64_TRUE@  OutFile ..\vlc-${VERSION}-winarm64.exe
+@HAVE_WIN64_FALSE@                   OutFile ..\vireo-${VERSION}-win32.exe
+@HAVE_WIN64_TRUE@ @HAVE_ARM64_FALSE@ OutFile ..\vireo-${VERSION}-win64.exe
+@HAVE_WIN64_TRUE@ @HAVE_ARM64_TRUE@  OutFile ..\vireo-${VERSION}-winarm64.exe
 InstallDir "$@PROGRAMFILES@\${PRODUCT_NAME}"
 !ifdef NSIS_LZMA_COMPRESS_WHOLE
 SetCompressor lzma
@@ -82,14 +83,14 @@ RequestExecutionLevel admin
 
 ; MUI Settings
   !define MUI_ABORTWARNING
-  !define MUI_ICON "vlc.ico"
-  !define MUI_UNICON "vlc.ico"
+  !define MUI_ICON "vireo.ico"
+  !define MUI_UNICON "vireo.ico"
   !define MUI_COMPONENTSPAGE_SMALLDESC
 
   ; Banner (welcome and finish page) for installer
-  !define MUI_WELCOMEFINISHPAGE_BITMAP "NSIS/vlc_branding.bmp"
+  !define MUI_WELCOMEFINISHPAGE_BITMAP "NSIS/vireo_branding.bmp"
   ; Banner for uninstaller
-  !define MUI_UNWELCOMEFINISHPAGE_BITMAP "NSIS/vlc_branding.bmp"
+  !define MUI_UNWELCOMEFINISHPAGE_BITMAP "NSIS/vireo_branding.bmp"
 
 ; Installer pages
   ; Welcome page
@@ -307,7 +308,7 @@ skip_uninstall32_cleanup:
   !insertmacro OpenUninstallLog
 
   ; VLC.exe, libvlc.dll
-  !insertmacro InstallFile vlc.exe
+  !insertmacro InstallFile vireo.exe
   !insertmacro InstallFile vlc-cache-gen.exe
   !insertmacro InstallFile vlc-preparser.exe
 
@@ -341,53 +342,53 @@ skip_uninstall32_cleanup:
 
   !insertmacro CloseUninstallLog
 
-  ; Add VLC to "recommended programs" for the following extensions
-  WriteRegStr HKCR Applications\vlc.exe "" ""
-  WriteRegStr HKCR Applications\vlc.exe "FriendlyAppName" "${PRODUCT_NAME}"
-  WriteRegStr HKCR Applications\vlc.exe\shell\Open "" "$(ContextMenuEntry_PlayWith)"
-  WriteRegStr HKCR Applications\vlc.exe\shell\Open\command "" '"$INSTDIR\vlc.exe" --started-from-file "%1"'
+  ; Add Vireo to "recommended programs" for the following extensions
+  WriteRegStr HKCR Applications\vireo.exe "" ""
+  WriteRegStr HKCR Applications\vireo.exe "FriendlyAppName" "${PRODUCT_NAME}"
+  WriteRegStr HKCR Applications\vireo.exe\shell\Open "" "$(ContextMenuEntry_PlayWith)"
+  WriteRegStr HKCR Applications\vireo.exe\shell\Open\command "" '"$INSTDIR\vireo.exe" --started-from-file "%1"'
   !insertmacro MacroAllExtensions RegisterExtensionMacro
 @BUILD_SKINS_TRUE@   !insertmacro MacroSkinExtensions RegisterSkinExtensionMacro
 
-  ; Add VLC to "App Paths" to run VLC from ShellExecute/ShellExecuteEx/run dialog without giving a full path
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\vlc.exe" "" "$INSTDIR\vlc.exe"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\vlc.exe" "Path" "$INSTDIR"
+  ; Add Vireo to "App Paths" to run Vireo from ShellExecute/ShellExecuteEx/run dialog without giving a full path
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\vireo.exe" "" "$INSTDIR\vireo.exe"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\vireo.exe" "Path" "$INSTDIR"
 
   ; Windows default programs Registration
   ; Vista and above detection
   ${If} ${AtLeastWinVista}
-    WriteRegStr HKLM "Software\RegisteredApplications" "VLC" "Software\Clients\Media\VLC\Capabilities"
-    WriteRegStr HKLM "Software\Clients\Media\VLC\Capabilities" "ApplicationName" "${PRODUCT_NAME}"
-    WriteRegStr HKLM "Software\Clients\Media\VLC\Capabilities" "ApplicationDescription" "VLC - The video swiss knife"
-    WriteRegStr HKLM "Software\Clients\Media\VLC" "" "${PRODUCT_NAME}"
-    WriteRegStr HKLM "Software\Clients\Media\VLC\InstallInfo" "HideIconsCommand" "$\"$INSTDIR\spad-setup.exe$\" /HideIcons /S"
-    WriteRegStr HKLM "Software\Clients\Media\VLC\InstallInfo" "ShowIconsCommand" "$\"$INSTDIR\spad-setup.exe$\" /ShowIcons /S"
-    WriteRegStr HKLM "Software\Clients\Media\VLC\InstallInfo" "ReinstallCommand" "$\"$INSTDIR\spad-setup.exe$\" /Reinstall /S"
-    WriteRegDWORD HKLM "Software\Clients\Media\VLC\InstallInfo" "IconsVisible" 0x001
+    WriteRegStr HKLM "Software\RegisteredApplications" "Vireo" "Software\Clients\Media\Vireo\Capabilities"
+    WriteRegStr HKLM "Software\Clients\Media\Vireo\Capabilities" "ApplicationName" "${PRODUCT_NAME}"
+    WriteRegStr HKLM "Software\Clients\Media\Vireo\Capabilities" "ApplicationDescription" "${PRODUCT_NAME} - built on VLC media player"
+    WriteRegStr HKLM "Software\Clients\Media\Vireo" "" "${PRODUCT_NAME}"
+    WriteRegStr HKLM "Software\Clients\Media\Vireo\InstallInfo" "HideIconsCommand" "$\"$INSTDIR\spad-setup.exe$\" /HideIcons /S"
+    WriteRegStr HKLM "Software\Clients\Media\Vireo\InstallInfo" "ShowIconsCommand" "$\"$INSTDIR\spad-setup.exe$\" /ShowIcons /S"
+    WriteRegStr HKLM "Software\Clients\Media\Vireo\InstallInfo" "ReinstallCommand" "$\"$INSTDIR\spad-setup.exe$\" /Reinstall /S"
+    WriteRegDWORD HKLM "Software\Clients\Media\Vireo\InstallInfo" "IconsVisible" 0x001
   ${EndIf}
 ${MementoSectionEnd}
 
 ${MementoSection} "$(Name_Section02a)" SEC02a
   SectionIn 1 2 3
-  CreateDirectory "$SMPROGRAMS\${PRODUCT_PUBLISHER}"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_PUBLISHER}\${PRODUCT_NAME}.lnk" \
-    "$INSTDIR\vlc.exe" ""
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_PUBLISHER}\${PRODUCT_NAME} skinned.lnk" \
-    "$INSTDIR\vlc.exe" "-Iskins"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_PUBLISHER}\Documentation.lnk" \
+  CreateDirectory "$SMPROGRAMS\${PRODUCT_GROUP}"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\${PRODUCT_NAME}.lnk" \
+    "$INSTDIR\vireo.exe" ""
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\${PRODUCT_NAME} skinned.lnk" \
+    "$INSTDIR\vireo.exe" "-Iskins"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\Documentation.lnk" \
     "$INSTDIR\Documentation.url"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_PUBLISHER}\Release Notes.lnk" \
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\Release Notes.lnk" \
     "$INSTDIR\NEWS.txt" ""
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_PUBLISHER}\${PRODUCT_GROUP} Website.lnk" \
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\${PRODUCT_GROUP} Website.lnk" \
     "$INSTDIR\${PRODUCT_GROUP} Website.url"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_PUBLISHER}\${PRODUCT_NAME} - reset preferences and cache files.lnk" \
-    "$INSTDIR\vlc.exe" "--reset-config --reset-plugins-cache vlc://quit"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\${PRODUCT_NAME} - reset preferences and cache files.lnk" \
+    "$INSTDIR\vireo.exe" "--reset-config --reset-plugins-cache vlc://quit"
 ${MementoSectionEnd}
 
 ${MementoSection} "$(Name_Section02b)" SEC02b
   SectionIn 1 2 3
   CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" \
-    "$INSTDIR\vlc.exe" ""
+    "$INSTDIR\vireo.exe" ""
 ${MementoSectionEnd}
 
 !ifdef INSTALL_ACTIVEX
@@ -409,104 +410,104 @@ SectionGroupEnd
 
 ${MementoSection} "$(Name_Section05)" SEC05
   SectionIn 1 2 3
-  WriteRegStr HKCR "AudioCD\shell\PlayWithVLC" "" "$(ContextMenuEntry_PlayWith)"
-  WriteRegStr HKCR "AudioCD\shell\PlayWithVLC\command" "" \
-    '"$INSTDIR\vlc.exe" --started-from-file cdda:///%1'
-  WriteRegStr HKCR "DVD\shell\PlayWithVLC" "" "$(ContextMenuEntry_PlayWith)"
-  WriteRegStr HKCR "DVD\shell\PlayWithVLC\command" "" \
-    '"$INSTDIR\vlc.exe" --started-from-file dvd:///%1'
+  WriteRegStr HKCR "AudioCD\shell\PlayWithVireo" "" "$(ContextMenuEntry_PlayWith)"
+  WriteRegStr HKCR "AudioCD\shell\PlayWithVireo\command" "" \
+    '"$INSTDIR\vireo.exe" --started-from-file cdda:///%1'
+  WriteRegStr HKCR "DVD\shell\PlayWithVireo" "" "$(ContextMenuEntry_PlayWith)"
+  WriteRegStr HKCR "DVD\shell\PlayWithVireo\command" "" \
+    '"$INSTDIR\vireo.exe" --started-from-file dvd:///%1'
 
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayDVDMovieOnArrival" "VLCPlayDVDMovieOnArrival" ""
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDMovieOnArrival" "Action" "$(Action_OnArrivalDVD)"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDMovieOnArrival" "DefaultIcon" '"$INSTDIR\vlc.exe",0'
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDMovieOnArrival" "InvokeProgID" "VLC.DVDMovie"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDMovieOnArrival" "InvokeVerb" "Open"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDMovieOnArrival" "Provider" "${PRODUCT_PUBLISHER} ${PRODUCT_NAME}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayDVDMovieOnArrival" "VireoPlayDVDMovieOnArrival" ""
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDMovieOnArrival" "Action" "$(Action_OnArrivalDVD)"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDMovieOnArrival" "DefaultIcon" '"$INSTDIR\vireo.exe",0'
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDMovieOnArrival" "InvokeProgID" "Vireo.DVDMovie"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDMovieOnArrival" "InvokeVerb" "Open"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDMovieOnArrival" "Provider" "${PRODUCT_NAME}"
 
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayCDAudioOnArrival" "VLCPlayCDAudioOnArrival" ""
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayCDAudioOnArrival" "Action" "$(Action_OnArrivalAudioCD)"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayCDAudioOnArrival" "DefaultIcon" '"$INSTDIR\vlc.exe",0'
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayCDAudioOnArrival" "InvokeProgID" "VLC.CDAudio"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayCDAudioOnArrival" "InvokeVerb" "Open"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayCDAudioOnArrival" "Provider" "${PRODUCT_PUBLISHER} ${PRODUCT_NAME}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayCDAudioOnArrival" "VireoPlayCDAudioOnArrival" ""
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayCDAudioOnArrival" "Action" "$(Action_OnArrivalAudioCD)"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayCDAudioOnArrival" "DefaultIcon" '"$INSTDIR\vireo.exe",0'
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayCDAudioOnArrival" "InvokeProgID" "Vireo.CDAudio"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayCDAudioOnArrival" "InvokeVerb" "Open"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayCDAudioOnArrival" "Provider" "${PRODUCT_NAME}"
 
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayVideoCDMovieOnArrival" "VLCPlayVCDMovieOnArrival" ""
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVCDMovieOnArrival" "Action" "$(Action_OnArrivalVCDMovie)"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVCDMovieOnArrival" "DefaultIcon" '"$INSTDIR\vlc.exe",0'
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVCDMovieOnArrival" "InvokeProgID" "VLC.VCDMovie"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVCDMovieOnArrival" "InvokeVerb" "Open"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVCDMovieOnArrival" "Provider" "${PRODUCT_PUBLISHER} ${PRODUCT_NAME}"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayVideoCDMovieOnArrival" "VireoPlayVCDMovieOnArrival" ""
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVCDMovieOnArrival" "Action" "$(Action_OnArrivalVCDMovie)"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVCDMovieOnArrival" "DefaultIcon" '"$INSTDIR\vireo.exe",0'
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVCDMovieOnArrival" "InvokeProgID" "Vireo.VCDMovie"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVCDMovieOnArrival" "InvokeVerb" "Open"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVCDMovieOnArrival" "Provider" "${PRODUCT_NAME}"
 
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlaySuperVideoCDMovieOnArrival" "VLCPlaySVCDMovieOnArrival" ""
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlaySVCDMovieOnArrival" "Action" "$(Action_OnArrivalSVCDMovie)"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlaySVCDMovieOnArrival" "DefaultIcon" '"$INSTDIR\vlc.exe",0'
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlaySVCDMovieOnArrival" "InvokeProgID" "VLC.SVCDMovie"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlaySVCDMovieOnArrival" "InvokeVerb" "Open"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlaySVCDMovieOnArrival" "Provider" "${PRODUCT_PUBLISHER} ${PRODUCT_NAME}"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlaySuperVideoCDMovieOnArrival" "VireoPlaySVCDMovieOnArrival" ""
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlaySVCDMovieOnArrival" "Action" "$(Action_OnArrivalSVCDMovie)"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlaySVCDMovieOnArrival" "DefaultIcon" '"$INSTDIR\vireo.exe",0'
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlaySVCDMovieOnArrival" "InvokeProgID" "Vireo.SVCDMovie"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlaySVCDMovieOnArrival" "InvokeVerb" "Open"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlaySVCDMovieOnArrival" "Provider" "${PRODUCT_NAME}"
 
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayDVDAudioOnArrival" "VLCPlayDVDAudioOnArrival" ""
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDAudioOnArrival" "Action" "$(Action_OnArrivalDVDAudio)"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDAudioOnArrival" "DefaultIcon" '"$INSTDIR\vlc.exe",0'
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDAudioOnArrival" "InvokeProgID" "VLC.OPENFolder"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDAudioOnArrival" "InvokeVerb" "Open"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDAudioOnArrival" "Provider" "${PRODUCT_PUBLISHER} ${PRODUCT_NAME}"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayDVDAudioOnArrival" "VireoPlayDVDAudioOnArrival" ""
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDAudioOnArrival" "Action" "$(Action_OnArrivalDVDAudio)"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDAudioOnArrival" "DefaultIcon" '"$INSTDIR\vireo.exe",0'
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDAudioOnArrival" "InvokeProgID" "Vireo.OPENFolder"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDAudioOnArrival" "InvokeVerb" "Open"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDAudioOnArrival" "Provider" "${PRODUCT_NAME}"
 
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayVideoFilesOnArrival" "VLCPlayVideoFilesOnArrival" ""
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVideoFilesOnArrival" "Action" "$(Action_OnArrivalVideoFiles)"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVideoFilesOnArrival" "DefaultIcon" '"$INSTDIR\vlc.exe",0'
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVideoFilesOnArrival" "InvokeProgID" "VLC.OPENFolder"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVideoFilesOnArrival" "InvokeVerb" "Open"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVideoFilesOnArrival" "Provider" "${PRODUCT_PUBLISHER} ${PRODUCT_NAME}"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayVideoFilesOnArrival" "VireoPlayVideoFilesOnArrival" ""
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVideoFilesOnArrival" "Action" "$(Action_OnArrivalVideoFiles)"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVideoFilesOnArrival" "DefaultIcon" '"$INSTDIR\vireo.exe",0'
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVideoFilesOnArrival" "InvokeProgID" "Vireo.OPENFolder"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVideoFilesOnArrival" "InvokeVerb" "Open"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVideoFilesOnArrival" "Provider" "${PRODUCT_NAME}"
 
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayMusicFilesOnArrival" "VLCPlayMusicFilesOnArrival" ""
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayMusicFilesOnArrival" "Action" "$(Action_OnArrivalMusicFiles)"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayMusicFilesOnArrival" "DefaultIcon" '"$INSTDIR\vlc.exe",0'
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayMusicFilesOnArrival" "InvokeProgID" "VLC.OPENFolder"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayMusicFilesOnArrival" "InvokeVerb" "Open"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayMusicFilesOnArrival" "Provider" "${PRODUCT_PUBLISHER} ${PRODUCT_NAME}"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayMusicFilesOnArrival" "VireoPlayMusicFilesOnArrival" ""
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayMusicFilesOnArrival" "Action" "$(Action_OnArrivalMusicFiles)"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayMusicFilesOnArrival" "DefaultIcon" '"$INSTDIR\vireo.exe",0'
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayMusicFilesOnArrival" "InvokeProgID" "Vireo.OPENFolder"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayMusicFilesOnArrival" "InvokeVerb" "Open"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayMusicFilesOnArrival" "Provider" "${PRODUCT_NAME}"
 
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayBlurayOnArrival" "VLCPlayBlurayOnArrival" ""
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayBlurayOnArrival" "Action" "$(Action_OnArrivalBluray)"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayBlurayOnArrival" "DefaultIcon" '"$INSTDIR\vlc.exe",0'
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayBlurayOnArrival" "InvokeProgID" "VLC.Bluray"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayBlurayOnArrival" "InvokeVerb" "Open"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayBlurayOnArrival" "Provider" "${PRODUCT_PUBLISHER} ${PRODUCT_NAME}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayBlurayOnArrival" "VireoPlayBlurayOnArrival" ""
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayBlurayOnArrival" "Action" "$(Action_OnArrivalBluray)"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayBlurayOnArrival" "DefaultIcon" '"$INSTDIR\vireo.exe",0'
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayBlurayOnArrival" "InvokeProgID" "Vireo.Bluray"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayBlurayOnArrival" "InvokeVerb" "Open"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayBlurayOnArrival" "Provider" "${PRODUCT_NAME}"
 
-  WriteRegStr HKCR "VLC.DVDMovie" "" "VLC DVD Movie"
-  WriteRegStr HKCR "VLC.DVDMovie\shell" "" "Open"
-  WriteRegStr HKCR "VLC.DVDMovie\shell\Open\command" "" \
-    '"$INSTDIR\vlc.exe" --started-from-file dvd:///%1'
-  WriteRegStr HKCR "VLC.DVDMovie\DefaultIcon" "" '"$INSTDIR\vlc.exe",0'
+  WriteRegStr HKCR "Vireo.DVDMovie" "" "Vireo DVD Movie"
+  WriteRegStr HKCR "Vireo.DVDMovie\shell" "" "Open"
+  WriteRegStr HKCR "Vireo.DVDMovie\shell\Open\command" "" \
+    '"$INSTDIR\vireo.exe" --started-from-file dvd:///%1'
+  WriteRegStr HKCR "Vireo.DVDMovie\DefaultIcon" "" '"$INSTDIR\vireo.exe",0'
 
-  WriteRegStr HKCR "VLC.CDAudio" "" "VLC CD Audio"
-  WriteRegStr HKCR "VLC.CDAudio\shell" "" "Open"
-  WriteRegStr HKCR "VLC.CDAudio\shell\Open\command" "" \
-    '"$INSTDIR\vlc.exe" --started-from-file cdda:///%1'
-  WriteRegStr HKCR "VLC.CDAudio\DefaultIcon" "" '"$INSTDIR\vlc.exe",0'
+  WriteRegStr HKCR "Vireo.CDAudio" "" "Vireo CD Audio"
+  WriteRegStr HKCR "Vireo.CDAudio\shell" "" "Open"
+  WriteRegStr HKCR "Vireo.CDAudio\shell\Open\command" "" \
+    '"$INSTDIR\vireo.exe" --started-from-file cdda:///%1'
+  WriteRegStr HKCR "Vireo.CDAudio\DefaultIcon" "" '"$INSTDIR\vireo.exe",0'
 
-  WriteRegStr HKCR "VLC.VCDMovie" "" "VLC VCD Movie"
-  WriteRegStr HKCR "VLC.VCDMovie\shell" "" "Open"
-  WriteRegStr HKCR "VLC.VCDMovie\shell\Open\command" "" \
-     '"$INSTDIR\vlc.exe" --started-from-file vcd:///%1'
-  WriteRegStr HKCR "VLC.VCDMovie\DefaultIcon" "" '"$INSTDIR\vlc.exe",0'
+  WriteRegStr HKCR "Vireo.VCDMovie" "" "Vireo VCD Movie"
+  WriteRegStr HKCR "Vireo.VCDMovie\shell" "" "Open"
+  WriteRegStr HKCR "Vireo.VCDMovie\shell\Open\command" "" \
+     '"$INSTDIR\vireo.exe" --started-from-file vcd:///%1'
+  WriteRegStr HKCR "Vireo.VCDMovie\DefaultIcon" "" '"$INSTDIR\vireo.exe",0'
 
-  WriteRegStr HKCR "VLC.SVCDMovie" "" "VLC SVCD Movie"
-  WriteRegStr HKCR "VLC.SVCDMovie\shell" "" "Open"
-  WriteRegStr HKCR "VLC.SVCDMovie\shell\Open\command" "" \
-     '"$INSTDIR\vlc.exe" --started-from-file vcd:///%1'
-  WriteRegStr HKCR "VLC.SVCDMovie\DefaultIcon" "" '"$INSTDIR\vlc.exe",0'
+  WriteRegStr HKCR "Vireo.SVCDMovie" "" "Vireo SVCD Movie"
+  WriteRegStr HKCR "Vireo.SVCDMovie\shell" "" "Open"
+  WriteRegStr HKCR "Vireo.SVCDMovie\shell\Open\command" "" \
+     '"$INSTDIR\vireo.exe" --started-from-file vcd:///%1'
+  WriteRegStr HKCR "Vireo.SVCDMovie\DefaultIcon" "" '"$INSTDIR\vireo.exe",0'
 
-  WriteRegStr HKCR "VLC.OPENFolder" "" "VLC Play content"
-  WriteRegStr HKCR "VLC.OPENFolder\shell" "" "Open"
-  WriteRegStr HKCR "VLC.OPENFolder\shell\Open\command" "" \
-     '"$INSTDIR\vlc.exe" %1'
-  WriteRegStr HKCR "VLC.OPENFolder\DefaultIcon" "" '"$INSTDIR\vlc.exe",0'
+  WriteRegStr HKCR "Vireo.OPENFolder" "" "Vireo Play content"
+  WriteRegStr HKCR "Vireo.OPENFolder\shell" "" "Open"
+  WriteRegStr HKCR "Vireo.OPENFolder\shell\Open\command" "" \
+     '"$INSTDIR\vireo.exe" %1'
+  WriteRegStr HKCR "Vireo.OPENFolder\DefaultIcon" "" '"$INSTDIR\vireo.exe",0'
 
-  WriteRegStr HKCR "VLC.Bluray" "" "VLC Bluray"
-  WriteRegStr HKCR "VLC.Bluray\shell" "" "Open"
-  WriteRegStr HKCR "VLC.Bluray\shell\Open\command" "" \
-    '"$INSTDIR\vlc.exe" --started-from-file bluray:///%1'
-  WriteRegStr HKCR "VLC.Bluray\DefaultIcon" "" '"$INSTDIR\vlc.exe",0'
+  WriteRegStr HKCR "Vireo.Bluray" "" "Vireo Bluray"
+  WriteRegStr HKCR "Vireo.Bluray\shell" "" "Open"
+  WriteRegStr HKCR "Vireo.Bluray\shell\Open\command" "" \
+    '"$INSTDIR\vireo.exe" --started-from-file bluray:///%1'
+  WriteRegStr HKCR "Vireo.Bluray\DefaultIcon" "" '"$INSTDIR\vireo.exe",0'
 
 ${MementoSectionEnd}
 
@@ -560,7 +561,7 @@ ${MementoSectionRestore}
 
 @HAVE_WIN64_TRUE@ !include "x64.nsh"
 @HAVE_WIN64_TRUE@ ${Unless} ${RunningX64}
-@HAVE_WIN64_TRUE@    MessageBox MB_OK|MB_ICONSTOP "This version of VLC only runs on 64-bit operating systems.$\nPlease get the 32-bit version and try again."
+@HAVE_WIN64_TRUE@    MessageBox MB_OK|MB_ICONSTOP "This version of ${PRODUCT_NAME} only runs on 64-bit operating systems.$\nPlease get the 32-bit version and try again."
 @HAVE_WIN64_TRUE@    Quit
 @HAVE_WIN64_TRUE@ ${EndUnless}
 ${IfNot} ${AtLeastWin7}
@@ -573,14 +574,14 @@ StrCpy $INSTDIR "$@PROGRAMFILES@\${PRODUCT_NAME}"
 Goto WinOk
 
 WinTooOld:
-    MessageBox MB_OK|MB_ICONSTOP "This version of VLC only runs on Windows 7 and newer."
+    MessageBox MB_OK|MB_ICONSTOP "This version of ${PRODUCT_NAME} only runs on Windows 7 and newer."
     Quit
 
 WinOk:
   ; /update argument
   Call ParseCommandline
 
-  ; See if a other bitness VLC version exists
+  ; See if a other bitness Vireo version exists
   !ifdef VLC_64BIT_INSTALLER
     SetRegView 32
 
@@ -776,7 +777,7 @@ Section -Post
   WriteUninstaller "$INSTDIR\uninstall.exe"
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "InstallDir" $INSTDIR
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "Version" "${VERSION}"
-  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\vlc.exe"
+  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\vireo.exe"
 
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
     "DisplayName" "$(^Name)"
@@ -785,7 +786,7 @@ Section -Post
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
     "InstallLocation" "$INSTDIR"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
-    "DisplayIcon" "$INSTDIR\vlc.exe"
+    "DisplayIcon" "$INSTDIR\vireo.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
     "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
@@ -818,35 +819,8 @@ Section "un.$(Name_Section91)" SEC91
   Delete /REBOOTOK "$INSTDIR\axvlc.dll"
 !endif
 
-  ;remove mozilla plugin
-  Push $R0
-  Push $R1
-  Push $R2
-
-  !define Index 'Line${__LINE__}'
-  StrCpy $R1 "0"
-
-  "${Index}-Loop:"
-
-    ; Check for Key
-    EnumRegKey $R0 HKLM "SOFTWARE\Mozilla" "$R1"
-    StrCmp $R0 "" "${Index}-End"
-    IntOp $R1 $R1 + 1
-    ReadRegStr $R2 HKLM "SOFTWARE\Mozilla\$R0\Extensions" "Plugins"
-    StrCmp $R2 "" "${Index}-Loop" ""
-
-    ; old files (0.8.5 and before) that may be lying around
-    Delete /REBOOTOK "$R2\npvlc.dll"
-    Delete /REBOOTOK "$R2\libvlc.dll"
-    Delete /REBOOTOK "$R2\vlcintf.xpt"
-    Goto "${Index}-Loop"
-
-  "${Index}-End:"
-  !undef Index
-  Delete /REBOOTOK "$INSTDIR\npvlc.dll"
-
-  RMDir "$SMPROGRAMS\${PRODUCT_PUBLISHER}"
-  RMDir /r "$SMPROGRAMS\${PRODUCT_PUBLISHER}"
+  RMDir "$SMPROGRAMS\${PRODUCT_GROUP}"
+  RMDir /r "$SMPROGRAMS\${PRODUCT_GROUP}"
 
   FileOpen $UninstallLog "$INSTDIR\uninstall.log" r
   UninstallLoop:
@@ -866,38 +840,37 @@ Section "un.$(Name_Section91)" SEC91
   Call un.RemoveEmptyDirs
   RMDir "$INSTDIR"
 
-  DeleteRegKey HKCR Applications\vlc.exe
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\vlc.exe"
-  DeleteRegKey HKCR AudioCD\shell\PlayWithVLC
-  DeleteRegKey HKCR DVD\shell\PlayWithVLC
-  DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayDVDMovieOnArrival" "VLCPlayDVDMovieOnArrival"
-  DeleteRegKey HKLM Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDMovieOnArrival
-  DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayCDAudioOnArrival" "VLCPlayCDAudioOnArrival"
-  DeleteRegKey HKLM Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayCDAudioOnArrival
-  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayVideoCDMovieOnArrival" "VLCPlayVCDMovieOnArrival"
-  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVCDMovieOnArrival
-  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlaySuperVideoCDMovieOnArrival" "VLCPlaySVCDMovieOnArrival"
-  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlaySVCDMovieOnArrival
-  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayDVDAudioOnArrival" "VLCPlayDVDAudioOnArrival"
-  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayDVDAudioOnArrival
-  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayVideoFilesOnArrival" "VLCPlayVideoFilesOnArrival"
-  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayVideoFilesOnArrival
-  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayMusicFilesOnArrival" "VLCPlayMusicFilesOnArrival"
-  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VLCPlayMusicFilesOnArrival
+  DeleteRegKey HKCR Applications\vireo.exe
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\vireo.exe"
+  DeleteRegKey HKCR AudioCD\shell\PlayWithVireo
+  DeleteRegKey HKCR DVD\shell\PlayWithVireo
+  DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayDVDMovieOnArrival" "VireoPlayDVDMovieOnArrival"
+  DeleteRegKey HKLM Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDMovieOnArrival
+  DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayCDAudioOnArrival" "VireoPlayCDAudioOnArrival"
+  DeleteRegKey HKLM Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayCDAudioOnArrival
+  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayVideoCDMovieOnArrival" "VireoPlayVCDMovieOnArrival"
+  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVCDMovieOnArrival
+  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlaySuperVideoCDMovieOnArrival" "VireoPlaySVCDMovieOnArrival"
+  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlaySVCDMovieOnArrival
+  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayDVDAudioOnArrival" "VireoPlayDVDAudioOnArrival"
+  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayDVDAudioOnArrival
+  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayVideoFilesOnArrival" "VireoPlayVideoFilesOnArrival"
+  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayVideoFilesOnArrival
+  DeleteRegValue HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayMusicFilesOnArrival" "VireoPlayMusicFilesOnArrival"
+  DeleteRegKey HKLM SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayMusicFilesOnArrival
+  DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlers\PlayBlurayOnArrival" "VireoPlayBlurayOnArrival"
+  DeleteRegKey HKLM Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\Handlers\VireoPlayBlurayOnArrival
 
-  DeleteRegKey HKLM Software\Clients\Media\VLC
-  DeleteRegValue HKLM "Software\RegisteredApplications" "VLC"
-  DeleteRegKey HKCR "VLC.MediaFile"
-  DeleteRegKey HKCR "VLC.DVDMovie"
-  DeleteRegKey HKCR "VLC.CDAudio"
-  DeleteRegKey HKCR "VLC.VCDMovie"
-  DeleteRegKey HKCR "VLC.SVCDMovie"
-  DeleteRegKey HKCR "VLC.OPENFolder"
-  DeleteRegKey HKCR "VLC.Bluray"
+  DeleteRegKey HKLM Software\Clients\Media\Vireo
+  DeleteRegValue HKLM "Software\RegisteredApplications" "Vireo"
+  DeleteRegKey HKCR "Vireo.MediaFile"
+  DeleteRegKey HKCR "Vireo.DVDMovie"
+  DeleteRegKey HKCR "Vireo.CDAudio"
+  DeleteRegKey HKCR "Vireo.VCDMovie"
+  DeleteRegKey HKCR "Vireo.SVCDMovie"
+  DeleteRegKey HKCR "Vireo.OPENFolder"
+  DeleteRegKey HKCR "Vireo.Bluray"
 
-
-  DeleteRegKey HKLM \
-    "SOFTWARE\MozillaPlugins\@videolan.org/vlc,version=${VERSION}"
 
   DeleteRegKey HKLM \
     "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"

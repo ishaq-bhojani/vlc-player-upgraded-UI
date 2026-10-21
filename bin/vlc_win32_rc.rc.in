@@ -3,7 +3,7 @@
 
 #include <winuser.h>
 
-VLC_ICON ICON "vlc.ico"
+VLC_ICON ICON "vireo.ico"
 
 1 VERSIONINFO
 FILETYPE 1
@@ -15,15 +15,15 @@ BEGIN
   BEGIN
     BLOCK "040904E4"
     BEGIN
-      VALUE "CompanyName", "VideoLAN"
-      VALUE "ProductName", "VLC media player"
-      VALUE "ProductVersion", VERSION_NUMBER_STR
-      VALUE "InternalName", "vlc"
-      VALUE "OriginalFilename", "vlc.exe"
+      VALUE "CompanyName", "Vireo contributors"
+      VALUE "ProductName", "@REDESIGN_PRODUCT_NAME@"
+      VALUE "ProductVersion", "@REDESIGN_RELEASE_VERSION@"
+      VALUE "InternalName", "vireo"
+      VALUE "OriginalFilename", "vireo.exe"
       VALUE "FileVersion", "@VERSION@"
-      VALUE "FileDescription", "VLC media player"
+      VALUE "FileDescription", "@REDESIGN_PRODUCT_NAME@, built on VLC media player"
       VALUE "LegalCopyright", "Copyright \251 @COPYRIGHT_YEARS@ VideoLAN and VLC Authors"
-      VALUE "LegalTrademarks", "VLC media player, VideoLAN and x264 are registered trademarks from VideoLAN"
+      VALUE "LegalTrademarks", "VLC media player, VideoLAN and x264 are registered trademarks from VideoLAN. @REDESIGN_PRODUCT_NAME@ is an independent project, not affiliated with VideoLAN"
     END
   END
   BLOCK "VarFileInfo"
@@ -32,4 +32,4 @@ BEGIN
   END
 END
 
-CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "vlc.exe.manifest"
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "vireo.exe.manifest"

@@ -11,13 +11,13 @@ BEGIN
   BEGIN
     BLOCK "040904E4"
     BEGIN
-      VALUE "CompanyName", "VideoLAN"
-      VALUE "ProductName", "VLC media player"
-      VALUE "ProductVersion", VERSION_NUMBER_STR
+      VALUE "CompanyName", "Vireo contributors"
+      VALUE "ProductName", "@REDESIGN_PRODUCT_NAME@"
+      VALUE "ProductVersion", "@REDESIGN_RELEASE_VERSION@"
       VALUE "FileVersion", "@VERSION@"
-      VALUE "FileDescription", "LibVLC plugin"
+      VALUE "FileDescription", "@REDESIGN_PRODUCT_NAME@ plugin (LibVLC)"
       VALUE "LegalCopyright", "Copyright \251 @COPYRIGHT_YEARS@ VideoLAN and VLC Authors"
-      VALUE "LegalTrademarks", "VLC media player, VideoLAN and x264 are registered trademarks from VideoLAN"
+      VALUE "LegalTrademarks", "VLC media player, VideoLAN and x264 are registered trademarks from VideoLAN. @REDESIGN_PRODUCT_NAME@ is an independent project, not affiliated with VideoLAN"
     END
   END
   BLOCK "VarFileInfo"
