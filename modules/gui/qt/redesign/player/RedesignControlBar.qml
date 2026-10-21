@@ -88,6 +88,22 @@ T.Pane {
         Component.onCompleted: root.forceUnlock.connect(forceUnlock)
     }
 
+    // The controls are replaced when the profile or the kind of media changes (a video starts), and
+    // the upstream layout takes the keyboard into the bar then; it goes back to where it was.
+    FocusKeeper {
+        id: focusKeeper
+
+        scope: root
+    }
+
+    Connections {
+        target: root.contentItem
+
+        function onModelChanged() {
+            focusKeeper.begin()
+        }
+    }
+
     // just above the Play button (a child of the pane would land in the layout)
     ResumePrompt {
         parent: root
