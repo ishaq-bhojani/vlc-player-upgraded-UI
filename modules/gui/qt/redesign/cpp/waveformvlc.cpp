@@ -262,7 +262,7 @@ WaveformEnvironment makeVlcWaveformEnvironment(vlc_object_t* obj)
     WaveformEnvironment env;
     char* userDir = config_GetUserDir(VLC_USERDATA_DIR);
     if (userDir) {
-        env.cacheDir = QString::fromUtf8(userDir) + QStringLiteral("/vlc-reborn/waveforms");
+        env.cacheDir = QString::fromUtf8(userDir) + QStringLiteral("/vireo/waveforms");
         free(userDir);
     }
     env.makeDecoder = [obj] { return makeVlcWaveformDecoder(obj); };

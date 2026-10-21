@@ -175,7 +175,7 @@ ToolManager* createToolManager(vlc_object_t* obj)
     char* userDir = config_GetUserDir(VLC_USERDATA_DIR);
     if (!userDir)
         return nullptr;
-    const QString root = QString::fromUtf8(userDir) + QStringLiteral("/vlc-reborn/tools");
+    const QString root = QString::fromUtf8(userDir) + QStringLiteral("/vireo/tools");
     free(userDir);
 
     return new ToolManager(root, ToolManager::bundledManifest(), makeVlcToolFetcher(obj));

@@ -305,7 +305,7 @@ QtObject {
                 s("rtsp-tcp"),
                 s("services-discovery"),
                 special("toolConsent", qsTr("Download website playback tools"),
-                        { description: qsTr("Lets VLC Reborn download yt-dlp and ffmpeg to play and save videos from websites.") })
+                        { description: qsTr("Lets Vireo download yt-dlp and ffmpeg to play and save videos from websites.") })
             ]
         },
         {

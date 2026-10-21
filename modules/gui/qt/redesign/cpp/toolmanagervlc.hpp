@@ -32,7 +32,7 @@ namespace redesign
 std::unique_ptr<ToolFetcher> makeVlcToolFetcher(vlc_object_t* obj);
 
 //! the ToolManager of the application: bundled manifest, VLC fetcher, tools in
-//! <user data dir>/vlc-reborn/tools. Returns nullptr when the user data directory is unknown.
+//! <user data dir>/vireo/tools. Returns nullptr when the user data directory is unknown.
 ToolManager* createToolManager(vlc_object_t* obj);
 
 } // namespace redesign

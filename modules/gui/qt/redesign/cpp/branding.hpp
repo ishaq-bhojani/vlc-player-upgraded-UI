@@ -31,6 +31,10 @@
 # error "REDESIGN_PRODUCT_NAME is not defined, see modules/gui/qt/redesign/meson.build"
 #endif
 
+#ifndef REDESIGN_RELEASE_VERSION
+# error "REDESIGN_RELEASE_VERSION is not defined, see modules/gui/qt/redesign/meson.build"
+#endif
+
 namespace redesign
 {
 
@@ -49,6 +53,30 @@ inline QString productName()
 inline QString productWebsite()
 {
     return QStringLiteral("https://github.com/ishaq-bhojani/vlc-player-upgraded-UI");
+}
+
+/** Release version of the product ("0.1.0"), from the meson option redesign_release_version. */
+inline QString releaseVersion()
+{
+    return QString::fromUtf8(REDESIGN_RELEASE_VERSION);
+}
+
+/**
+ * "<name> <release version>", plus " (build N)" when the build number N of a numbered release
+ * (meson option redesign_build_number, the N of the updater's 4.0.0.N) is not 0.
+ */
+inline QString versionTitle(const QString& name, const QString& release, int buildNumber)
+{
+    QString s = name + QLatin1Char(' ') + release;
+    if (buildNumber != 0)
+        s += QStringLiteral(" (build %1)").arg(buildNumber);
+    return s;
+}
+
+/** Credit line under the title of the About dialog: "Built on VLC media player <VLC version>". */
+inline QString builtOnLine(const QString& vlcVersion)
+{
+    return QStringLiteral("Built on VLC media player %1").arg(vlcVersion).trimmed();
 }
 
 } // namespace redesign

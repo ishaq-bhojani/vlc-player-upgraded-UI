@@ -21,6 +21,7 @@
 #include <QImageReader>
 
 #include "maininterface/mainctx.hpp"
+#include "redesign/cpp/brandicon.hpp"
 #include "menus/menus.hpp"
 #include "playlist/playlist_controller.hpp"
 #include "player/player_controller.hpp"
@@ -40,7 +41,9 @@ VLCSystray::VLCSystray(MainCtx* ctx, QObject* parent)
     m_notificationSetting = var_InheritInteger(m_intf, "qt-notification");
 
     QIcon iconVLC;
-    if( m_ctx->useXmasCone() )
+    if( m_ctx->isRedesign() )
+        iconVLC = redesign::appIcon();
+    else if( m_ctx->useXmasCone() )
         iconVLC = QIcon::fromTheme( "vlc-xmas", QIcon( ":/logo/vlc128-xmas.png" ) );
     else
         iconVLC = QIcon::fromTheme( "vlc", QIcon( ":/logo/vlc256.png" ) );
@@ -171,18 +174,19 @@ void VLCSystray::update()
     m_menu->clear();
 
 #ifndef Q_OS_MAC
+    const QIcon trayIcon = m_ctx->isRedesign() ? redesign::appIcon() : QIcon( ":/logo/vlc16.png" );
     /* Hide / Show VLC and cone */
     if( m_ctx->interfaceVisibility() != QWindow::Hidden )
     {
         m_menu->addAction(
-            QIcon( ":/logo/vlc16.png" ), m_ctx->isRedesign() ? qtr( "&Hide %1 in taskbar" ).arg( m_ctx->productName() )
+            trayIcon, m_ctx->isRedesign() ? qtr( "&Hide %1 in taskbar" ).arg( m_ctx->productName() )
                                                       : qtr( "&Hide VLC media player in taskbar" ),
             this, &VLCSystray::hideUpdateMenu);
     }
     else
     {
         m_menu->addAction(
-            QIcon( ":/logo/vlc16.png" ), m_ctx->isRedesign() ? qtr( "Sho&w %1" ).arg( m_ctx->productName() )
+            trayIcon, m_ctx->isRedesign() ? qtr( "Sho&w %1" ).arg( m_ctx->productName() )
                                                       : qtr( "Sho&w VLC media player" ),
             this, &VLCSystray::showUpdateMenu);
     }

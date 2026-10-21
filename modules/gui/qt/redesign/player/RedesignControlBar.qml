@@ -27,7 +27,7 @@ import VLC.Redesign
 
 /**
  * @brief The control bar of the redesign (spec 11.1): one thin row over the bottom of the
- * video, laid out by the profile selected in Customize Player ("VLC Reborn" by default:
+ * video, laid out by the profile selected in Customize Player ("Vireo" by default:
  * previous, play, next, seek bar | volume, subtitles, audio, settings, queue, fullscreen).
  *
  * It hosts the upstream PlayerControlLayout, so the profile model, the Customize Player editor

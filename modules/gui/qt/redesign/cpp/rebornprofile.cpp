@@ -71,7 +71,7 @@ bool isRebornProfile(const ControlbarProfile* profile)
 
 QString rebornProfileName()
 {
-    return QStringLiteral("VLC Reborn");
+    return QStringLiteral("Vireo");
 }
 
 void injectRebornModel(ControlbarProfile* profile)

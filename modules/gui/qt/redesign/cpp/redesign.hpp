@@ -28,7 +28,7 @@ namespace redesign
 {
 
 /**
- * Returns whether the VLC Reborn redesign is enabled (the "qt-redesign"
+ * Returns whether the Vireo redesign is enabled (the "qt-redesign"
  * option, true by default). Every redesign behaviour is gated by this.
  */
 bool isEnabled(vlc_object_t* obj);

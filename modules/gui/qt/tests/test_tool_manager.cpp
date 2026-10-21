@@ -152,7 +152,7 @@ private:
         return e;
     }
 
-    //! a manager in the temporary directory; the tools directory is <user>/vlc-reborn/tools
+    //! a manager in the temporary directory; the tools directory is <user>/vireo/tools
     std::unique_ptr<ToolManager> makeManager(const QList<ToolEntry>& tools, const std::shared_ptr<FakeState>& state,
                                              bool consent = true)
     {
@@ -163,7 +163,7 @@ private:
     }
 
     QString userDir() const { return m_dir->path() + QStringLiteral("/user"); }
-    QString toolsRoot() const { return userDir() + QStringLiteral("/vlc-reborn/tools"); }
+    QString toolsRoot() const { return userDir() + QStringLiteral("/vireo/tools"); }
     QString settingsFile() const { return m_dir->filePath(QStringLiteral("settings.ini")); }
 
 private slots:
@@ -402,7 +402,7 @@ private slots:
 
         // only the executable and its record below the user directory, no temporary download left
         QCOMPARE(filesBelow(userDir()).size(), 2);
-        QVERIFY(QDir(userDir() + QStringLiteral("/vlc-reborn")).entryList(QStringList{QStringLiteral("tools-tmp-*")}).isEmpty());
+        QVERIFY(QDir(userDir() + QStringLiteral("/vireo")).entryList(QStringList{QStringLiteral("tools-tmp-*")}).isEmpty());
 
         // installed: ready at once, no second download
         manager->ensure(QStringLiteral("tool"));
@@ -755,7 +755,7 @@ private slots:
         QCOMPARE(f.readAll(), state->payload);
         f.close();
         QCOMPARE(filesBelow(userDir()).size(), 2);
-        QVERIFY(QDir(userDir() + QStringLiteral("/vlc-reborn")).entryList(QStringList{QStringLiteral("tools-tmp-*")}).isEmpty());
+        QVERIFY(QDir(userDir() + QStringLiteral("/vireo")).entryList(QStringList{QStringLiteral("tools-tmp-*")}).isEmpty());
     }
 
     //! an archive without a published digest of the exe: the record is an integrity hint

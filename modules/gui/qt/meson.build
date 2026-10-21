@@ -977,7 +977,7 @@ if qt6_dep.found()
         qt_extra_flags += '-DQT_HAS_LIBATOMIC'
     endif
 
-    # VLC Reborn: redesign build registrations, see redesign/meson.build
+    # Vireo: redesign build registrations, see redesign/meson.build
     subdir('redesign')
 
     prog_python = find_program('python3')
@@ -1308,7 +1308,7 @@ if qt6_dep.found()
 
     qtest_qt6_dep = dependency('qt6', version: '=' + qt6_dep.version(), modules: ['Test'], required: false)
     if qtest_qt6_dep.found()
-        subdir('redesign/tests') # VLC Reborn redesign unit tests
+        subdir('redesign/tests') # Vireo redesign unit tests
         vlc_tests += {
             'name': 'test_qt_ml_model',
             'sources': files(

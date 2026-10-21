@@ -1,4 +1,4 @@
-# VLC Reborn: every build registration of the redesign.
+# Vireo: every build registration of the redesign.
 #
 # modules/gui/qt/meson.build only carries two hook lines (keep it that way, so
 # the monthly upstream merges stay trivial). subdir() shares the parent scope,
@@ -26,6 +26,7 @@
 # tests, take redesign_branding_cppargs.
 redesign_branding_cppargs = [
     '-DREDESIGN_PRODUCT_NAME="' + get_option('redesign_product_name') + '"',
+    '-DREDESIGN_RELEASE_VERSION="' + get_option('redesign_release_version') + '"',
 ]
 qt_cppargs += redesign_branding_cppargs
 
@@ -47,6 +48,7 @@ moc_headers += files(
 qt_plugin_sources += files(
     'cpp/aboutbranding.cpp',
     'cpp/aboutbranding.hpp',
+    'cpp/brandicon.hpp',
     'cpp/branding.hpp',
     'cpp/lrcparser.cpp',
     'cpp/lrcparser.hpp',

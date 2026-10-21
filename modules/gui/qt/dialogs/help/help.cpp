@@ -112,7 +112,7 @@ AboutDialog::AboutDialog( qt_intf_t *_p_intf)
     /* GPL License */
     ui.licensePage->setText( qfu( psz_license ) );
     if( redesignBranding )
-        redesign::applyAboutBranding( ui.title, ui.MainBlabla, ui.licensePage );
+        redesign::applyAboutBranding( ui.title, ui.MainBlabla, ui.version, ui.VLCcone, ui.licensePage );
 
     /* People who helped */
     ui.creditPage->setText( qfu( psz_thanks ) );
@@ -412,6 +412,8 @@ UpdateDialog::UpdateDialog( qt_intf_t *_p_intf ) : QVLCFrame( _p_intf )
     const bool redesignBranding = redesign::isEnabled( VLC_OBJECT( p_intf ) );
     setWindowTitle( redesignBranding ? qtr( "%1 updates" ).arg( redesign::productName() )
                                      : qtr( "VLC media player updates" ) );
+    if( redesignBranding )
+        ui.updateDialogLabel->setText( qtr( "Check for %1 updates" ).arg( redesign::productName() ) );
     setWindowRole( "vlc-update" );
 
     BUTTONACT( recheckButton, &UpdateDialog::checkOrDownload );
@@ -489,12 +491,16 @@ void UpdateDialog::updateUI( )
     {
         ui.stackedWidget->setCurrentWidget( ui.updateNotifyPage );
         int extra = m_model->getExtra();
+        const bool redesignBranding = redesign::isEnabled( VLC_OBJECT( p_intf ) );
         QString message = QString(
-                              qtr( "A new version of VLC (%1.%2.%3%4) is available." ) )
+                              redesignBranding ? qtr( "A new version of %5 (%1.%2.%3%4) is available." )
+                                               : qtr( "A new version of VLC (%1.%2.%3%4) is available." ) )
                               .arg( m_model->getMajor() )
                               .arg( m_model->getMinor() )
                               .arg( m_model->getRevision()  )
                               .arg( extra == 0 ? QStringLiteral("") : QStringLiteral(".") + QString::number( extra ) );
+        if( redesignBranding )
+            message = message.arg( redesign::productName() );
 
         ui.updateNotifyLabel->setText( message );
         message = m_model->getDescription().replace( "\n", "<br/>" );

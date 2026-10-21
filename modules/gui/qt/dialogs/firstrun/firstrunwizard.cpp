@@ -152,7 +152,7 @@ void FirstRunWizard::finish()
 
     config_PutInt( "qt-pin-controls", ui.layoutGroup->checkedId() );
 
-    /* the redesign keeps its own profile (VLC Reborn), the layout page is the stock one */
+    /* the redesign keeps its own profile (Vireo), the layout page is the stock one */
     if( !p_intf->p_mi->isRedesign() )
     {
         ControlbarProfileModel* controlbarModel = p_intf->p_mi->controlbarProfileModel();

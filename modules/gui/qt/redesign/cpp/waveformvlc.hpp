@@ -45,7 +45,7 @@ std::unique_ptr<WaveformDecoder> makeVlcWaveformDecoder(vlc_object_t* obj);
 //! after the player is gone. Public for the tests.
 vlc_object_t* createWaveformHolder(vlc_object_t* parent);
 
-//! the environment of the application: the cache in <user data dir>/vlc-reborn/waveforms
+//! the environment of the application: the cache in <user data dir>/vireo/waveforms
 //! and the decoder above. Without a user data directory there is no cache.
 WaveformEnvironment makeVlcWaveformEnvironment(vlc_object_t* obj);
 

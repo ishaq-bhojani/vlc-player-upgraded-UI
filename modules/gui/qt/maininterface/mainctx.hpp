@@ -250,7 +250,7 @@ public:
     inline void setCanShowVideoPIP(bool canShowVideoPIP) { m_canShowVideoPIP = canShowVideoPIP; }
 
     inline bool isRedesign() const { return m_redesign; }
-    QString productName() const; // "VLC Reborn" when redesign, else "VLC media player"
+    QString productName() const; // the product name when redesign, else "VLC media player"
     inline bool pinVideoControls() const { return m_pinVideoControls; }
     inline float pinOpacity() const { return m_pinOpacity; }
 

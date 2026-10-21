@@ -5,6 +5,13 @@
         <file alias="fonts/Inter-SemiBold.ttf">fonts/Inter-SemiBold.ttf</file>
         <file alias="fonts/OFL.txt">fonts/OFL.txt</file>
         <file alias="VLCIconsRedesign.ttf">VLCIconsRedesign.ttf</file>
+        <file alias="brand/vireo-16.png">brand/png/vireo-16.png</file>
+        <file alias="brand/vireo-24.png">brand/png/vireo-24.png</file>
+        <file alias="brand/vireo-32.png">brand/png/vireo-32.png</file>
+        <file alias="brand/vireo-48.png">brand/png/vireo-48.png</file>
+        <file alias="brand/vireo-64.png">brand/png/vireo-64.png</file>
+        <file alias="brand/vireo-128.png">brand/png/vireo-128.png</file>
+        <file alias="brand/vireo-256.png">brand/png/vireo-256.png</file>
         <file alias="settings/choice-labels.json">../settings/choice-labels.json</file>
         <file alias="tools/tools.json">../tools/tools.json</file>
     </qresource>

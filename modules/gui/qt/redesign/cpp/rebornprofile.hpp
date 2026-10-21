@@ -31,7 +31,7 @@ namespace redesign
 QString rebornProfileName();
 
 /**
- * Fills `profile` with the layout of the "VLC Reborn" profile, one row:
+ * Fills `profile` with the layout of the "Vireo" profile, one row:
  * previous, play, next, seek bar | volume, subtitles, audio, settings, queue, fullscreen.
  * The seek bar is in the left group: it fills the free width of the row there, a centre group of
  * PlayerControlLayout never grows.
@@ -39,7 +39,7 @@ QString rebornProfileName();
 void injectRebornModel(ControlbarProfile* profile);
 
 /**
- * Redesign enabled. Adds the VLC Reborn profile once (the flag `redesign/RebornProfileSeeded`
+ * Redesign enabled. Adds the Vireo profile once (the flag `redesign/RebornProfileSeeded`
  * of `settings`, outside of the group of the profile model) and saves the model. It becomes the
  * selected profile only if the current selection is untouched stock content (a style of the
  * model, or no profile was saved before); a profile the user customised or chose stays selected.

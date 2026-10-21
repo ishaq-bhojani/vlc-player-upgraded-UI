@@ -843,20 +843,25 @@ option('wix',
 
 option('redesign_product_name',
        type: 'string',
-       value: 'VLC Reborn',
-       description: 'VLC Reborn: product name shown by the Qt interface when the redesign is enabled')
+       value: 'Vireo',
+       description: 'Vireo: product name shown by the Qt interface when the redesign is enabled')
+
+option('redesign_release_version',
+       type: 'string',
+       value: '0.1.0',
+       description: 'Vireo: release version shown in About and in the installer (Apps & Features); the updater compares 4.0.0.N (redesign_build_number), not this')
 
 option('redesign_update_url',
        type: 'string',
        value: 'https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/releases/latest/download/status',
-       description: 'VLC Reborn: base URL of the update status file (src/misc/update.c appends the platform suffix such as -win-x64, and .asc for the signature); point it at a test release to try the updater')
+       description: 'Vireo: base URL of the update status file (src/misc/update.c appends the platform suffix such as -win-x64, and .asc for the signature); point it at a test release to try the updater')
 
 option('redesign_build_number',
        type: 'integer',
        value: 0,
        min: 0,
        max: 65535,
-       description: 'VLC Reborn: build number N of the fork release 4.0.0.N, compared by the updater with the status file (0 = development build)')
+       description: 'Vireo: build number N of the fork release 4.0.0.N, compared by the updater with the status file (0 = development build)')
 
 # TODO: Missing rpi-omxil
 # TODO: Missing gst-decode

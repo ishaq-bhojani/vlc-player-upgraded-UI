@@ -99,6 +99,7 @@ extern "C" char **environ;
 #include "redesign/cpp/redesign.hpp"
 #include "redesign/cpp/iconfont.hpp"
 #include "redesign/cpp/branding.hpp"
+#include "redesign/cpp/brandicon.hpp"
 #include "redesign/cpp/widgetpalette.hpp"
 #include "dialogs/extensions/extensions_manager.hpp" /* Extensions manager */
 #include "dialogs/help/help.hpp"     /* Launch Update */
@@ -301,8 +302,8 @@ static void ShowDialog   ( intf_thread_t *, int, int, intf_dialog_args_t * );
 #define ACCENT_COLOR_TEXT N_( "Accent color" )
 #define ACCENT_COLOR_LONGTEXT N_( "Adjusts the accent color, special values are 'default' and 'system' (requires Qt 6.6) ." )
 
-#define REDESIGN_TEXT N_( "Use the VLC Reborn redesigned interface" )
-#define REDESIGN_LONGTEXT N_( "Enables the VLC Reborn redesign of the interface. Disable it to get the original look and behaviour." )
+#define REDESIGN_TEXT N_( "Use the Vireo redesigned interface" )
+#define REDESIGN_LONGTEXT N_( "Enables the Vireo redesign of the interface. Disable it to get the original look and behaviour." )
 
 static const int initial_prefs_view_list[] = { 0, 1, 2 };
 static const char *const initial_prefs_view_list_texts[] =
@@ -1296,7 +1297,9 @@ static void *Thread( void *obj )
                                                                                : qtr("VLC media player") );
     app.setApplicationVersion( QString::fromUtf8(VERSION_MESSAGE) );
 
-    if( QDate::currentDate().dayOfYear() >= QT_XMAS_JOKE_DAY && var_InheritBool( p_intf, "qt-icon-change" ) )
+    if( redesign::isEnabled( VLC_OBJECT( p_intf ) ) )
+        app.setWindowIcon( redesign::appIcon() );
+    else if( QDate::currentDate().dayOfYear() >= QT_XMAS_JOKE_DAY && var_InheritBool( p_intf, "qt-icon-change" ) )
         app.setWindowIcon( QIcon::fromTheme( "vlc-xmas", QIcon( ":/logo/vlc128-xmas.png" ) ) );
     else
         app.setWindowIcon( QIcon::fromTheme( "vlc", QIcon( ":/logo/vlc256.png" ) ) );

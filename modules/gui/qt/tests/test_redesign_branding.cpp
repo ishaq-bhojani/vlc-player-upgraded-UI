@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (C) 2026 VLC Reborn contributors
+ * Copyright (C) 2026 Vireo contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,12 +31,34 @@ private slots:
     void productName()
     {
         // default of the meson option redesign_product_name, see docs/redesign/branding.md
-        QCOMPARE(redesign::productName(), QStringLiteral("VLC Reborn"));
+        QCOMPARE(redesign::productName(), QStringLiteral("Vireo"));
     }
 
     void productWebsite()
     {
         QVERIFY(redesign::productWebsite().startsWith(QStringLiteral("https://")));
+    }
+
+    void releaseVersion()
+    {
+        // default of the meson option redesign_release_version
+        QCOMPARE(redesign::releaseVersion(), QStringLiteral("0.1.0"));
+    }
+
+    void versionTitle()
+    {
+        // a development build (build number 0) shows no build number
+        QCOMPARE(redesign::versionTitle(QStringLiteral("Vireo"), QStringLiteral("0.1.0"), 0),
+                 QStringLiteral("Vireo 0.1.0"));
+        QCOMPARE(redesign::versionTitle(QStringLiteral("Vireo"), QStringLiteral("0.1.0"), 3),
+                 QStringLiteral("Vireo 0.1.0 (build 3)"));
+    }
+
+    void builtOnLine()
+    {
+        QCOMPARE(redesign::builtOnLine(QStringLiteral("4.0.0-dev Otto Chriek")),
+                 QStringLiteral("Built on VLC media player 4.0.0-dev Otto Chriek"));
+        QCOMPARE(redesign::builtOnLine(QString()), QStringLiteral("Built on VLC media player"));
     }
 };
 

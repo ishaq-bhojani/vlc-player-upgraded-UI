@@ -20,7 +20,7 @@ import QtQuick
 
 import VLC.MainInterface
 
-// Design tokens of the VLC Reborn redesign (docs/redesign/tokens.md, Table D).
+// Design tokens of the Vireo redesign (docs/redesign/tokens.md, Table D).
 // PROVISIONAL: replace from tokens.md Table D
 QtObject {
     id: redesignStyle

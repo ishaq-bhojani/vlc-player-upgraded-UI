@@ -24,7 +24,7 @@ import VLC.Widgets as Widgets
 import VLC.Redesign
 
 /**
- * @brief The consent dialog of the website features (spec 12.1): VLC Reborn downloads yt-dlp (and
+ * @brief The consent dialog of the website features (spec 12.1): Vireo downloads yt-dlp (and
  * ffmpeg for downloads) from their official GitHub releases, after the user agreed.
  *
  * The sizes come from the manifest (ToolManager.downloadSize). "Allow" stores the consent
@@ -92,7 +92,7 @@ RedesignModalDialog {
     Text {
         Layout.fillWidth: true
 
-        text: qsTr("To play and download videos from websites, VLC Reborn downloads %1 from their official GitHub releases into your user data folder (vlc-reborn/tools). The files are checked against a fixed checksum before they are used.").arg(root.tools.join(qsTr(" and ")))
+        text: qsTr("To play and download videos from websites, Vireo downloads %1 from their official GitHub releases into your user data folder (vireo/tools). The files are checked against a fixed checksum before they are used.").arg(root.tools.join(qsTr(" and ")))
 
         color: root.colorContext.fg.primary
         font.pixelSize: VLCStyle.fontSize_normal

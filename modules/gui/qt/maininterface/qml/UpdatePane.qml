@@ -70,7 +70,8 @@ T.Pane {
                 id: cone
 
                 sourceSize: Qt.size(VLCStyle.icon_normal, VLCStyle.icon_normal)
-                source: SVGColorImage.colorize("qrc:///misc/cone.svg").accent(theme.accent).uri()
+                source: MainCtx.redesign ? "qrc:///redesign/brand/vireo-48.png"
+                                         : SVGColorImage.colorize("qrc:///misc/cone.svg").accent(theme.accent).uri()
             }
 
             Widgets.LabelExt {
@@ -82,7 +83,8 @@ T.Pane {
                     switch (UpdateModel.updateStatus) {
                         case UpdateModel.NeedUpdate:
                             const extra = UpdateModel.extra
-                            return qsTr("A new version of VLC is available: <font color=\"%1\">%2.%3.%4%5</font>").arg(theme.fg.positive)
+                            return (MainCtx.redesign ? qsTr("A new version of %1 is available: <font color=\"%2\">%3.%4.%5%6</font>").arg(MainCtx.productName)
+                                                     : qsTr("A new version of VLC is available: <font color=\"%1\">%2.%3.%4%5</font>")).arg(theme.fg.positive)
                                                                                                                   .arg(UpdateModel.major)
                                                                                                                   .arg(UpdateModel.minor)
                                                                                                                   .arg(UpdateModel.revision)
