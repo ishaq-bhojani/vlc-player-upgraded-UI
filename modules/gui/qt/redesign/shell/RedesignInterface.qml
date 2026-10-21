@@ -309,6 +309,8 @@ Item {
         } else if (KeyHelper.matchSearch(event)) {
             MainCtx.search.askShow()
         } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+            // the focus is about to move on purpose: not taken back by the control bar guard
+            controlBar.endFocusGuard()
             event.accepted = false
             return
         } else if (PlayKeyLogic.forwardsAsHotkey(event.key, event.isAutoRepeat)) {

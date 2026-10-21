@@ -27,11 +27,19 @@ import QtQuick
  * wherever the shell put it (the Stage), after the shell decided where it is. The upstream code
  * is not changed; this puts the focus back.
  *
- * Call `begin()` when the content is about to change. For `guardInterval` the item that had the
- * focus outside of `scope` is remembered (and updated while the focus moves outside of it); each
- * time the focus then enters `scope`, `quietInterval` after the last such change it goes back
- * to that item. A focus that was inside of `scope` before is not touched (the user is on the
- * bar), and after the guard the focus moves freely (Tab, a click).
+ * `begin()` (also called when `trigger` changes: bind it to what changes when the content is
+ * replaced) starts a guard of `guardInterval`. The item that has the focus outside of `scope` is
+ * remembered (and updated while the focus moves outside of it); each time the focus then enters
+ * `scope`, `quietInterval` after the last such change it goes back to that item. A focus that was
+ * inside of `scope` before is not touched (the user is on the bar). The code cannot tell the
+ * upstream steal from a move the user or the shell makes on purpose, so those end the guard with
+ * `end()` (a pointer press, Tab, see RedesignControlBar.qml), or are outside of `scope` for it
+ * (`exclude`, the resume prompt that takes the focus by itself). After the guard the focus moves
+ * freely.
+ *
+ * Limit: a window that is not active has no active focus item, so a `begin()` then remembers
+ * nothing and no guard starts (the focus the window gets back on activation is the one it had).
+ * A remembered item that is destroyed is forgotten.
  */
 QtObject {
     id: root
@@ -40,6 +48,12 @@ QtObject {
 
     // the item whose subtree must not take the focus away from the outside
     property Item scope
+
+    // an item in `scope` whose focus is deliberate (the resume prompt): it counts as outside
+    property Item exclude
+
+    // a change of this value is a begin()
+    property var trigger
 
     // how long after begin() a focus change into `scope` is taken back, in ms
     property int guardInterval: 1500
@@ -50,10 +64,18 @@ QtObject {
 
     // Functions
 
+    // the content is about to change
     function begin() {
         const window = root.scope ? root.scope.Window.window : null
         if (!window)
             return
+
+        // a second change while the first is still being taken back: the item remembered by
+        // the first one is the right one, the focus is on the bar by now
+        if (root._guarding && root._outside) {
+            guardTimer.restart()
+            return
+        }
 
         const current = window.activeFocusItem
         root._outside = (current && !root._inside(current)) ? current : null
@@ -62,6 +84,16 @@ QtObject {
             guardTimer.restart()
     }
 
+    // a move of the focus into `scope` that is wanted: the guard stops
+    function end() {
+        restoreTimer.stop()
+        guardTimer.stop()
+        root._guarding = false
+        root._outside = null
+    }
+
+    onTriggerChanged: root.begin()
+
     // Private
 
     property bool _guarding: false
@@ -69,6 +101,8 @@ QtObject {
 
     function _inside(item: Item): bool {
         for (let it = item; it; it = it.parent) {
+            if (it === root.exclude)
+                return false
             if (it === root.scope)
                 return true
         }
@@ -106,11 +140,7 @@ QtObject {
 
         interval: root.guardInterval
 
-        onTriggered: {
-            restoreTimer.stop()
-            root._guarding = false
-            root._outside = null
-        }
+        onTriggered: root.end()
     }
 
     readonly property Timer _restoreTimer: Timer {

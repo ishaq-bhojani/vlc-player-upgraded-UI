@@ -89,23 +89,43 @@ T.Pane {
     }
 
     // The controls are replaced when the profile or the kind of media changes (a video starts), and
-    // the upstream layout takes the keyboard into the bar then; it goes back to where it was.
+    // the upstream layout takes the keyboard into the bar then; it goes back to where it was. A
+    // pointer press in the bar (a click on a control, a popup button), Tab (the window calls
+    // endFocusGuard()) and the resume prompt are moves on purpose, they end the guard.
     FocusKeeper {
         id: focusKeeper
 
         scope: root
+        exclude: resumePrompt
+        trigger: root.contentItem.model
     }
 
-    Connections {
-        target: root.contentItem
+    // the bar is a Pane: an item of its own is needed above the controls to see the presses they take
+    // (a PointHandler observes: the press and the hover go on to the controls)
+    Item {
+        parent: root
+        anchors.fill: parent
+        z: 100
 
-        function onModelChanged() {
-            focusKeeper.begin()
+        PointHandler {
+            acceptedButtons: Qt.AllButtons
+
+            onActiveChanged: {
+                if (active)
+                    focusKeeper.end()
+            }
         }
+    }
+
+    // the keyboard moves into or out of the bar on purpose (Tab, Shift+Tab)
+    function endFocusGuard() {
+        focusKeeper.end()
     }
 
     // just above the Play button (a child of the pane would land in the layout)
     ResumePrompt {
+        id: resumePrompt
+
         parent: root
         z: 1
     }

@@ -133,8 +133,12 @@ T.Control {
         }
     }
 
-    // a press that goes on while the focus leaves (the bar hides) has no release here: it is
-    // forgotten, or the hold timer would stop the playback
+    // A press that goes on while the focus leaves (the bar hides) has no release here: it is
+    // forgotten, or the hold timer would stop the playback. The press then toggles nothing at
+    // all: the button took it (so it was not forwarded as the hotkey) and the release went
+    // elsewhere. That is the rarer of the two ways to lose a Space and the safe one. Holding Space
+    // on the focused button for the press-and-hold interval (800 ms) stops the playback, like the
+    // stock button; the window forwards a held Space once only (PlayKeyLogic).
     onActiveFocusChanged: {
         if (!activeFocus) {
             _keyOkPressed = false
