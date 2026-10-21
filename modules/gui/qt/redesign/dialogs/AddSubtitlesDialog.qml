@@ -374,7 +374,7 @@ RedesignModalDialog {
 
         visible: root.readingFolder
 
-        text: qsTr("Reading the folder…")
+        text: qsTr("Reading the folderâ€¦")
         color: root.colorContext.fg.secondary
         font.pixelSize: VLCStyle.fontSize_normal
 
