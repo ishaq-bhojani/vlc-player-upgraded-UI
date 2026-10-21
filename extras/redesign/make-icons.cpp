@@ -13,6 +13,8 @@
 #include <QtCore/QByteArray>
 #include <QtCore/QDir>
 #include <QtCore/QFile>
+#include <QtCore/QFileInfo>
+#include <QtCore/QSaveFile>
 #include <QtCore/QString>
 #include <QtGui/QFontDatabase>
 #include <QtGui/QGuiApplication>
@@ -105,15 +107,100 @@ QByteArray dibBytes( const QImage &argb )
     return b;
 }
 
-bool writeFile( const QString &rel, const QByteArray &data )
+// What a PNG file or payload must satisfy: signature, decodable, exact size.
+bool checkPng( const QByteArray &data, int w, int h, const QString &what, QImage *out = nullptr )
+{
+    static const char sig[8] = { char( 0x89 ), 'P', 'N', 'G', '\r', '\n', 0x1a, '\n' };
+    if( data.size() < 8 || memcmp( data.constData(), sig, 8 ) != 0 )
+        return fail( what + ": not a PNG (bad signature)" );
+    QImage img;
+    if( !img.loadFromData( data, "PNG" ) || img.isNull() )
+        return fail( what + ": PNG does not decode" );
+    if( img.width() != w || img.height() != h )
+        return fail( what + ": PNG is " + QString::number( img.width() ) + "x" + QString::number( img.height() ) );
+    if( out )
+        *out = img;
+    return true;
+}
+
+quint32 get32( const QByteArray &b, int off )
+{
+    return quint32( quint8( b[off] ) ) | quint32( quint8( b[off + 1] ) ) << 8
+         | quint32( quint8( b[off + 2] ) ) << 16 | quint32( quint8( b[off + 3] ) ) << 24;
+}
+quint16 get16( const QByteArray &b, int off ) { return quint16( quint8( b[off] ) | quint8( b[off + 1] ) << 8 ); }
+
+// Writes through a temporary file that is renamed on success (an interrupted run cannot
+// leave a half-written file), then reads the file back and runs `verify` on it.
+template<class Verify>
+bool writeFile( const QString &rel, const QByteArray &data, Verify verify )
 {
     const QString path = root + "/" + rel;
     QDir().mkpath( QFileInfo( path ).absolutePath() );
-    QFile f( path );
-    if( !f.open( QIODevice::WriteOnly ) )
+    QSaveFile f( path );
+    if( !f.open( QIODevice::WriteOnly ) || f.write( data ) != data.size() || !f.commit() )
         return fail( "cannot write " + path );
-    f.write( data );
-    std::printf( "wrote %s (%lld bytes)\n", qPrintable( rel ), qint64( data.size() ) );
+    QFile in( path );
+    if( !in.open( QIODevice::ReadOnly ) )
+        return fail( "cannot read back " + path );
+    const QByteArray back = in.readAll();
+    if( back != data )
+        return fail( rel + ": the file on disk differs from what was written" );
+    if( !verify( back ) )
+        return fail( rel + ": validation failed" );
+    std::printf( "wrote %s (%lld bytes, validated)\n", qPrintable( rel ), qint64( data.size() ) );
+    return true;
+}
+
+bool writePng( const QString &rel, const QImage &img )
+{
+    return writeFile( rel, pngBytes( img ), [&]( const QByteArray &d ) { return checkPng( d, img.width(), img.height(), rel ); } );
+}
+
+// The directory of the icon must list every size, each payload must be a valid PNG or DIB of
+// that size, and decode to exactly the image that was meant for that size.
+bool checkIco( const QByteArray &d, const std::vector<QImage> &images )
+{
+    if( d.size() < 6 || get16( d, 0 ) != 0 || get16( d, 2 ) != 1 || get16( d, 4 ) != images.size() )
+        return fail( "ico: bad header or wrong image count" );
+    for( size_t i = 0; i < images.size(); ++i )
+    {
+        const int n = images[i].width();
+        const QString what = "ico entry " + QString::number( n );
+        const int dir = 6 + 16 * int( i );
+        const int dw = quint8( d[dir] ) ? quint8( d[dir] ) : 256;
+        const quint32 size = get32( d, dir + 8 ), off = get32( d, dir + 12 );
+        if( dw != n || quint8( d[dir + 1] ) != quint8( d[dir] ) )
+            return fail( what + ": directory size is " + QString::number( dw ) );
+        if( off + size > quint32( d.size() ) || size < 40 )
+            return fail( what + ": payload outside the file" );
+        const QByteArray payload = d.mid( int( off ), int( size ) );
+        QImage got;
+        if( n >= 64 )
+        {
+            if( !checkPng( payload, n, n, what, &got ) )
+                return false;
+        }
+        else
+        {
+            if( get32( payload, 0 ) != 40 || int( get32( payload, 4 ) ) != n || int( get32( payload, 8 ) ) != 2 * n
+                || get16( payload, 14 ) != 32 )
+                return fail( what + ": bad DIB header" );
+            got = QImage( n, n, QImage::Format_ARGB32 );
+            const int px = 40;
+            if( payload.size() < px + n * n * 4 )
+                return fail( what + ": DIB too short" );
+            for( int y = 0; y < n; ++y )
+                for( int x = 0; x < n; ++x )
+                {
+                    const int o = px + ( ( n - 1 - y ) * n + x ) * 4;
+                    got.setPixel( x, y, qRgba( quint8( payload[o + 2] ), quint8( payload[o + 1] ),
+                                               quint8( payload[o] ), quint8( payload[o + 3] ) ) );
+                }
+        }
+        if( got.convertToFormat( QImage::Format_ARGB32 ) != images[i].convertToFormat( QImage::Format_ARGB32 ) )
+            return fail( what + ": decoded pixels differ from the rendered image" );
+    }
     return true;
 }
 
@@ -135,7 +222,7 @@ bool writeIco( const QString &rel, const std::vector<QImage> &images )
         offset += quint32( data.size() );
         body.append( data );
     }
-    return writeFile( rel, head + body );
+    return writeFile( rel, head + body, [&]( const QByteArray &d ) { return checkIco( d, images ); } );
 }
 
 // 24-bit bottom-up BMP, the form NSIS and WiX expect.
@@ -158,6 +245,15 @@ QByteArray bmpBytes( const QImage &src )
         b.append( QByteArray( stride - w * 3, 0 ) );
     }
     return b;
+}
+
+bool writeBmp( const QString &rel, const QImage &img )
+{
+    return writeFile( rel, bmpBytes( img ), [&]( const QByteArray &d ) {
+        const int stride = ( img.width() * 3 + 3 ) & ~3;
+        return d.startsWith( "BM" ) && get16( d, 28 ) == 24 && int( get32( d, 18 ) ) == img.width()
+            && int( get32( d, 22 ) ) == img.height() && d.size() == 54 + stride * img.height();
+    } );
 }
 
 QString interFamily()
@@ -227,16 +323,27 @@ int main( int argc, char **argv )
     std::vector<QImage> ico;
     for( int s : icoSizes )
         ico.push_back( render( pick( s ), s ) );
+    // Up to smallMaxSize the entries must come from the thick small artwork, not the master.
+    for( size_t i = 0; i < ico.size(); ++i )
+    {
+        const int s = icoSizes[i];
+        const bool isSmall = ico[i] == render( *small, s );
+        const bool isMaster = ico[i] == render( *icon, s );
+        if( s <= smallMaxSize ? ( !isSmall || isMaster ) : ( !isMaster || isSmall ) )
+            ok &= fail( "ico entry " + QString::number( s ) + " uses the wrong artwork" );
+        else
+            std::printf( "ico entry %d: %s artwork\n", s, s <= smallMaxSize ? "small (vireo-icon-small.svg)" : "master (vireo-icon.svg)" );
+    }
     ok &= writeIco( "share/icons/vireo.ico", ico );
 
     for( int s : pngSizes )
-        ok &= writeFile( brand + "/png/vireo-" + QString::number( s ) + ".png", pngBytes( render( pick( s ), s ) ) );
+        ok &= writePng( brand + "/png/vireo-" + QString::number( s ) + ".png", render( pick( s ), s ) );
 
     const QString family = interFamily();
     if( family.isEmpty() )
         ok &= fail( "Inter-SemiBold.ttf not found" );
-    ok &= writeFile( "extras/package/win32/NSIS/vireo_branding.bmp", bmpBytes( nsisPanel( *icon, family ) ) );
-    ok &= writeFile( "extras/package/win32/msi/vireo_bannrbmp.bmp", bmpBytes( msiBanner( *icon ) ) );
+    ok &= writeBmp( "extras/package/win32/NSIS/vireo_branding.bmp", nsisPanel( *icon, family ) );
+    ok &= writeBmp( "extras/package/win32/msi/vireo_bannrbmp.bmp", msiBanner( *icon ) );
 
     // Previews for the owner to check (not committed): the sizes that matter, and a sheet
     // that shows each of them enlarged on a light and a dark background.
