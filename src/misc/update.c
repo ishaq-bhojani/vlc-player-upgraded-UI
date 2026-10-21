@@ -195,7 +195,7 @@ static bool GetUpdateFile( update_t *p_update )
     if( !p_stream )
     {
         msg_Err( p_update->p_libvlc, "Failed to open %s for reading",
-                 UPDATE_VLC_STATUS_URL );
+                 url );
         goto error;
     }
 
@@ -214,7 +214,7 @@ static bool GetUpdateFile( update_t *p_update )
                          i_read ) != (ssize_t)i_read )
     {
         msg_Err( p_update->p_libvlc, "Couldn't download update file %s",
-                UPDATE_VLC_STATUS_URL );
+                url );
         goto error;
     }
     psz_update_data[i_read] = '\0';
@@ -249,7 +249,7 @@ static bool GetUpdateFile( update_t *p_update )
     if( i_len == 0 )
     {
         msg_Err( p_update->p_libvlc, "Update file %s is corrupted: URL missing",
-                 UPDATE_VLC_STATUS_URL );
+                 url );
 
         goto error;
     }
@@ -269,7 +269,7 @@ static bool GetUpdateFile( update_t *p_update )
     {
         msg_Err( p_update->p_libvlc,
                 "Update file %s is corrupted: description missing",
-                UPDATE_VLC_STATUS_URL );
+                url );
         goto error;
     }
 
@@ -282,7 +282,7 @@ static bool GetUpdateFile( update_t *p_update )
      * to authenticate it */
     signature_packet_t sign;
     if( download_signature( VLC_OBJECT( p_update->p_libvlc ), &sign,
-            UPDATE_VLC_STATUS_URL ) != VLC_SUCCESS )
+            url ) != VLC_SUCCESS )
     {
         msg_Err( p_update->p_libvlc, "Couldn't download signature of status file" );
         goto error;
@@ -310,40 +310,11 @@ static bool GetUpdateFile( update_t *p_update )
 
     if( memcmp( sign.issuer_longid, p_update->p_pkey->longid , 8 ) != 0 )
     {
-        msg_Dbg( p_update->p_libvlc, "Need to download the GPG key" );
-        public_key_t *p_new_pkey = download_key(
-                VLC_OBJECT(p_update->p_libvlc),
-                sign.issuer_longid, videolan_public_key_longid );
-        if( !p_new_pkey )
-        {
-            msg_Err( p_update->p_libvlc, "Couldn't download GPG key" );
-            FREENULL( p_update->p_pkey );
-            goto error;
-        }
-
-        uint8_t *p_hash = hash_from_public_key( p_new_pkey );
-        if( !p_hash )
-        {
-            msg_Err( p_update->p_libvlc, "Failed to hash signature" );
-            free( p_new_pkey );
-            FREENULL( p_update->p_pkey );
-            goto error;
-        }
-
-        if( verify_signature( &p_new_pkey->sig,
-                    &p_update->p_pkey->key, p_hash ) == VLC_SUCCESS )
-        {
-            free( p_hash );
-            msg_Info( p_update->p_libvlc, "Key authenticated" );
-            free( p_update->p_pkey );
-            p_update->p_pkey = p_new_pkey;
-        }
-        else
-        {
-            free( p_hash );
-            msg_Err( p_update->p_libvlc, "Key signature invalid !" );
-            goto error;
-        }
+        /* VLC Reborn: upstream fetched the signer's key from VideoLAN's servers
+         * here. The fork trusts its one embedded key and contacts no VideoLAN host. */
+        msg_Err( p_update->p_libvlc, "Status file signed by an unknown key" );
+        FREENULL( p_update->p_pkey );
+        goto error;
     }
 
     uint8_t *p_hash = hash_from_text( psz_update_data, &sign );

@@ -12,7 +12,8 @@
  *     signature of another key, and a changed installer are rejected;
  *   - the embedded key is the fork's key (fingerprint recomputed from the key packet),
  *     not VideoLAN's, and the status URL is not a VideoLAN one;
- *   - (update-check builds) the version compare of update_NeedUpgrade().
+ *     (the version compare is test_update_versions.c; the URLs and the absence of any
+ *     VideoLAN host in the sources and in libvlccore: extras/redesign/check-update-urls.py).
  * The data are throwaway keys (update_channel_fixtures.h, made by
  * extras/redesign/gen-update-test-fixtures.sh); the fork's real private key cannot
  * sign in a test, that check is made on the first release candidate.
@@ -25,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <vlc_common.h>
@@ -121,8 +123,8 @@ static bool status_accepted(const uint8_t *key_armored, size_t key_size,
     memcpy(key.longid, key_longid, 8);
 
     bool ok = false;
-    /* another issuer: update.c would fetch that key from the network and fail to
-     * authenticate it with the embedded key, so the file is never accepted */
+    /* another issuer: update.c refuses the file ("Status file signed by an unknown key");
+     * the fork fetches no key from anywhere, VideoLAN's servers included */
     if (!memcmp(sign.issuer_longid, key.longid, 8)) {
         uint8_t *hash = hash_from_text(status, &sign);
         if (hash) {
@@ -258,11 +260,22 @@ static void test_installer(void)
 {
     /* update.c hashes the downloaded installer file (hash_from_file) and verifies
      * its <installer>.asc with the same key */
-    char path[] = "update_channel_installer_XXXXXX";
-    int fd = mkstemp(path);
-    CHECK(fd >= 0);
-    if (fd < 0)
+    const char *tmp = getenv("TMPDIR");
+    char dir[512];
+    snprintf(dir, sizeof(dir), "%s/update_channel_XXXXXX", tmp && *tmp ? tmp : "/tmp");
+    if (mkdtemp(dir) == NULL) {          /* a private directory, removed below */
+        fprintf(stderr, "FAIL: cannot create a temporary directory\n");
+        failures++;
         return;
+    }
+    char path[sizeof(dir) + 16];
+    snprintf(path, sizeof(path), "%s/installer.exe", dir);
+    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0600);
+    CHECK(fd >= 0);
+    if (fd < 0) {
+        rmdir(dir);
+        return;
+    }
     size_t len = strlen(fixture_installer);
     CHECK(write(fd, fixture_installer, len) == (ssize_t)len);
     close(fd);
@@ -302,6 +315,7 @@ static void test_installer(void)
     free_key(&key);
     free_sig(&sig);
     unlink(path);
+    rmdir(dir);
 }
 
 static void test_embedded_key(void)
@@ -344,42 +358,6 @@ static void test_embedded_key(void)
     CHECK(ul > 7 && !strcmp(url + ul - 7, "/status"));       /* update.c appends -win-x64 */
 }
 
-#ifdef REDESIGN_TEST_NEEDUPGRADE
-static bool need_upgrade(int major, int minor, int revision, int extra)
-{
-    update_t update;
-    memset(&update, 0, sizeof(update));
-    update.release.i_major = major;
-    update.release.i_minor = minor;
-    update.release.i_revision = revision;
-    update.release.i_extra = extra;
-    return update_NeedUpgrade(&update);
-}
-
-static void test_versions(void)
-{
-    /* the build is 4.0.0.N, N = redesign_build_number (config.h REDESIGN_BUILD_NUMBER) */
-    const int n = PACKAGE_VERSION_EXTRA + REDESIGN_BUILD_NUMBER;
-    CHECK(PACKAGE_VERSION_MAJOR == 4 && PACKAGE_VERSION_MINOR == 0 &&
-          PACKAGE_VERSION_REVISION == 0);
-
-    CHECK(need_upgrade(4, 0, 0, n + 1));                 /* the next release is offered */
-    CHECK(need_upgrade(4, 0, 0, n + 100));
-    CHECK(need_upgrade(4, 0, 1, 0));
-    CHECK(need_upgrade(5, 0, 0, 0));
-    CHECK(!need_upgrade(3, 9, 9, 99));                   /* never an older one */
-    if (n > 0) {
-        CHECK(!need_upgrade(4, 0, 0, n - 1));
-        /* a numbered release is not a "-dev" build: the installed version is current */
-        CHECK(!need_upgrade(4, 0, 0, n));
-        CHECK(*PACKAGE_VERSION_DEV == '\0');
-    } else {
-        /* a development build (build number 0) offers the same version, as upstream */
-        CHECK(need_upgrade(4, 0, 0, n) == (*PACKAGE_VERSION_DEV != '\0'));
-    }
-}
-#endif
-
 int main(void)
 {
     gcry_check_version(NULL);
@@ -388,9 +366,6 @@ int main(void)
     test_status_file();
     test_installer();
     test_embedded_key();
-#ifdef REDESIGN_TEST_NEEDUPGRADE
-    test_versions();
-#endif
 
     if (failures) {
         fprintf(stderr, "%d check(s) failed\n", failures);

@@ -166,14 +166,6 @@ struct update_t
 };
 
 /*
- * download a public key (the last one) from videolan server, and parse it
- */
-public_key_t *
-download_key(
-        vlc_object_t *p_this, const uint8_t *p_longid,
-        const uint8_t *p_signature_issuer );
-
-/*
  * fill a public_key_t with public key data, including:
  *   * public key packet
  *   * signature packet issued by key which long id is p_sig_issuer

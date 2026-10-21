@@ -57,6 +57,8 @@ PUBKEY="${REBORN_UPDATE_PUBKEY:-$REPO/docs/redesign/reborn-update-public.asc}"
 [[ "$BUILD" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$BUILD" -le 65535 ] \
     || die "build_number must be an integer from 1 to 65535 without leading zero (got '$BUILD')"
 [[ "$URL" =~ ^https://[^[:space:]]+$ ]] || die "installer_url must be an https URL without spaces"
+# update.c saves the download under the part after the last '/', and fetches <url>.asc
+[[ "$URL" != */ ]] || die "installer_url must name a file (it ends with '/')"
 [ -f "$NOTES" ] || die "notes file not found: $NOTES"
 [ -f "$PUBKEY" ] || die "public key not found: $PUBKEY"
 [ -z "$INSTALLER" ] || [ -f "$INSTALLER" ] || die "installer file not found: $INSTALLER"
@@ -68,15 +70,11 @@ command -v gpg >/dev/null || die "gpg not found"
 NOTES_TEXT="$(tr -d '\r' < "$NOTES")"
 [[ "$NOTES_TEXT" =~ [^[:space:]] ]] || die "the notes file is empty: update.c rejects a status file without a description"
 
+# Nothing stale may survive a failed run: remove old outputs first, build everything in a
+# staging directory and move it into <out_dir> only when signed and verified.
 mkdir -p "$OUT"
-STATUS="$OUT/status-win-x64"
-{
-    printf '4.0.0.%s\n' "$BUILD"
-    printf '%s\n' "$URL"
-    printf '%s\n' "$NOTES_TEXT"
-} > "$STATUS"
-# update.c refuses a status file of 64 KiB or more
-[ "$(wc -c < "$STATUS")" -lt 65535 ] || die "status file too large for update.c (limit 65534 bytes)"
+rm -f "$OUT/status-win-x64" "$OUT/status-win-x64.asc"
+[ -z "$INSTALLER" ] || rm -f "$OUT/$(basename "$INSTALLER").asc"
 
 GH="$(mktemp -d)"
 chmod 700 "$GH"
@@ -85,6 +83,16 @@ cleanup() {
     rm -rf "$GH"
 }
 trap cleanup EXIT
+STAGE="$GH/stage"
+mkdir "$STAGE"
+STATUS="$STAGE/status-win-x64"
+{
+    printf '4.0.0.%s\n' "$BUILD"
+    printf '%s\n' "$URL"
+    printf '%s\n' "$NOTES_TEXT"
+} > "$STATUS"
+# update.c refuses a status file of 64 KiB or more
+[ "$(wc -c < "$STATUS")" -lt 65535 ] || die "status file too large for update.c (limit 65534 bytes)"
 export GNUPGHOME="$GH"
 
 # The passphrase travels through a file descriptor, not through argv or the log.
@@ -129,8 +137,11 @@ sign() {   # sign <file> <signature>
 
 sign "$STATUS" "$STATUS.asc"
 if [ -n "$INSTALLER" ]; then
-    sign "$INSTALLER" "$OUT/$(basename "$INSTALLER").asc"
+    sign "$INSTALLER" "$STAGE/$(basename "$INSTALLER").asc"
 fi
 
-echo "make-status.sh: wrote $STATUS (4.0.0.$BUILD), signed by key ${FPR: -16}"
+# --- publish to <out_dir> (only reached when everything above succeeded) ---------------
+cp "$STAGE"/* "$OUT/"
+echo "make-status.sh: wrote $OUT/status-win-x64 (4.0.0.$BUILD), signed by key ${FPR: -16}"
+echo "make-status.sh: wrote $OUT/status-win-x64.asc"
 [ -z "$INSTALLER" ] || echo "make-status.sh: wrote $OUT/$(basename "$INSTALLER").asc"

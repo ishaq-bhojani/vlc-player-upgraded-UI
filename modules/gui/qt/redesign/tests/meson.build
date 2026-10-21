@@ -426,10 +426,14 @@ vlc_tests += {
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
 
-# VLC Reborn update channel: the real verifier (src/misc/update_crypto.c) against a status file
-# and an installer signed by throwaway keys, the embedded key, the status URL and, when the
-# build has update-check, update_NeedUpgrade(). Plain C, no Qt; needs libgcrypt.
-# Test data: ../../tests/update_channel_fixtures.h (extras/redesign/gen-update-test-fixtures.sh).
+# VLC Reborn update channel (plain C, no Qt; needs libgcrypt):
+#  - test_qt_update_channel: the real verifier (src/misc/update_crypto.c) against a status file and
+#    an installer signed by throwaway keys, the embedded key and the status URL
+#    (data: ../../tests/update_channel_fixtures.h, extras/redesign/gen-update-test-fixtures.sh);
+#  - test_qt_update_versions_*: src/misc/update.c compiled into the test (the default build has the
+#    update-check stubs), update_NeedUpgrade() for a development build and for numbered releases;
+#  - test_qt_update_channel_urls: no VideoLAN update host in the sources or in libvlccore, the
+#    status file and its signature share one URL (extras/redesign/check-update-urls.py).
 if gcrypt_dep.found()
     vlc_tests += {
         'name': 'test_qt_update_channel',
@@ -438,8 +442,32 @@ if gcrypt_dep.found()
         'include_directories': include_directories('../../../../../src'),
         'link_with': [libvlccore],
         'dependencies': [gcrypt_dep],
-        'c_args': get_option('update-check').allowed() ? ['-DREDESIGN_TEST_NEEDUPGRADE'] : [],
     }
+
+    foreach variant : [
+        ['dev', '0', '"dev"'],
+        ['n3', '3', '""'],
+        ['n7', '7', '""'],
+    ]
+        vlc_tests += {
+            'name': 'test_qt_update_versions_' + variant[0],
+            'sources': files('../../tests/test_update_versions.c',
+                             '../../../../../src/misc/update_crypto.c'),
+            'suite': ['qt'],
+            'include_directories': include_directories('../../../../../src'),
+            'link_with': [libvlccore],
+            'dependencies': [gcrypt_dep],
+            'c_args': ['-DTEST_BUILD_NUMBER=' + variant[1], '-DTEST_VERSION_DEV=' + variant[2]],
+        }
+    endforeach
+endif
+
+python3_prog = find_program('python3', required: false)
+if python3_prog.found()
+    test('test_qt_update_channel_urls',
+        python3_prog,
+        args: [meson.project_source_root() / 'extras/redesign/check-update-urls.py', meson.project_source_root(), libvlccore],
+        suite: ['qt', 'test'])
 endif
 
 # SubtitleAttacher (subtitle files added to the playing media and the queue, brought back from the
