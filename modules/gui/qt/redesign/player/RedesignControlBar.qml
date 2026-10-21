@@ -90,8 +90,12 @@ T.Pane {
 
     // The controls are replaced when the profile or the kind of media changes (a video starts), and
     // the upstream layout takes the keyboard into the bar then; it goes back to where it was. A
-    // pointer press in the bar (a click on a control, a popup button), Tab (the window calls
-    // endFocusGuard()) and the resume prompt are moves on purpose, they end the guard.
+    // pointer press on the bar (a click on a control, on a button that opens a popup), Tab (the
+    // window calls endFocusGuard()) and the resume prompt are moves on purpose, they end the
+    // guard. What is pressed outside of the bar is not seen: a popup (its own item of the shell,
+    // or the menus, which live in the overlay layer) and the pages are outside, and the focus
+    // that moves there is simply remembered. The value of `trigger` is also set while the bar is
+    // created: that first guard is wanted, the first layout takes the focus the same way.
     FocusKeeper {
         id: focusKeeper
 
