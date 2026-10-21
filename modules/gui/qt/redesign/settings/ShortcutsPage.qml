@@ -34,6 +34,12 @@ import VLC.Redesign
  * action, as in the QWidgets preferences.
  *
  * The model does not follow changes made elsewhere: it is reloaded when the page opens.
+ *
+ * Hosts: the Settings modal (a sub-page of Controls, with its Back button and heading) and
+ * KeyboardShortcutsDialog (`showBack` and `showTitle` off, the dialog has its own title).
+ *
+ * The keys the window itself takes (ShellKeys: Ctrl+P opens Settings...) are given when asked for
+ * but with a notice, as a hotkey on them may never fire; ShortcutsModel can not know them.
  */
 FocusScope {
     id: root
@@ -42,6 +48,12 @@ FocusScope {
 
     //! the filter typed by the user
     property string filterText
+
+    //! the Back button (the Settings modal, which this page is a sub-page of); a dialog hides it
+    property bool showBack: true
+
+    //! the heading of the page; a dialog that has a title of its own hides it
+    property bool showTitle: true
 
     // A narrow page (the owner's window is 600 dp wide: the page is about 320): an action does not
     // fit in a line with its two key buttons of 160 dp and keeps 120 dp for its name, so the name
@@ -56,6 +68,12 @@ FocusScope {
     // the key that is in use by another action, waiting for the answer
     property string _pendingKey
     property string _conflictLabel
+
+    // What the user should know about the key just given ("" for nothing): the window uses it
+    // itself (ShellKeys), so the action may never get it. A notice, not a refusal.
+    property string _notice
+
+    readonly property bool _hasHeading: showBack || showTitle
 
     // Signals
 
@@ -85,12 +103,18 @@ FocusScope {
                || hotkey.toLowerCase().includes(wanted)
     }
 
+    //! gives the keyboard to the filter field (where a dialog wants it when it opens)
+    function focusFilter() {
+        filterField.forceActiveFocus()
+    }
+
     function startCapture(actionKey: string, label: string, global: bool) {
         _actionKey = actionKey
         _actionLabel = label
         _global = global
         _pendingKey = ""
         _conflictLabel = ""
+        _notice = ""
         capture.forceActiveFocus()
     }
 
@@ -111,13 +135,21 @@ FocusScope {
             Qt.callLater(() => replaceButton.forceActiveFocus(Qt.TabFocusReason))
             return
         }
-        ShortcutsModel.assign(_actionKey, hotkey, _global)
-        stopCapture()
+        _assign(hotkey)
     }
 
     function replaceConflict() {
-        ShortcutsModel.assign(_actionKey, _pendingKey, _global)
+        _assign(_pendingKey)
+    }
+
+    // gives the action the key and closes the question; the notice is set after it, which clears it
+    function _assign(hotkey: string) {
+        ShortcutsModel.assign(_actionKey, hotkey, _global)
+        const used = ShellKeys.reservedFor(hotkey)
         stopCapture()
+        _notice = used.length > 0
+                  ? qsTr("%1 also %2, so this action may not get the key.").arg(hotkey).arg(used)
+                  : ""
     }
 
     // Settings
@@ -145,11 +177,13 @@ FocusScope {
         GridLayout {
             Layout.fillWidth: true
 
-            columns: root.narrow ? 2 : 3
+            columns: !root._hasHeading ? 1 : (root.narrow ? 2 : 3)
             columnSpacing: RedesignStyle.spacingM
             rowSpacing: RedesignStyle.spacingS
 
             Widgets.ButtonExt {
+                visible: root.showBack
+
                 text: qsTr("Back")
 
                 Accessible.name: qsTr("Back to Controls")
@@ -159,6 +193,8 @@ FocusScope {
 
             Text {
                 Layout.fillWidth: true
+
+                visible: root.showTitle
 
                 text: qsTr("Keyboard shortcuts")
                 font.pixelSize: VLCStyle.fontSize_xlarge
@@ -171,8 +207,10 @@ FocusScope {
             }
 
             Widgets.TextFieldExt {
-                Layout.fillWidth: root.narrow
-                Layout.columnSpan: root.narrow ? 2 : 1
+                id: filterField
+
+                Layout.fillWidth: root.narrow || !root._hasHeading
+                Layout.columnSpan: (root.narrow && root._hasHeading) ? 2 : 1
                 Layout.preferredWidth: VLCStyle.dp(220, VLCStyle.scale)
                 Layout.preferredHeight: VLCStyle.dp(36, VLCStyle.scale)
 
@@ -271,7 +309,7 @@ FocusScope {
                     Layout.fillWidth: true
 
                     text: root._pendingKey.length > 0
-                          ? qsTr("%1 is already used by \"%2\". Replace it?").arg(root._pendingKey).arg(root._conflictLabel)
+                          ? qsTr("%1 is already used by \"%2\". Replace?").arg(root._pendingKey).arg(root._conflictLabel)
                           : qsTr("Press the new key for \"%1\".").arg(root._actionLabel)
                     font.pixelSize: VLCStyle.fontSize_normal
                     color: theme.fg.primary
@@ -310,6 +348,34 @@ FocusScope {
                         onClicked: root.stopCapture()
                     }
                 }
+            }
+        }
+
+        // the key just given is also a key of the window
+        RowLayout {
+            Layout.fillWidth: true
+
+            visible: root._notice.length > 0
+            spacing: RedesignStyle.spacingS
+
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: VLCStyle.dp(3, VLCStyle.scale)
+
+                radius: width / 2
+                color: theme.accent
+            }
+
+            Text {
+                Layout.fillWidth: true
+
+                text: root._notice
+                font.pixelSize: VLCStyle.fontSize_normal
+                color: theme.fg.primary
+                wrapMode: Text.WordWrap
+
+                Accessible.role: Accessible.AlertMessage
+                Accessible.name: text
             }
         }
 

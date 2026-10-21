@@ -425,3 +425,25 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+# SubtitleAttacher (subtitle files added to the playing media and the queue, brought back from the
+# media library at playback, folder listing) against a fake library and player: no libvlc instance.
+vlc_tests += {
+    'name': 'test_qt_subtitle_attacher',
+    'sources': files(
+        '../../tests/test_subtitle_attacher.cpp',
+        '../cpp/subtitleattacher.hpp',
+        '../cpp/subtitleattacher.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_subtitle_attacher.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/subtitleattacher.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

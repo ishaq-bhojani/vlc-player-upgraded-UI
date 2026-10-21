@@ -29,6 +29,7 @@
 #include "../../medialibrary/medialib.hpp"
 #include "../../medialibrary/mlhelper.hpp"
 #include "../../qt.hpp"
+#include "mllibrarymedia.hpp"
 
 namespace
 {
@@ -36,35 +37,11 @@ namespace
 // write never reads the flag from before it
 constexpr const char* mlQueue = "redesign-current-media-favorite";
 
-// Only a file of the library can be a favorite from here: vlc_ml_get_media_by_mrl also matches the
-// rows made by Open Network (vlc_ml_new_stream) and other external media, whose files are external.
-bool isLibraryMedia(const vlc_ml_media_t* media)
-{
-    if (!media->p_files)
-        return false;
-    for (const vlc_ml_file_t& file : ml_range_iterate<vlc_ml_file_t>(media->p_files))
-    {
-        if (!file.b_external)
-            return true;
-    }
-    return false;
-}
-
-// The ML stores percent-encoded mrls, while the mrl may reach us as QUrl::toString() output of
-// the player URL (decoded spaces, ...): try it as given, then in its fully encoded form.
-// Returns null when there is no such media or it is not a library file.
+// Only a file of the library can be a favorite from here: redesign::findLibraryMedia (shared with
+// the subtitle store) skips the rows made by Open Network and other external media.
 ml_unique_ptr<vlc_ml_media_t> findMedia(vlc_medialibrary_t* ml, const QString& mrl)
 {
-    ml_unique_ptr<vlc_ml_media_t> media {vlc_ml_get_media_by_mrl(ml, qtu(mrl))};
-    if (!media)
-    {
-        const QByteArray encoded = QUrl(mrl).toEncoded();
-        if (!encoded.isEmpty() && encoded != mrl.toUtf8())
-            media.reset(vlc_ml_get_media_by_mrl(ml, encoded.constData()));
-    }
-    if (media && !isLibraryMedia(media.get()))
-        media.reset();
-    return media;
+    return redesign::findLibraryMedia(ml, mrl);
 }
 }
 

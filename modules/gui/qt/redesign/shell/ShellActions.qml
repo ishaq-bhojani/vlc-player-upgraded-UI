@@ -41,6 +41,14 @@ QtObject {
     // shortcuts of Controls; "" for the page shown last)
     signal settingsRequested(string page)
 
+    // open the "Add subtitles" dialog on `mode`: "current" (a file for the media being played),
+    // "playlist" (the media of the play queue), "folder" (a folder of videos), or "" to let the
+    // dialog choose by what is playing
+    signal addSubtitlesRequested(string mode)
+
+    // open the "Keyboard shortcuts" dialog (the same page as Settings > Controls > Keyboard shortcuts)
+    signal keyboardShortcutsRequested()
+
     // open the "New playlist" dialog, which puts the media of `mediaIds` (a list of media library
     // ids, [] for an empty playlist) into the playlist it creates. It needs the media library.
     signal newPlaylistRequested(var mediaIds)

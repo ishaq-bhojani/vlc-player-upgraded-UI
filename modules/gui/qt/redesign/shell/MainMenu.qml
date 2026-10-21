@@ -224,8 +224,7 @@ RedesignMenu {
     RedesignMenuItem {
         text: qsTr("Keyboard shortcuts")
 
-        // the keyboard shortcuts of the Settings modal (Controls)
-        onTriggered: root._launch(() => ShellActions.settingsRequested("shortcuts"))
+        onTriggered: root._launch(() => ShellActions.keyboardShortcutsRequested())
     }
 
     RedesignMenuItem {

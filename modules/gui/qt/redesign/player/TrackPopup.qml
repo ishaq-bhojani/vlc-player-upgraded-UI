@@ -373,8 +373,7 @@ FocusScope {
                         text: qsTr("Add subtitles…")
                         iconText: VLCIcons.add
 
-                        // Task 37 replaces it with the dialog of the redesign
-                        onTriggered: DialogsProvider.loadSubtitlesFile()
+                        onTriggered: ShellActions.addSubtitlesRequested("current")
                     }
                 }
 

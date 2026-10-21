@@ -33,11 +33,14 @@
 #include "measuredgainvlc.hpp"
 #include "mlfavoritebackend.hpp"
 #include "mlrecentaudiomodel.hpp"
+#include "mlsubtitlestore.hpp"
 #include "pinnavigation.hpp"
 #include "settingsbridge.hpp"
 #include "settingsmodel.hpp"
 #include "shortcutsmodel.hpp"
 #include "sidecarlyrics.hpp"
+#include "subtitleattacher.hpp"
+#include "subtitleattachervlc.hpp"
 #include "toolmanagervlc.hpp"
 #include "waveform.hpp"
 #include "waveformvlc.hpp"
@@ -81,6 +84,36 @@ MeasuredGain* measuredGainOf(MainCtx* ctx)
     return measured;
 }
 
+/**
+ * The subtitle tools of this interface: made once (a child of the MainCtx), wired to the player
+ * controller, so that the subtitles saved in the media library for a media are added to it
+ * whenever it starts, with no QML that mentions the type. The library store only exists when the
+ * interface has a media library. Only created for the redesign (see registerQmlTypes); never in
+ * mainui.cpp.
+ */
+SubtitleAttacher* subtitleAttacherOf(MainCtx* ctx)
+{
+    if (SubtitleAttacher* existing = ctx->findChild<SubtitleAttacher*>(QString(), Qt::FindDirectChildrenOnly))
+        return existing;
+
+    qt_intf_t* intf = ctx->getIntf();
+    auto* attacher = new SubtitleAttacher(ctx);
+    attacher->setEnvironment(makeVlcSubtitleEnvironment(intf));
+    if (ctx->hasMediaLibrary())
+        attacher->setStore(std::make_unique<MLSubtitleStore>(ctx->getMediaLibrary()));
+
+    if (PlayerController* player = intf->p_mainPlayerController) {
+        QObject::connect(player, &PlayerController::inputChanged, attacher, [attacher, player](bool hasInput) {
+            attacher->onInputChanged(hasInput, hasInput ? QString::fromUtf8(player->getUrl().toEncoded()) : QString());
+        });
+        // a subtitle the player refused while its input was not ready is offered again once it plays
+        QObject::connect(player, &PlayerController::playingStateChanged, attacher, &SubtitleAttacher::retryPending);
+        if (!player->getUrl().isEmpty())
+            attacher->onInputChanged(true, QString::fromUtf8(player->getUrl().toEncoded()));
+    }
+    return attacher;
+}
+
 } // namespace
 
 /*
@@ -96,6 +129,10 @@ MeasuredGain* measuredGainOf(MainCtx* ctx)
  *   SettingsBridge         singleton, the color scheme and the key strings of the settings
  *                          modal (what QML can not reach in the upstream code)
  *   ShortcutsModel         singleton, the keyboard shortcuts page (call reload() when it opens)
+ *   SubtitleAttacher       singleton, subtitle files added to the playing media and the queue, saved
+ *                          in the media library and brought back at playback; also created at start
+ *                          when the redesign is on (the playback listener must work with no QML that
+ *                          mentions it, a child of MainCtx)
  *   ToolManager            singleton, verified yt-dlp / ffmpeg downloads (consent, pinned manifest)
  *   WaveformProvider       creatable type, the peaks of a file:// url (seek bar waveform, loudness)
  *   MeasuredGain           singleton, the measured loudness (Settings > Audio > Replay gain
@@ -135,6 +172,12 @@ void registerQmlTypes(MainCtx* ctx)
         });
     qmlRegisterSingletonType<ShortcutsModel>(uri, versionMajor, versionMinor, "ShortcutsModel",
         [intf](QQmlEngine*, QJSEngine*) { return new ShortcutsModel(VLC_OBJECT(intf)); });
+    qmlRegisterSingletonType<SubtitleAttacher>(uri, versionMajor, versionMinor, "SubtitleAttacher",
+        [ctx](QQmlEngine*, QJSEngine*) {
+            SubtitleAttacher* attacher = subtitleAttacherOf(ctx);
+            QQmlEngine::setObjectOwnership(attacher, QQmlEngine::CppOwnership);
+            return attacher;
+        });
     qmlRegisterSingletonType<ToolManager>(uri, versionMajor, versionMinor, "ToolManager",
         [intf](QQmlEngine*, QJSEngine*) { return createToolManager(VLC_OBJECT(intf)); });
     WaveformProvider::setDefaultEnvironment([intf] { return makeVlcWaveformEnvironment(VLC_OBJECT(intf)); });
@@ -145,8 +188,10 @@ void registerQmlTypes(MainCtx* ctx)
             QQmlEngine::setObjectOwnership(measured, QQmlEngine::CppOwnership);
             return measured;
         });
-    if (ctx->isRedesign())
+    if (ctx->isRedesign()) {
         measuredGainOf(ctx);
+        subtitleAttacherOf(ctx);
+    }
     if (ctx->hasMediaLibrary()) {
         CurrentMediaFavorite::setDefaultBackendFactory([ml = ctx->getMediaLibrary()] {
             return std::make_unique<MLFavoriteBackend>(ml);

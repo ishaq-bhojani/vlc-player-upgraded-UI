@@ -31,6 +31,9 @@ import VLC.Redesign
  *   newPlaylistRequested(ids)     -> NewPlaylistDialog (media library only)
  *   settingsRequested(page)       -> SettingsModal (also Ctrl+P, see the Shortcut below); an empty
  *                                    page opens the page the modal showed last
+ *   addSubtitlesRequested(mode)   -> AddSubtitlesDialog on `mode` ("current", "playlist", "folder"
+ *                                    or "" to let the dialog choose)
+ *   keyboardShortcutsRequested()  -> KeyboardShortcutsDialog
  *
  * The dialogs are based on RedesignModalDialog (a palette for what is in a popup); SettingsModal
  * is not a dialog but its popup has the same need and does it itself.
@@ -64,6 +67,7 @@ Item {
 
     //! a dialog is open (or still being closed)
     readonly property bool active: _networkStreamOpen || _newPlaylistOpen || _settingsOpen
+                                   || _addSubtitlesOpen || _shortcutsOpen
 
     // the media of the playlist being created
     property var _newPlaylistItems: []
@@ -75,6 +79,13 @@ Item {
     property bool _newPlaylistLoaded: false
     property bool _settingsOpen: false
     property bool _settingsLoaded: false
+    property bool _addSubtitlesOpen: false
+    property bool _addSubtitlesLoaded: false
+    property bool _shortcutsOpen: false
+    property bool _shortcutsLoaded: false
+
+    // the mode the Add subtitles dialog opens on
+    property string _addSubtitlesMode: ""
 
     // the page the Settings modal opens on
     property string _settingsPage: ""
@@ -136,6 +147,30 @@ Item {
             _settingsLoaded = true // onLoaded shows it
     }
 
+    //! `mode`: "current", "playlist", "folder", or "" to let the dialog choose
+    function openAddSubtitles(mode) {
+        if (active)
+            return
+        _addSubtitlesMode = mode ?? ""
+        _addSubtitlesOpen = true
+        if (addSubtitlesLoader.item) {
+            addSubtitlesLoader.item.requestedMode = _addSubtitlesMode
+            _show(addSubtitlesLoader.item)
+        } else {
+            _addSubtitlesLoaded = true // onLoaded shows it
+        }
+    }
+
+    function openKeyboardShortcuts() {
+        if (active)
+            return
+        _shortcutsOpen = true
+        if (shortcutsLoader.item)
+            _show(shortcutsLoader.item)
+        else
+            _shortcutsLoaded = true // onLoaded shows it
+    }
+
     function _show(dialog) {
         dialog.rootWindow = root.backdrop
         dialog.open()
@@ -154,6 +189,20 @@ Item {
         Qt.callLater(() => {
             if (!root._settingsOpen)
                 root._settingsLoaded = false
+        })
+    }
+
+    function _addSubtitlesRelease() {
+        Qt.callLater(() => {
+            if (!root._addSubtitlesOpen)
+                root._addSubtitlesLoaded = false
+        })
+    }
+
+    function _shortcutsRelease() {
+        Qt.callLater(() => {
+            if (!root._shortcutsOpen)
+                root._shortcutsLoaded = false
         })
     }
 
@@ -184,6 +233,14 @@ Item {
 
         function onSettingsRequested(page) {
             root.openSettings(page)
+        }
+
+        function onAddSubtitlesRequested(mode) {
+            root.openAddSubtitles(mode)
+        }
+
+        function onKeyboardShortcutsRequested() {
+            root.openKeyboardShortcuts()
         }
     }
 
@@ -255,6 +312,65 @@ Item {
             root._lastSettingsPage = settingsLoader.item.page
             root._settingsOpen = false
             root._settingsRelease()
+            root.closed()
+        }
+    }
+
+    // Neither of these two names a type of the media library (SubtitleAttacher hides it), so they
+    // load with or without one.
+    Loader {
+        id: addSubtitlesLoader
+
+        active: root._addSubtitlesLoaded
+
+        source: "AddSubtitlesDialog.qml"
+
+        onLoaded: {
+            item.requestedMode = root._addSubtitlesMode
+            root._show(item)
+        }
+
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                root._addSubtitlesOpen = false
+                root._addSubtitlesLoaded = false
+            }
+        }
+    }
+
+    Connections {
+        target: addSubtitlesLoader.item
+
+        function onClosed() {
+            root._addSubtitlesOpen = false
+            root._addSubtitlesRelease()
+            root.closed()
+        }
+    }
+
+    Loader {
+        id: shortcutsLoader
+
+        active: root._shortcutsLoaded
+
+        source: "KeyboardShortcutsDialog.qml"
+
+        onLoaded: root._show(item)
+
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                root._shortcutsOpen = false
+                root._shortcutsLoaded = false
+            }
+        }
+    }
+
+    Connections {
+        target: shortcutsLoader.item
+
+        function onClosed() {
+            root._shortcutsOpen = false
+            root._shortcutsRelease()
             root.closed()
         }
     }
