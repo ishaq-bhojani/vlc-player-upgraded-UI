@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Vireo application icon, master artwork (256 x 256).
+  Concept 1 "concave play": a play arrow with a curved back that reads as a small bird.
+  Copyright (C) 2026 Vireo contributors. Original artwork, not derived from the VLC cone.
+  Colours: tile #1B1B1B (redesign bg-bar), mark #D37918 (redesign default accent).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="56" fill="#1B1B1B"/>
+  <path d="M77 64 L205 128 L77 192 Q111 128 77 64 Z"
+        fill="#D37918" stroke="#D37918" stroke-width="8.5" stroke-linejoin="round"/>
+  <circle cx="158" cy="119" r="7.5" fill="#1B1B1B"/>
+</svg>

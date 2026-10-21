@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Vireo mark without the tile (256 x 256), for places that draw their own background
+  (installer banner, About dialog, title bar). Same geometry as vireo-icon.svg.
+  Copyright (C) 2026 Vireo contributors. Original artwork, not derived from the VLC cone.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <path d="M77 64 L205 128 L77 192 Q111 128 77 64 Z"
+        fill="#D37918" stroke="#D37918" stroke-width="8.5" stroke-linejoin="round"/>
+</svg>
