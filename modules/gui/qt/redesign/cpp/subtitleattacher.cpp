@@ -27,6 +27,9 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QList>
+#include <QMetaObject>
+#include <QPointer>
+#include <QThreadPool>
 
 #include <vlc_common.h>
 #include <vlc_interface.h>
@@ -184,18 +187,54 @@ QString SubtitleAttacher::folderOf(const QUrl& media) const
     return QFileInfo(media.toLocalFile()).absolutePath();
 }
 
+namespace
+{
+QVariantMap folderError(const QString& text)
+{
+    return {
+        {QStringLiteral("videos"), QVariantList()},
+        {QStringLiteral("subtitles"), QVariantList()},
+        {QStringLiteral("truncated"), false},
+        {QStringLiteral("error"), text},
+    };
+}
+}
+
 QVariantMap SubtitleAttacher::listFolder(const QUrl& folder) const
 {
     if (!folder.isLocalFile())
-    {
-        return {
-            {QStringLiteral("videos"), QVariantList()},
-            {QStringLiteral("subtitles"), QVariantList()},
-            {QStringLiteral("truncated"), false},
-            {QStringLiteral("error"), tr("Only a folder of this computer can be used.")},
-        };
-    }
+        return folderError(tr("Only a folder of this computer can be used."));
     return listFolder(folder.toLocalFile(), maxFolderEntries);
+}
+
+int SubtitleAttacher::requestFolder(const QUrl& folder)
+{
+    const int id = ++m_folderRequest;
+    const QPointer<SubtitleAttacher> self(this);
+    const auto answer = [self, id](QVariantMap result)
+    {
+        if (!self)
+            return;
+        // a queued call, so the answer always comes on the thread of the attacher, and never
+        // before requestFolder() has returned
+        QMetaObject::invokeMethod(self.data(), [self, id, result = std::move(result)]
+        {
+            if (self)
+                emit self->folderListed(id, result);
+        }, Qt::QueuedConnection);
+    };
+
+    if (!folder.isLocalFile())
+    {
+        answer(folderError(tr("Only a folder of this computer can be used.")));
+        return id;
+    }
+
+    QThreadPool::globalInstance()->start([path = folder.toLocalFile(), answer]
+    {
+        answer(listFolder(path, maxFolderEntries));
+    });
+    return id;
 }
 
 QVariantMap SubtitleAttacher::listFolder(const QString& path, int limit)
@@ -269,6 +308,7 @@ void SubtitleAttacher::onInputChanged(bool hasInput, const QString& mrl)
     m_attached.clear();
     m_pending.clear();
     m_selectKey.clear();
+    m_playing = false;
     m_currentMrl = hasInput ? mrl : QString();
 
     // no library, nothing to bring back; only local files can be in it
@@ -291,23 +331,40 @@ void SubtitleAttacher::onInputChanged(bool hasInput, const QString& mrl)
     });
 }
 
-void SubtitleAttacher::retryPending()
+void SubtitleAttacher::onPlaying()
 {
+    if (m_currentMrl.isEmpty())
+        return;
+    m_playing = true;
     attachPending();
 }
 
-// Adds what waits; what the player refuses stays for retryPending(). Silent; only the last
-// subtitle saved for the media is selected (m_selectKey), the others join the list of tracks.
+// Adds what waits once the media plays; what the player refuses stays for the next onPlaying().
+// Silent; only the last subtitle saved for the media is selected (m_selectKey), the others join
+// the list of tracks.
 void SubtitleAttacher::attachPending()
 {
-    if (!m_env.addToCurrent)
+    if (!m_env.addToCurrent || !m_playing || m_pending.isEmpty())
         return;
+
+    // what the item has by now (read after the input loaded its slaves, and fresh at every call)
+    QSet<QString> present;
+    if (m_env.currentSlaves)
+    {
+        for (const QString& slave : m_env.currentSlaves())
+            present.insert(key(slave));
+    }
 
     QStringList refused;
     for (const QString& sub : std::as_const(m_pending))
     {
         if (m_attached.contains(key(sub)))
             continue;
+        if (present.contains(key(sub)))
+        {
+            m_attached.insert(key(sub));
+            continue;
+        }
         if (m_env.addToCurrent(sub, key(sub) == m_selectKey, false))
             m_attached.insert(key(sub));
         else

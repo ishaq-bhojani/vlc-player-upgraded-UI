@@ -447,3 +447,14 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+# util/ShellKeys.qml lists every key of the stock GlobalShortcuts.qml (read from the sources; skipped
+# when they are not reachable from the working directory of the test).
+vlc_tests += {
+    'name': 'test_qt_shell_keys_sync',
+    'sources': files('../../tests/test_shell_keys_sync.cpp'),
+    'moc_sources': files('../../tests/test_shell_keys_sync.cpp'),
+    'suite': ['qt'],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qtest_qt6_dep],
+}

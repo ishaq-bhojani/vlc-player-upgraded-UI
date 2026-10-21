@@ -31,11 +31,14 @@ namespace redesign
  *  - addToCurrent: PlayerController::AddAssociatedMedia(SPU_ES, mrl, select, notify (the OSD
  *    message), false), the call the stock "Add subtitle file" uses. It fails while the player has
  *    no input.
+ *  - currentSlaves: the SPU slaves of the input item being played (its `pp_slaves`, read under
+ *    the item lock): the input loads them when it starts and every file added through the player
+ *    joins them.
  *  - queueUrls: the URI of every item of the main playlist, read with the playlist locked.
  *  - addToQueueItem: input_item_AddSlave(item, input_item_slave_New(mrl, SLAVE_TYPE_SPU,
  *    SLAVE_PRIORITY_USER)) on the input item of that playlist entry, which makes every later
  *    playback of the item load the file; when the item is the media being played now, the file is
- *    added to the player as well, and selected.
+ *    given to the player instead (AddAssociatedMedia, selected), which also puts it in the item.
  */
 SubtitleEnvironment makeVlcSubtitleEnvironment(qt_intf_t* intf);
 

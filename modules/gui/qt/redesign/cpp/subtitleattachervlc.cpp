@@ -59,6 +59,36 @@ SubtitleEnvironment makeVlcSubtitleEnvironment(qt_intf_t* intf)
         return player && player->AddAssociatedMedia(SPU_ES, mrl, select, notify, false) == VLC_SUCCESS;
     };
 
+    env.currentSlaves = [intf]()
+    {
+        QStringList list;
+        vlc_playlist_t* playlist = intf->p_playlist;
+        if (!playlist)
+            return list;
+
+        // hold the item: the player may move on to another one once it is unlocked
+        input_item_t* item = nullptr;
+        {
+            vlc::playlist::vlc_playlist_locker lock {playlist};
+            item = vlc_player_GetCurrentMedia(vlc_playlist_GetPlayer(playlist));
+            if (item)
+                input_item_Hold(item);
+        }
+        if (!item)
+            return list;
+
+        vlc_mutex_lock(&item->lock);
+        for (int i = 0; i < item->i_slaves; ++i)
+        {
+            const input_item_slave_t* slave = item->pp_slaves[i];
+            if (slave && slave->i_type == SLAVE_TYPE_SPU && slave->psz_uri)
+                list.append(QString::fromUtf8(slave->psz_uri));
+        }
+        vlc_mutex_unlock(&item->lock);
+        input_item_Release(item);
+        return list;
+    };
+
     env.queueUrls = [intf]()
     {
         QStringList urls;
@@ -80,7 +110,6 @@ SubtitleEnvironment makeVlcSubtitleEnvironment(qt_intf_t* intf)
         if (!playlist || index < 0)
             return false;
 
-        bool isCurrent = false;
         {
             // The slave belongs to the input item: the lock is only needed to reach the item.
             // The player is not called under it (the playlist and the player share their lock).
@@ -89,22 +118,26 @@ SubtitleEnvironment makeVlcSubtitleEnvironment(qt_intf_t* intf)
                 return false;
 
             input_item_t* media = vlc_playlist_item_GetMedia(vlc_playlist_Get(playlist, index));
-            input_item_slave_t* slave = input_item_slave_New(qtu(mrl), SLAVE_TYPE_SPU, SLAVE_PRIORITY_USER);
-            if (!slave)
-                return false;
-            if (input_item_AddSlave(media, slave) != VLC_SUCCESS)
+            const bool isCurrent = (media == vlc_player_GetCurrentMedia(vlc_playlist_GetPlayer(playlist)));
+            if (!isCurrent)
             {
-                input_item_slave_Delete(slave);
-                return false;
+                input_item_slave_t* slave = input_item_slave_New(qtu(mrl), SLAVE_TYPE_SPU, SLAVE_PRIORITY_USER);
+                if (!slave)
+                    return false;
+                if (input_item_AddSlave(media, slave) != VLC_SUCCESS)
+                {
+                    input_item_slave_Delete(slave);
+                    return false;
+                }
+                return true;
             }
-            isCurrent = (media == vlc_player_GetCurrentMedia(vlc_playlist_GetPlayer(playlist)));
         }
 
-        // the media is playing now: its input was created before the slave existed, so it is added to it
-        // as well and shown (the user chose it)
-        if (isCurrent)
-            intf->p_mainPlayerController->AddAssociatedMedia(SPU_ES, mrl, true, true, false);
-        return true;
+        // The media is playing now: its input exists, and the player adds the file to it and to
+        // its item (adding it to the item here as well would list it twice), and shows it (the
+        // user chose it).
+        PlayerController* player = intf->p_mainPlayerController;
+        return player && player->AddAssociatedMedia(SPU_ES, mrl, true, true, false) == VLC_SUCCESS;
     };
 
     return env;

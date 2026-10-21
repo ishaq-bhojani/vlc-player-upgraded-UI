@@ -106,10 +106,18 @@ SubtitleAttacher* subtitleAttacherOf(MainCtx* ctx)
         QObject::connect(player, &PlayerController::inputChanged, attacher, [attacher, player](bool hasInput) {
             attacher->onInputChanged(hasInput, hasInput ? QString::fromUtf8(player->getUrl().toEncoded()) : QString());
         });
-        // a subtitle the player refused while its input was not ready is offered again once it plays
-        QObject::connect(player, &PlayerController::playingStateChanged, attacher, &SubtitleAttacher::retryPending);
-        if (!player->getUrl().isEmpty())
+        // the saved subtitles are added once the media plays: its input has loaded the slaves of its item
+        QObject::connect(player, &PlayerController::playingStateChanged, attacher,
+                         [attacher](PlayerController::PlayingState state) {
+            if (state == PlayerController::PLAYING_STATE_PLAYING || state == PlayerController::PLAYING_STATE_PAUSED)
+                attacher->onPlaying();
+        });
+        if (!player->getUrl().isEmpty()) {
             attacher->onInputChanged(true, QString::fromUtf8(player->getUrl().toEncoded()));
+            const PlayerController::PlayingState state = player->getPlayingState();
+            if (state == PlayerController::PLAYING_STATE_PLAYING || state == PlayerController::PLAYING_STATE_PAUSED)
+                attacher->onPlaying();
+        }
     }
     return attacher;
 }

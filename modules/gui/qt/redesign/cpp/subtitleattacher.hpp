@@ -60,6 +60,11 @@ struct SubtitleEnvironment
     //! say so on screen. false when it was refused (no media, or the player is not ready)
     std::function<bool(const QString& mrl, bool select, bool notify)> addToCurrent;
 
+    //! the addresses of the subtitle files the media being played already has as slaves (the input
+    //! item's own list: the input loads them when it starts, and every file added through the
+    //! player joins it). Read fresh every time.
+    std::function<QStringList()> currentSlaves;
+
     //! the addresses of the media of the play queue, in order
     std::function<QStringList()> queueUrls;
 
@@ -80,7 +85,10 @@ struct SubtitleEnvironment
  *  - onInputChanged brings them back: whenever a media starts, the subtitle files saved for it are
  *    added to it (the stock interface only reads the main file of a library media, see
  *    MediaToInputItem in modules/misc/medialibrary/entities.cpp). Exactly once per media, and
- *    never without a library. They join the subtitle tracks silently; the last one saved is
+ *    never without a library. Nothing is added before the media plays (onPlaying): the input has
+ *    then loaded the slaves of its item, and a saved subtitle the item already has (the media is
+ *    a queue entry that got it before, or the input read it) is skipped, as the input does not
+ *    deduplicate the files it is given. They join the subtitle tracks silently; the last one saved is
  *    also selected, as the user attached it on purpose (the same as a subtitle of a queue item,
  *    which the input forces when it starts).
  *  - listFolder reads a folder for the dialog.
@@ -148,8 +156,15 @@ public:
      */
     Q_INVOKABLE QVariantMap listFolder(const QUrl& folder) const;
 
-    //! listFolder() with a limit, for the tests
+    //! listFolder() with a limit, for the tests (synchronous)
     static QVariantMap listFolder(const QString& path, int limit);
+
+    /**
+     * listFolder() off the GUI thread: reads the folder on a worker thread and answers by
+     * folderListed(). Returns the id of the request (1, 2, ...); a caller that asked again or gave
+     * up compares the id and drops the answers it does not wait for.
+     */
+    Q_INVOKABLE int requestFolder(const QUrl& folder);
 
     static QStringList videoExtensions();
     static QStringList subtitleExtensions();
@@ -162,11 +177,17 @@ public slots:
      */
     void onInputChanged(bool hasInput, const QString& mrl);
 
-    //! Tries again to add a saved subtitle the player refused (it was not ready), once. To call when
-    //! the media starts playing.
-    void retryPending();
+    /**
+     * The media of the player is playing (or paused: PlayerController::playingStateChanged), so its
+     * input has loaded the slaves of its item. Adds the saved subtitles that wait and are not
+     * there; one the player refuses stays for the next call. Harmless to call again.
+     */
+    void onPlaying();
 
 signals:
+    //! the answer of requestFolder(): `result` is what listFolder() returns
+    void folderListed(int requestId, const QVariantMap& result);
+
     //! persist() was answered: `stored` is whether the library saved the association
     void persisted(const QUrl& media, const QUrl& sub, bool stored);
 
@@ -183,9 +204,12 @@ private:
     // for an older media are dropped
     QString m_currentMrl;
     quint64 m_generation = 0;
+    //! the media being played has started: the slaves of its item are loaded
+    bool m_playing = false;
+    int m_folderRequest = 0;
     //! the subtitle files (key()) already added to the media being played
     QSet<QString> m_attached;
-    //! saved subtitle files the player refused, waiting for retryPending()
+    //! saved subtitle files waiting for the media to play, or refused by the player
     QStringList m_pending;
     //! the saved subtitle (key()) that is shown when it is added: the last one saved for the media
     QString m_selectKey;

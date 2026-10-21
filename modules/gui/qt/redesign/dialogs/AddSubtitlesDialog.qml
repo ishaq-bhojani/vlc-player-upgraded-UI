@@ -19,6 +19,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Templates as T
 
+import VLC.MainInterface
 import VLC.Player
 import VLC.Playlist
 import VLC.Style
@@ -71,6 +72,17 @@ RedesignModalDialog {
     //! what went wrong, "" for nothing
     property string errorText: ""
 
+    //! the folder is being read (on a worker thread): the answer is waited for, Add is off
+    property bool readingFolder: false
+
+    // the request whose answer is waited for; an answer for another one is stale
+    property int _folderRequest: -1
+
+    // the folder whose videos this dialog has already put in the queue (folder mode): they are
+    // never appended a second time, a retry only attaches
+    property string _appendedFolder: ""
+    property int _appendedFirst: 0
+
     //! [{video, videoUrl, subtitle, subtitleUrl}] for the "playlist" and "folder" modes: one per
     //! video, in order; `subtitle` is "" when none matches
     readonly property var rows: _buildRows()
@@ -80,7 +92,7 @@ RedesignModalDialog {
 
     //! the Add button can be used
     readonly property bool valid: mode === "current" ? (hasCurrent && subtitleFile !== "")
-                                                     : matched > 0
+                                                     : (!readingFolder && matched > 0)
 
     // Functions
 
@@ -123,6 +135,7 @@ RedesignModalDialog {
         folderPath = ""
         folderInfo = null
         errorText = ""
+        _cancelFolderRequest()
         queueUrls = newMode === "playlist" ? SubtitleAttacher.playlistUrls() : []
 
         // the subtitles of a queue are most often next to its first video
@@ -133,18 +146,39 @@ RedesignModalDialog {
         }
     }
 
+    //! the answer of a request in flight is not wanted anymore
+    function _cancelFolderRequest() {
+        _folderRequest = -1
+        readingFolder = false
+    }
+
     function _start() {
+        _appendedFolder = ""
         let wanted = requestedMode
         if (wanted !== "current" && wanted !== "playlist" && wanted !== "folder")
             wanted = hasCurrent ? "current" : (MainPlaylistController.count > 0 ? "playlist" : "folder")
         _setMode(wanted)
     }
 
+    //! Reads the folder on a worker thread (a slow disk or share must not stop the interface);
+    //! _onFolderListed takes the answer.
     function _listFolder(path: string) {
-        const info = SubtitleAttacher.listFolder(SettingsBridge.localFileUrl(path))
         folderPath = path
-        folderInfo = info
-        errorText = info.error ?? ""
+        folderInfo = null
+        errorText = ""
+        readingFolder = true
+        _folderRequest = SubtitleAttacher.requestFolder(SettingsBridge.localFileUrl(path))
+    }
+
+    function _onFolderListed(requestId: int, result) {
+        if (requestId !== _folderRequest)
+            return // an older folder, or the dialog was closed or changed mode
+        readingFolder = false
+        _folderRequest = -1
+        folderInfo = result
+        errorText = result.error ?? ""
+        if (valid)
+            addButton.forceActiveFocus()
     }
 
     function choose() {
@@ -180,11 +214,21 @@ RedesignModalDialog {
             return
         }
 
-        // the folder mode puts its videos at the end of the queue first; the position is read from
-        // the queue itself, not from a count that may not have caught up
-        const first = mode === "folder" ? SubtitleAttacher.playlistUrls().length : 0
-        if (mode === "folder")
-            MainPlaylistController.append(rows.map(row => row.videoUrl))
+        // The folder mode puts its videos at the end of the queue first, once: when that worked and
+        // the subtitles did not, a second try only attaches (the videos are in the queue).
+        let first = 0
+        if (mode === "folder") {
+            if (_appendedFolder === folderPath) {
+                first = _appendedFirst
+            } else {
+                // the position is read from the queue itself, not from a count that may not have
+                // caught up, right before the append
+                first = SubtitleAttacher.playlistUrls().length
+                MainPlaylistController.append(rows.map(row => row.videoUrl))
+                _appendedFolder = folderPath
+                _appendedFirst = first
+            }
+        }
 
         const pairs = []
         rows.forEach((row, index) => {
@@ -194,6 +238,10 @@ RedesignModalDialog {
 
         if (SubtitleAttacher.attachToPlaylist(pairs) > 0) {
             root.close()
+        } else if (mode === "folder") {
+            errorText = _appendedFolder === folderPath
+                        ? qsTr("The videos were added to the play queue, but the subtitles were not. Try Add again to add only the subtitles.")
+                        : qsTr("No subtitle could be added.")
         } else {
             errorText = qsTr("No subtitle could be added: the play queue changed.")
         }
@@ -210,6 +258,17 @@ RedesignModalDialog {
     onAboutToShow: {
         root._start()
         modeControl.forceActiveFocus()
+    }
+
+    // a folder still being read is of no use to a closed dialog
+    onClosed: _cancelFolderRequest()
+
+    Connections {
+        target: SubtitleAttacher
+
+        function onFolderListed(requestId, result) {
+            root._onFolderListed(requestId, result)
+        }
     }
 
     // Children
@@ -242,6 +301,18 @@ RedesignModalDialog {
                    : qsTr("The play queue is empty."))
                 : qsTr("Choose a folder: its videos are added to the play queue with the subtitle files that have the same name.")
 
+        color: root.colorContext.fg.secondary
+        font.pixelSize: VLCStyle.fontSize_small
+        wrapMode: Text.WordWrap
+    }
+
+    // the library keeps only what it knows
+    Text {
+        Layout.fillWidth: true
+
+        visible: MainCtx.mediaLibraryAvailable
+
+        text: qsTr("Subtitles are remembered for the videos of your library that are stored on this computer, and are added again when those videos play.")
         color: root.colorContext.fg.secondary
         font.pixelSize: VLCStyle.fontSize_small
         wrapMode: Text.WordWrap
@@ -294,6 +365,20 @@ RedesignModalDialog {
         wrapMode: Text.WordWrap
 
         Accessible.role: Accessible.AlertMessage
+        Accessible.name: text
+    }
+
+    // the folder is being read
+    Text {
+        Layout.fillWidth: true
+
+        visible: root.readingFolder
+
+        text: qsTr("Reading the folder…")
+        color: root.colorContext.fg.secondary
+        font.pixelSize: VLCStyle.fontSize_normal
+
+        Accessible.role: Accessible.StaticText
         Accessible.name: text
     }
 

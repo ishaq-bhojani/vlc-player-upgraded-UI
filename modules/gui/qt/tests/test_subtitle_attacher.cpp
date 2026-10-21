@@ -25,6 +25,9 @@
 #include <QTemporaryDir>
 #include <QTest>
 
+#include <QThreadPool>
+
+#include <algorithm>
 #include <deque>
 
 #include "../redesign/cpp/subtitleattacher.hpp"
@@ -90,6 +93,7 @@ struct FakePlayer
 {
     QString current;                       // address of the media being played
     QStringList queue;                     // the play queue
+    QStringList slaves;                    // the subtitle files the item being played has
     bool ready = true;                     // the player takes subtitles
     QList<QPair<QString, bool>> added;     // (subtitle, select) given to the media being played
     QList<bool> notified;                  // the notify flag of each of them
@@ -104,14 +108,18 @@ struct FakePlayer
                 return false;
             added.append({mrl, select});
             notified.append(notify);
+            slaves.append(mrl); // the player puts what it is given in the item
             return true;
         };
+        env.currentSlaves = [this] { return slaves; };
         env.queueUrls = [this] { return queue; };
         env.addToQueueItem = [this](int index, const QString& mrl)
         {
             if (index < 0 || index >= queue.size())
                 return false;
             queueAdds.append({index, mrl});
+            if (queue[index] == current)
+                slaves.append(mrl);
             return true;
         };
         return env;
@@ -145,14 +153,19 @@ private slots:
 
         attacher.onInputChanged(true, "file:///v/a.mkv");
 
+        // the library answered, but the input has not loaded the slaves of its item yet
         QCOMPARE(library.lookups, QStringList{"file:///v/a.mkv"});
+        QVERIFY(player.added.isEmpty());
+
+        attacher.onPlaying();
         QCOMPARE(addedSubtitles(player), (QStringList{"file:///v/a.en.srt", "file:///v/a.fr.srt"}));
         QCOMPARE(player.added[0].second, false);
         QCOMPARE(player.added[1].second, true);
         QCOMPARE(player.notified, (QList<bool>{false, false}));
 
-        // nothing more happens by itself, nor when the player is reminded to retry
-        attacher.retryPending();
+        // nothing more happens by itself, nor when the state changes again (pause, play)
+        attacher.onPlaying();
+        attacher.onPlaying();
         QCOMPARE(player.added.size(), 2);
     }
 
@@ -168,12 +181,18 @@ private slots:
         attacher.setStore(std::make_unique<FakeStore>(&library));
 
         attacher.onInputChanged(true, "file:///v/a.mkv");
+        attacher.onPlaying();
+        player.slaves.clear(); // another media: another item
         attacher.onInputChanged(true, "file:///v/b.mkv");
+        attacher.onPlaying();
         QCOMPARE(addedSubtitles(player), (QStringList{"file:///v/a.srt", "file:///v/b.srt"}));
 
-        // the same media played again is a new input: attached again, once
+        // the same media played again from a new queue entry is a new input: attached again, once
         attacher.onInputChanged(false, QString());
+        player.slaves.clear();
         attacher.onInputChanged(true, "file:///v/b.mkv");
+        attacher.onPlaying();
+        attacher.onPlaying();
         QCOMPARE(addedSubtitles(player),
                  (QStringList{"file:///v/a.srt", "file:///v/b.srt", "file:///v/b.srt"}));
     }
@@ -194,6 +213,7 @@ private slots:
         attacher.onInputChanged(true, "file:///v/b.mkv");
         QVERIFY(player.added.isEmpty()); // nothing is waited for
         library.flush();
+        attacher.onPlaying();
 
         QCOMPARE(addedSubtitles(player), QStringList{"file:///v/b.srt"});
     }
@@ -212,6 +232,7 @@ private slots:
         attacher.onInputChanged(true, "file:///v/a.mkv");
         attacher.onInputChanged(false, QString());
         library.flush();
+        attacher.onPlaying();
 
         QVERIFY(player.added.isEmpty());
     }
@@ -225,7 +246,7 @@ private slots:
 
         QVERIFY(!attacher.hasStore());
         attacher.onInputChanged(true, "file:///v/a.mkv");
-        attacher.retryPending();
+        attacher.onPlaying();
 
         QVERIFY(player.added.isEmpty());
     }
@@ -260,6 +281,7 @@ private slots:
         attacher.onInputChanged(true, "file:///v/a.mkv");
         QVERIFY(attacher.attachToCurrent(QUrl("file:///v/My Sub.srt"))); // another spelling
         library.flush();
+        attacher.onPlaying();
 
         QCOMPARE(addedSubtitles(player), (QStringList{"file:///v/My%20Sub.srt", "file:///v/b.srt"}));
     }
@@ -276,12 +298,12 @@ private slots:
         attacher.setStore(std::make_unique<FakeStore>(&library));
 
         attacher.onInputChanged(true, "file:///v/a.mkv");
-        attacher.retryPending(); // still not ready
+        attacher.onPlaying(); // the player is not ready
         QVERIFY(player.added.isEmpty());
 
         player.ready = true;
-        attacher.retryPending();
-        attacher.retryPending();
+        attacher.onPlaying();
+        attacher.onPlaying();
 
         QCOMPARE(addedSubtitles(player), QStringList{"file:///v/a.srt"});
     }
@@ -300,7 +322,136 @@ private slots:
         attacher.onInputChanged(true, "file:///v/a.mkv");
         attacher.onInputChanged(true, "file:///v/other.mkv"); // nothing saved for it
         player.ready = true;
-        attacher.retryPending();
+        attacher.onPlaying();
+
+        QVERIFY(player.added.isEmpty());
+    }
+
+    // The item already has the subtitle (a queue entry that got it before, or the input read it):
+    // the input does not deduplicate, so it is not added again.
+    void subtitleTheItemAlreadyHasIsSkipped()
+    {
+        FakeLibrary library;
+        library.subtitles["file:///v/a.mkv"] = {"file:///v/a.srt"};
+        FakePlayer player;
+        player.slaves = {"file:///v/a.srt"};
+        SubtitleAttacher attacher;
+        attacher.setEnvironment(player.environment());
+        attacher.setStore(std::make_unique<FakeStore>(&library));
+
+        attacher.onInputChanged(true, "file:///v/a.mkv");
+        attacher.onPlaying();
+
+        QVERIFY(player.added.isEmpty());
+    }
+
+    // another spelling of the same address counts as present
+    void presentSubtitleIsComparedByAddress()
+    {
+        FakeLibrary library;
+        library.subtitles["file:///v/a.mkv"] = {"file:///v/My%20Sub.srt"};
+        FakePlayer player;
+        player.slaves = {"file:///v/My Sub.srt"};
+        SubtitleAttacher attacher;
+        attacher.setEnvironment(player.environment());
+        attacher.setStore(std::make_unique<FakeStore>(&library));
+
+        attacher.onInputChanged(true, "file:///v/a.mkv");
+        attacher.onPlaying();
+
+        QVERIFY(player.added.isEmpty());
+    }
+
+    // The item lacks it: added once. The same entry played again has it (the player put it in
+    // the item): no second copy.
+    void secondReplayOfTheSameEntryAddsNothing()
+    {
+        FakeLibrary library;
+        library.subtitles["file:///v/a.mkv"] = {"file:///v/a.srt"};
+        FakePlayer player;
+        SubtitleAttacher attacher;
+        attacher.setEnvironment(player.environment());
+        attacher.setStore(std::make_unique<FakeStore>(&library));
+
+        attacher.onInputChanged(true, "file:///v/a.mkv");
+        attacher.onPlaying();
+        QCOMPARE(addedSubtitles(player), QStringList{"file:///v/a.srt"});
+
+        attacher.onInputChanged(false, QString());
+        attacher.onInputChanged(true, "file:///v/a.mkv"); // the same entry: its item kept the slave
+        attacher.onPlaying();
+        QCOMPARE(player.added.size(), 1);
+    }
+
+    // The input re-adds the slaves of its item while it starts: when the library answers before
+    // that, the check is made when the media plays, not when the answer comes.
+    void slavesLoadedAfterTheAnswerAreSeen()
+    {
+        FakeLibrary library;
+        library.subtitles["file:///v/a.mkv"] = {"file:///v/a.srt"};
+        FakePlayer player;
+        SubtitleAttacher attacher;
+        attacher.setEnvironment(player.environment());
+        attacher.setStore(std::make_unique<FakeStore>(&library));
+
+        attacher.onInputChanged(true, "file:///v/a.mkv"); // answered at once
+        player.slaves = {"file:///v/a.srt"};              // the input loads the item's slaves
+        attacher.onPlaying();
+
+        QVERIFY(player.added.isEmpty());
+    }
+
+    // attachToPlaylist on the media being played gives the file to the player (and so to its item);
+    // the later answer of the library for that media must not add it a second time
+    void playlistAttachOfTheCurrentMediaIsNotRepeatedByTheLibrary()
+    {
+        FakeLibrary library;
+        library.defer = true;
+        library.subtitles["file:///v/a.mkv"] = {"file:///v/a.srt"};
+        FakePlayer player;
+        player.queue = {"file:///v/a.mkv", "file:///v/b.mkv"};
+        player.current = "file:///v/a.mkv";
+        SubtitleAttacher attacher;
+        attacher.setEnvironment(player.environment());
+        attacher.setStore(std::make_unique<FakeStore>(&library));
+
+        attacher.onInputChanged(true, "file:///v/a.mkv");
+        QVariantList pairs;
+        pairs << QVariantMap{{"index", 0}, {"subtitle", QUrl("file:///v/a.srt")}};
+        QCOMPARE(attacher.attachToPlaylist(pairs), 1);
+        library.flush();
+        attacher.onPlaying();
+
+        QCOMPARE(player.queueAdds.size(), 1);
+        QVERIFY(player.added.isEmpty());
+    }
+
+    // the same with an environment that does not show the slave in the item: the attacher's own
+    // memory of what it attached stops the second add
+    void playlistAttachRemembersTheCurrentMedia()
+    {
+        FakeLibrary library;
+        library.defer = true;
+        library.subtitles["file:///v/a.mkv"] = {"file:///v/a.srt"};
+        FakePlayer player;
+        player.queue = {"file:///v/a.mkv"};
+        player.current = "file:///v/a.mkv";
+        SubtitleEnvironment env = player.environment();
+        env.addToQueueItem = [&player](int index, const QString& mrl)
+        {
+            player.queueAdds.append({index, mrl});
+            return true;
+        };
+        SubtitleAttacher attacher;
+        attacher.setEnvironment(env);
+        attacher.setStore(std::make_unique<FakeStore>(&library));
+
+        attacher.onInputChanged(true, "file:///v/a.mkv");
+        QVariantList pairs;
+        pairs << QVariantMap{{"index", 0}, {"subtitle", QUrl("file:///v/a.srt")}};
+        QCOMPARE(attacher.attachToPlaylist(pairs), 1);
+        library.flush();
+        attacher.onPlaying();
 
         QVERIFY(player.added.isEmpty());
     }
@@ -535,6 +686,69 @@ private slots:
         QCOMPARE(result["subtitles"].toList().size(), 1);
         QCOMPARE(result["truncated"].toBool(), true);
         QCOMPARE(result["videos"].toList().first().toMap()["name"].toString(), QString("v1.mkv"));
+    }
+
+    void requestFolderAnswersLater()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        for (const char* name : {"b.mkv", "a.mkv", "a.srt"})
+        {
+            QFile file(dir.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+        }
+
+        SubtitleAttacher attacher;
+        QSignalSpy spy(&attacher, &SubtitleAttacher::folderListed);
+        const int first = attacher.requestFolder(QUrl::fromLocalFile(dir.path()));
+        const int second = attacher.requestFolder(QUrl::fromLocalFile(dir.path()));
+        QVERIFY(second != first);
+        QCOMPARE(spy.count(), 0); // never before the call returned
+
+        QTRY_COMPARE(spy.count(), 2);
+        QList<int> ids;
+        for (const auto& args : spy)
+        {
+            ids.append(args[0].toInt());
+            const QVariantMap result = args[1].toMap();
+            QCOMPARE(result["error"].toString(), QString());
+            QCOMPARE(result["videos"].toList().size(), 2);
+            QCOMPARE(result["videos"].toList().first().toMap()["name"].toString(), QString("a.mkv"));
+            QCOMPARE(result["subtitles"].toList().size(), 1);
+        }
+        std::sort(ids.begin(), ids.end());
+        QCOMPARE(ids, (QList<int>{first, second}));
+    }
+
+    void requestFolderErrorsAreAnswered()
+    {
+        SubtitleAttacher attacher;
+        QSignalSpy spy(&attacher, &SubtitleAttacher::folderListed);
+
+        const int remote = attacher.requestFolder(QUrl("http://example.org/dir"));
+        QCOMPARE(spy.count(), 0);
+        QTRY_COMPARE(spy.count(), 1);
+        QCOMPARE(spy[0][0].toInt(), remote);
+        QVERIFY(!spy[0][1].toMap()["error"].toString().isEmpty());
+
+        const int missing = attacher.requestFolder(QUrl::fromLocalFile("/this/folder/does/not/exist"));
+        QTRY_COMPARE(spy.count(), 2);
+        QCOMPARE(spy[1][0].toInt(), missing);
+        QVERIFY(!spy[1][1].toMap()["error"].toString().isEmpty());
+    }
+
+    // an attacher destroyed while the worker reads: the answer is dropped, nothing crashes
+    void requestFolderAfterDestruction()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        {
+            SubtitleAttacher attacher;
+            attacher.requestFolder(QUrl::fromLocalFile(dir.path()));
+        }
+        QCoreApplication::processEvents();
+        QThreadPool::globalInstance()->waitForDone();
+        QCoreApplication::processEvents();
     }
 
     void listFolderErrors()
