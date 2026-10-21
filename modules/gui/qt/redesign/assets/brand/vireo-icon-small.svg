@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Vireo application icon for 16 to 24 px (256 x 256 design grid). Same concept and colours as
+  vireo-icon.svg, tuned for tiny sizes: a smaller corner radius, a larger and heavier mark and a
+  bigger eye, so the shape survives the rasteriser at 16 px.
+  Copyright (C) 2026 Vireo contributors. Original artwork, not derived from the VLC cone.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="44" fill="#1B1B1B"/>
+  <path d="M62 44 L226 128 L62 212 Q106 128 62 44 Z"
+        fill="#D37918" stroke="#D37918" stroke-width="16" stroke-linejoin="round"/>
+  <circle cx="162" cy="116" r="13" fill="#1B1B1B"/>
+</svg>
