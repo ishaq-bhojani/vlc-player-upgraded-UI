@@ -426,6 +426,22 @@ vlc_tests += {
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
 
+# VLC Reborn update channel: the real verifier (src/misc/update_crypto.c) against a status file
+# and an installer signed by throwaway keys, the embedded key, the status URL and, when the
+# build has update-check, update_NeedUpgrade(). Plain C, no Qt; needs libgcrypt.
+# Test data: ../../tests/update_channel_fixtures.h (extras/redesign/gen-update-test-fixtures.sh).
+if gcrypt_dep.found()
+    vlc_tests += {
+        'name': 'test_qt_update_channel',
+        'sources': files('../../tests/test_update_channel.c'),
+        'suite': ['qt'],
+        'include_directories': include_directories('../../../../../src'),
+        'link_with': [libvlccore],
+        'dependencies': [gcrypt_dep],
+        'c_args': get_option('update-check').allowed() ? ['-DREDESIGN_TEST_NEEDUPGRADE'] : [],
+    }
+endif
+
 # SubtitleAttacher (subtitle files added to the playing media and the queue, brought back from the
 # media library at playback, folder listing) against a fake library and player: no libvlc instance.
 vlc_tests += {

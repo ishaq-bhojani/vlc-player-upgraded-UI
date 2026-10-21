@@ -1006,13 +1006,22 @@ cdata.set_quoted('VERSION_MESSAGE', f'@vlc_version@ @vlc_version_codename@')
 cdata.set('VERSION_MAJOR',      vlc_version_major)
 cdata.set('VERSION_MINOR',      vlc_version_minor)
 cdata.set('VERSION_REVISION',   vlc_version_revision)
-cdata.set('VERSION_EXTRA',      vlc_version_extra)
+# VLC Reborn: the fork's release number N makes the version 4.0.0.N, which the updater
+# (src/misc/update.c) compares with its status file as PACKAGE_VERSION_EXTRA +
+# REDESIGN_BUILD_NUMBER. PACKAGE_VERSION_EXTRA stays the libvlc API value (lib/core.c
+# static_asserts it against libvlc_version.h); VERSION_EXTRA feeds the Windows file version.
+redesign_build_number = get_option('redesign_build_number')
+cdata.set('VERSION_EXTRA',      vlc_version_extra + redesign_build_number)
+cdata.set_quoted('REDESIGN_UPDATE_URL', get_option('redesign_update_url'))
+cdata.set('REDESIGN_BUILD_NUMBER', redesign_build_number)
 
 cdata.set('PACKAGE_VERSION_MAJOR',      vlc_version_major)
 cdata.set('PACKAGE_VERSION_MINOR',      vlc_version_minor)
 cdata.set('PACKAGE_VERSION_REVISION',   vlc_version_revision)
 cdata.set('PACKAGE_VERSION_EXTRA',      vlc_version_extra)
-cdata.set_quoted('PACKAGE_VERSION_DEV', vlc_version_type)
+# A numbered fork release is not a "-dev" build: otherwise update_NeedUpgrade() reports
+# an update when the status file has the version that is already installed.
+cdata.set_quoted('PACKAGE_VERSION_DEV', redesign_build_number > 0 ? '' : vlc_version_type)
 
 cdata.set('LIBVLC_ABI_MAJOR', libvlc_abi_version_major)
 cdata.set('LIBVLC_ABI_MINOR', libvlc_abi_version_minor)

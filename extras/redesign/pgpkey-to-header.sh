@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+#
+# Generates include/vlc_pgpkey.h (the update-signing public key that the updater
+# trusts) from an armored public key, so the key can be rotated reproducibly.
+#
+#   extras/redesign/pgpkey-to-header.sh [PUBKEY.asc [HEADER.h]]      write the header
+#   extras/redesign/pgpkey-to-header.sh --check [PUBKEY.asc [HEADER.h]]
+#                                       exit 0 when HEADER.h is what would be generated
+#
+# Defaults: PUBKEY.asc = docs/redesign/reborn-update-public.asc,
+#           HEADER.h   = include/vlc_pgpkey.h
+#
+# The output depends only on the key file: the armor is copied as is (armor header
+# lines such as "Version:" or "Comment:" dropped: src/misc/update_crypto.c skips
+# only "Version:"), the long id is the last 8 bytes of the key's fingerprint.
+# gpg runs in a temporary GNUPGHOME to read the key; no keyring is touched.
+#
+# The key must be what src/misc/update_crypto.c can verify with: one OpenPGP v4
+# primary key, DSA (p <= 3072 bits, q <= 256 bits: DSA-2048 with q=256 qualifies)
+# or RSA (<= 4096 bits), not expired or revoked. Rotation procedure:
+# docs/redesign/branding.md, section "Rotating the update key".
+
+set -euo pipefail
+
+die() { echo "pgpkey-to-header.sh: $*" >&2; exit 1; }
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+CHECK=0
+if [ "${1:-}" = "--check" ]; then CHECK=1; shift; fi
+case "${1:-}" in -h|--help) sed -n '3,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
+[ "$#" -le 2 ] || die "usage: pgpkey-to-header.sh [--check] [PUBKEY.asc [HEADER.h]]"
+KEY="${1:-$REPO/docs/redesign/reborn-update-public.asc}"
+OUT="${2:-$REPO/include/vlc_pgpkey.h}"
+[ -f "$KEY" ] || die "public key not found: $KEY"
+command -v gpg >/dev/null || die "gpg not found"
+
+GH="$(mktemp -d)"
+chmod 700 "$GH"
+trap 'gpgconf --homedir "$GH" --kill gpg-agent >/dev/null 2>&1 || true; rm -rf "$GH"' EXIT
+GPG=(gpg --homedir "$GH" --batch --no-tty)
+
+COLONS="$("${GPG[@]}" --import-options show-only --import --with-colons "$KEY" 2>/dev/null)" \
+    || die "$KEY is not a readable OpenPGP key"
+
+[ "$(printf '%s\n' "$COLONS" | grep -c '^pub:')" -eq 1 ] || die "$KEY must hold exactly one public key"
+printf '%s\n' "$COLONS" | grep -q '^sec:' && die "$KEY contains a SECRET key; never commit that"
+
+PUB="$(printf '%s\n' "$COLONS" | grep -m1 '^pub:')"
+IFS=: read -r _ VALIDITY BITS ALGO KEYID _ <<< "$PUB"
+FPR="$(printf '%s\n' "$COLONS" | awk -F: '$1=="fpr"{print $10; exit}')"
+UID_TEXT="$(printf '%s\n' "$COLONS" | awk -F: '$1=="uid"{print $10; exit}')"
+
+case "$VALIDITY" in r|e|d|i) die "the key is revoked, expired, disabled or invalid (validity '$VALIDITY')" ;; esac
+case "$ALGO" in
+    17) [ "$BITS" -le 3072 ] || die "DSA key of $BITS bits: update_crypto.c reads at most 3072" ;;
+    1)  [ "$BITS" -le 4096 ] || die "RSA key of $BITS bits: update_crypto.c reads at most 4096" ;;
+    *)  die "key algorithm $ALGO is not DSA (17) or RSA (1): update_crypto.c cannot verify it" ;;
+esac
+if [ "$ALGO" = 17 ]; then
+    # the subgroup order q must fit 256 bits (struct public_key_packet_t)
+    Q="$("${GPG[@]}" --list-packets "$KEY" 2>/dev/null | awk '/pkey\[1\]/{gsub(/[^0-9]/,"",$2); print $2; exit}')"
+    [ -n "$Q" ] && [ "$Q" -le 256 ] || die "DSA subgroup order of '${Q:-?}' bits: update_crypto.c reads at most 256"
+fi
+"${GPG[@]}" --list-packets "$KEY" 2>/dev/null | awk '/:public key packet:/{getline; print; exit}' | grep -q 'version 4,' \
+    || die "update_crypto.c only accepts version 4 public key packets"
+[ "${#FPR}" -eq 40 ] || die "need a version 4 key (40 hex digit fingerprint), got '$FPR'"
+[ "${FPR: -16}" = "$KEYID" ] || die "key id and fingerprint disagree"
+
+# long id as C bytes
+LONGID=""
+for i in 0 2 4 6 8 10 12 14; do
+    LONGID+="0x${KEYID:$i:2}, "
+done
+LONGID="${LONGID%, }"
+
+# armored text: BEGIN line, blank line, body, CRC line, END line; header lines dropped
+ARMOR="$(tr -d '\r' < "$KEY" | awk '
+    /^-----BEGIN PGP PUBLIC KEY BLOCK-----$/ { inblock=1; hdr=1; print; next }
+    !inblock { next }
+    /^-----END PGP PUBLIC KEY BLOCK-----$/  { print; exit }
+    hdr && /^$/ { hdr=0; print; next }
+    hdr { next }
+    { print }')"
+printf '%s\n' "$ARMOR" | head -n1 | grep -q '^-----BEGIN PGP PUBLIC KEY BLOCK-----$' || die "no armored public key block in $KEY"
+printf '%s\n' "$ARMOR" | tail -n1 | grep -q '^-----END PGP PUBLIC KEY BLOCK-----$' || die "unterminated armor in $KEY"
+printf '%s\n' "$ARMOR" | sed -n '2p' | grep -q '^$' || die "armor of $KEY: expected a blank line after the header"
+printf '%s\n' "$ARMOR" | grep -q '^=[A-Za-z0-9+/]\{4\}$' || die "armor of $KEY has no CRC line (update_crypto.c requires it)"
+
+C_ARMOR="$(printf '%s\n' "$ARMOR" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/^/    "/' -e 's/$/\\n"/')"
+
+generate() {
+    cat <<EOF
+/*****************************************************************************
+ * vlc_pgpkey.h: PGP public key that the updater trusts (VLC Reborn update channel)
+ *****************************************************************************/
+
+/* GENERATED by extras/redesign/pgpkey-to-header.sh from
+ * docs/redesign/reborn-update-public.asc - do not edit by hand, rotate the key
+ * as described in docs/redesign/branding.md.
+ *
+ * Key:         $UID_TEXT
+ * Fingerprint: $FPR
+ * Type:        $( [ "$ALGO" = 17 ] && echo DSA || echo RSA ) $BITS bits, OpenPGP v4
+ *
+ * src/misc/update.c trusts this key only: the VideoLAN release key is not
+ * embedded in this fork, so the fork neither accepts VideoLAN's update feed nor
+ * does VideoLAN's key vouch for ours. The identifiers are the upstream ones.
+ */
+
+static const uint8_t videolan_public_key_longid[8] = {
+    $LONGID
+};
+
+static const uint8_t videolan_public_key[] = {
+$C_ARMOR
+};
+EOF
+}
+
+if [ "$CHECK" = 1 ]; then
+    [ -f "$OUT" ] || die "$OUT does not exist"
+    if generate | cmp -s - "$OUT"; then
+        echo "pgpkey-to-header.sh: $OUT is up to date (key $KEYID)"
+        exit 0
+    fi
+    die "$OUT is not what $KEY generates; run extras/redesign/pgpkey-to-header.sh"
+fi
+
+generate > "$OUT"
+echo "pgpkey-to-header.sh: wrote $OUT (key $KEYID, ${UID_TEXT})"

@@ -846,6 +846,18 @@ option('redesign_product_name',
        value: 'VLC Reborn',
        description: 'VLC Reborn: product name shown by the Qt interface when the redesign is enabled')
 
+option('redesign_update_url',
+       type: 'string',
+       value: 'https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/releases/latest/download/status',
+       description: 'VLC Reborn: base URL of the update status file (src/misc/update.c appends the platform suffix such as -win-x64, and .asc for the signature); point it at a test release to try the updater')
+
+option('redesign_build_number',
+       type: 'integer',
+       value: 0,
+       min: 0,
+       max: 65535,
+       description: 'VLC Reborn: build number N of the fork release 4.0.0.N, compared by the updater with the status file (0 = development build)')
+
 # TODO: Missing rpi-omxil
 # TODO: Missing gst-decode
 # TODO: Missing libva

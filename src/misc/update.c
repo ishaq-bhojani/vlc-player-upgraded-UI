@@ -74,11 +74,9 @@
  * Remaining text is a required description of the update
  */
 
-#ifndef NDEBUG
-# define UPDATE_VLC_STATUS_URL "https://update-test.videolan.org/vlc/status"
-#else
-# define UPDATE_VLC_STATUS_URL "https://update.videolan.org/vlc/status"
-#endif
+/* VLC Reborn: the fork's own update channel (meson option redesign_update_url);
+ * the VideoLAN update servers are never contacted for the status file. */
+#define UPDATE_VLC_STATUS_URL REDESIGN_UPDATE_URL
 
 #define dialog_FatalWait( p_obj, psz_title, psz_fmt, ... ) \
     vlc_dialog_wait_question( p_obj, VLC_DIALOG_QUESTION_CRITICAL, "OK", NULL, \
@@ -449,7 +447,7 @@ bool update_NeedUpgrade( update_t *p_update )
         PACKAGE_VERSION_MAJOR,
         PACKAGE_VERSION_MINOR,
         PACKAGE_VERSION_REVISION,
-        PACKAGE_VERSION_EXTRA
+        PACKAGE_VERSION_EXTRA + REDESIGN_BUILD_NUMBER /* VLC Reborn: 4.0.0.N */
     };
     const int latest[4] = {
         p_update->release.i_major,

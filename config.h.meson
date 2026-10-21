@@ -521,6 +521,12 @@
 /* version development string */
 #mesondefine PACKAGE_VERSION_DEV
 
+/* VLC Reborn: URL of the update status file (meson option redesign_update_url) */
+#mesondefine REDESIGN_UPDATE_URL
+
+/* VLC Reborn: build number N of the release 4.0.0.N (meson option redesign_build_number) */
+#mesondefine REDESIGN_BUILD_NUMBER
+
 /* version extra number */
 #mesondefine PACKAGE_VERSION_EXTRA
 
