@@ -1,4 +1,4 @@
-# Third-party material in VLC Reborn
+# Third-party material in Vireo
 
 Components that ship inside the redesign (`modules/gui/qt/redesign/`) and are not part of VLC.
 VLC itself is GPL-2.0-or-later / LGPL-2.1-or-later (`COPYING`, `COPYING.LIB`). About and the
@@ -8,7 +8,7 @@ installer must show these notices (Task 13 owns those texts).
 |---|---|---|---|---|
 | Phosphor Icons, https://phosphoricons.com | 2.1.1 (npm `@phosphor-icons/core`) | MIT | Copyright (c) 2023 Phosphor Icons | `modules/gui/qt/redesign/assets/phosphor/` (only the SVGs in use, plus `LICENSE`); compiled into the icon font `modules/gui/qt/pixmaps/VLCIcons.ttf` |
 | Inter, https://rsms.me/inter | 4.1 | SIL Open Font License 1.1 | Copyright (c) 2016 The Inter Project Authors | `modules/gui/qt/redesign/assets/fonts/` (static TTFs and `OFL.txt`) |
-| yt-dlp, https://github.com/yt-dlp/yt-dlp | 2026.08.19 (`yt-dlp.exe`) | Unlicense (public domain); the Windows build bundles Python and other libraries under their own licences (listed in the release notes of yt-dlp) | yt-dlp contributors | **Not shipped.** Downloaded on first use after the user's consent into `<user data>/vlc-reborn/tools/`, pinned and SHA-256 verified (`modules/gui/qt/redesign/tools/tools.json`). Started as a separate process |
+| yt-dlp, https://github.com/yt-dlp/yt-dlp | 2026.08.19 (`yt-dlp.exe`) | Unlicense (public domain); the Windows build bundles Python and other libraries under their own licences (listed in the release notes of yt-dlp) | yt-dlp contributors | **Not shipped.** Downloaded on first use after the user's consent into `<user data>/vireo/tools/`, pinned and SHA-256 verified (`modules/gui/qt/redesign/tools/tools.json`). Started as a separate process |
 | FFmpeg, https://github.com/yt-dlp/FFmpeg-Builds | autobuild-2026-10-17-20-33, FFmpeg N-127617-g94cba3150c, `win64-gpl` zip | **GPL** build (the `gpl` variant, GPL version 3 according to the FFmpeg-Builds README, not verified here; the autobuild releases of yt-dlp/FFmpeg-Builds publish only GPL builds, no LGPL ones: checked on the release page) | the FFmpeg developers | **Not shipped.** Downloaded on first use for downloads only, after consent, pinned and SHA-256 verified; only `bin/ffmpeg.exe` is extracted. Started as a separate process, never linked, so the GPL applies to that executable and not to VLC Reborn (VLC is GPL-2.0-or-later). The source of the build is the FFmpeg-Builds repository at the release tag |
 
 ## Downloaded tools: what is verified

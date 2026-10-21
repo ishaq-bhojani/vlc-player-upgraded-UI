@@ -1,6 +1,6 @@
-# Building VLC Reborn on Windows
+# Building Vireo on Windows
 
-VLC Reborn is Windows-only. It is built on Windows by cross-compiling (mingw-w64)
+Vireo is Windows-only. It is built on Windows by cross-compiling (mingw-w64)
 inside VideoLAN's official Debian container, and the result is run natively on
 the Windows host.
 
@@ -42,7 +42,7 @@ What it does:
 3. Copies the install tree to `build-win64/win64-meson/vlc-win64/` on the host
    (git-ignored).
 
-Result: `build-win64/win64-meson/vlc-win64/vlc.exe`; double-click it or run it
+Result: `build-win64/win64-meson/vlc-win64/vireo.exe`; double-click it or run it
 from a terminal. It uses your normal VLC profile (`%APPDATA%\vlc`).
 
 Timing on a 12-core / 31 GB machine: about 11 minutes for a build from an empty
@@ -72,7 +72,7 @@ script):
 - **Link flags**: `--allow-multiple-definition` (duplicate `libssp` in the FLAC
   plugin) and `-static-libstdc++` (plugins are loaded with
   `LOAD_LIBRARY_SEARCH_SYSTEM32`, so `libstdc++-6.dll` cannot be found next to
-  `vlc.exe`).
+  `vireo.exe`).
 - `-Dnsis=disabled` (the NSIS helper does not link for x86_64) and the MinGW
   runtime DLLs (`libgcc_s_seh-1`, `libssp-0`, `libwinpthread-1`) are copied into
   `vlc-win64/`, since `meson install` does not.
@@ -100,7 +100,7 @@ docker run --rm -v vlc-reborn-build:/build -v "$(pwd -W)":/vlc -w /build "$IMAGE
 ```
 
 That is `meson compile -C build-win64/win64-meson qt_plugin` followed by copying
-`libqt_plugin.dll` into `vlc-win64/plugins/gui/`. Run `vlc.exe` again to pick it up.
+`libqt_plugin.dll` into `vlc-win64/plugins/gui/`. Run `vireo.exe` again to pick it up.
 The container's build tree is the one in the Docker volume, not
 `build-win64/win64-meson/`, which only holds the copied output.
 

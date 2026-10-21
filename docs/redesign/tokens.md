@@ -1,4 +1,4 @@
-# VLC Reborn design tokens
+# Vireo design tokens
 
 Status: **PROVISIONAL (PNG export)**. Source: the owner's PNG export of the Figma community file "VLC Redesign (Community)" (25 PNGs, read-only). No Figma account access was available, so every colour and metric below was measured from rendered pixels, not from the Figma Inspect panel. Re-check against Inspect when the owner has access.
 

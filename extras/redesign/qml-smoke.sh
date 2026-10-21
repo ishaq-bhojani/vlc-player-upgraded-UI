@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# QML runtime smoke test for VLC Reborn (native Linux, offscreen, in Docker).
+# QML runtime smoke test for Vireo (native Linux, offscreen, in Docker).
 #
 #   extras/redesign/qml-smoke.sh [--seconds N] [--media PATH]
 #

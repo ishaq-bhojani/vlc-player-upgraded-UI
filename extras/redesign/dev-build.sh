@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Reproducible Windows dev build for VLC Reborn.
+# Reproducible Windows dev build for Vireo.
 #
 #   extras/redesign/dev-build.sh [--release] [--tests]
 #
@@ -15,7 +15,7 @@
 #   source tree      bind-mounted at /vlc  (read by the container)
 #   build tree       docker named volume   mounted at /build (fast; NTFS
 #                    bind mounts are far too slow for a full VLC build)
-#   output on host   build-win64/win64-meson/vlc-win64/vlc.exe
+#   output on host   build-win64/win64-meson/vlc-win64/vireo.exe
 #                    build-win64/win64-meson/tests/*.exe
 #
 # Requires Docker Desktop (WSL2 backend). Run from Git Bash or WSL.
@@ -93,8 +93,8 @@ docker run --rm -v "$VOLUME":/build:ro "$IMAGE" \
     | tar -C "$OUT/$ARCH_DIR" -xf -
 if [ "$TESTS" = 1 ]; then mv "$OUT/$ARCH_DIR/tests-out" "$OUT/$ARCH_DIR/tests"; fi
 
-test -f "$OUT/$ARCH_DIR/vlc-win64/vlc.exe" || { echo "vlc.exe missing from output" >&2; exit 1; }
-echo "==> Built: $OUT/$ARCH_DIR/vlc-win64/vlc.exe"
+test -f "$OUT/$ARCH_DIR/vlc-win64/vireo.exe" || { echo "vireo.exe missing from output" >&2; exit 1; }
+echo "==> Built: $OUT/$ARCH_DIR/vlc-win64/vireo.exe"
 
 if [ "$TESTS" = 1 ]; then
     echo "==> Running tests"

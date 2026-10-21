@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Runs the VLC Reborn Qt tests natively on the Windows host (Git Bash).
+# Runs the Vireo Qt tests natively on the Windows host (Git Bash).
 #
 # The win64 build is a cross-build, so the test executables cannot run inside
 # the Linux container; extras/redesign/dev-build.sh --tests builds them there

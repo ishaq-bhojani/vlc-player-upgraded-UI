@@ -1,4 +1,4 @@
-# CI for VLC Reborn (Windows-only fork of VLC 4.0-dev).
+# CI for Vireo (Windows-only fork of VLC 4.0-dev).
 #
 # Required status checks (branch protection on redesign/main):
 #   redesign-ci / win64
@@ -82,7 +82,7 @@ jobs:
           bash /vlc/extras/redesign/container-build.sh
 
       # Same layout dev-build.sh produces on the host:
-      #   build-win64/win64-meson/vlc-win64/vlc.exe
+      #   build-win64/win64-meson/vlc-win64/vireo.exe
       #   build-win64/win64-meson/tests/*.exe
       - name: Collect build output
         run: |
@@ -91,7 +91,7 @@ jobs:
           mkdir -p "$OUT"
           cp -a /build/win64-meson/vlc-win64 "$OUT/vlc-win64"
           cp -a /build/win64-meson/tests-out "$OUT/tests"
-          test -f "$OUT/vlc-win64/vlc.exe" || { echo "vlc.exe missing from output" >&2; exit 1; }
+          test -f "$OUT/vlc-win64/vireo.exe" || { echo "vireo.exe missing from output" >&2; exit 1; }
           du -sh "$OUT"/*
 
       - name: Upload build-win64

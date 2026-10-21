@@ -1,4 +1,4 @@
-# Testing VLC Reborn
+# Testing Vireo
 
 Three scripts, three jobs:
 
@@ -148,7 +148,7 @@ redesign (`--qt-redesign`, passed explicitly), once with `--no-qt-redesign`. Bot
 `vlc_xlib_init`), `--qt-compositor=dummy` (the x11 compositor crashes on the
 offscreen platform), dummy audio/video output and `--no-qt-privacy-ask`.
 
-**Never start the Windows `vlc.exe` to check QML.** It writes to the real
+**Never start the Windows `vireo.exe` (or `vlc.exe`) to check QML.** It writes to the real
 `%APPDATA%\vlc`. The smoke test cannot touch it: it runs in a container with
 `HOME` and `XDG_*` pointing to a fresh temp directory, the repository mounted
 read-only, no network and no access to the host display or profile. The script

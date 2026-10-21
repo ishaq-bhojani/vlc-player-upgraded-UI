@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Native Linux unit/QML test runner for VLC Reborn.
+# Native Linux unit/QML test runner for Vireo.
 #
 #   extras/redesign/linux-tests.sh [TEST_NAME...]
 #
