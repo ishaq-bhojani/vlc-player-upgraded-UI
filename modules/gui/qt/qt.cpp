@@ -1475,7 +1475,8 @@ static void *Thread( void *obj )
     /* Loads and tries to apply the preferred QStyle */
 #define QTSTYLE_KEY "MainWindow/QtStyle"
     QString s_style = getSettings()->value( QTSTYLE_KEY, "" ).toString();
-    if( s_style.compare("") != 0 )
+    // the redesign has one style (it picks the style in the next branch): a saved one is ignored
+    if( s_style.compare("") != 0 && !redesign::isEnabled( VLC_OBJECT( p_intf ) ) )
     {
         if ( !QApplication::setStyle( s_style ) )
         {

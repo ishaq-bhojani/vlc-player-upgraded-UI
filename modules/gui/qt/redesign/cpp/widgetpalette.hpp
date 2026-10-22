@@ -47,14 +47,33 @@ using ColorLookup = std::function<QColor(ColorContext::ColorSet, ColorContext::C
  * on the dark window; disabled text is exempt from WCAG, but unreadable).
  * BrightText is the strong text colour (ButtonStandard/Fg/Focused).
  *
- * Outline roles (WCAG 1.4.11, 3:1 against Window, Base and Button): Mid, Dark,
- * Shadow and Accent (the Highlight accent, moved towards BrightText only where
- * it fails 3:1, e.g. the default orange on the light Window). Light and
+ * Outline roles (WCAG 1.4.11, 3:1 against Window, Base and Button): Mid, Dark
+ * and Shadow. Accent is the source accent, equal to Highlight: it is never
+ * adjusted here because SystemPalette reads it back from the application palette
+ * (qt-accent-color=system); widgetAccent() does the adjusting. Light and
  * Midlight are quiet highlights between Window and BrightText. Disabled Mid,
  * Dark and Shadow are 2.2:1. Fusion ignores these roles for most outlines; the
  * redesign style (installFusionStyle) paints them from the palette.
  */
 QPalette toWidgetPalette(const ColorLookup& lookup);
+
+/** Linear mix in RGB: t = 0 gives a, t = 1 gives b. */
+QColor mixColors(const QColor& a, const QColor& b, qreal t);
+
+/**
+ * The accent the redesign style paints with (indicator fills, default button,
+ * focus rings): the palette's Accent, moved towards BrightText only where it
+ * would be below 3:1 against Window or Base (the default orange on the light
+ * Window is 2.75:1). The palette itself keeps the source accent.
+ */
+QColor widgetAccent(const QPalette& palette);
+
+/**
+ * The 2 px focus ring of a button or check box label: the accent, or for the
+ * accent filled default button the strong text colour (the ring is set off
+ * from the fill by a gap, so it never merges with it).
+ */
+QColor focusRingColor(const QPalette& palette, bool onDefaultButton);
 
 /**
  * Moves `from` towards `toward` (in RGB, in steps of 1%) until its contrast
@@ -102,7 +121,7 @@ IndicatorColors indicatorColors(const QPalette& palette, QStyle::State state, bo
 void applyWidgetPalette(const ColorLookup& lookup);
 
 /**
- * Makes the redesign widget style the application style: Fusion (the one
+ * Makes the redesign widget style (widgetstyle.hpp) the application style: Fusion (the one
  * style that does not draw from a table of its own) with the controls that
  * Fusion leaves nearly invisible on a dark palette painted from the palette:
  * check boxes, radio buttons, push and tool buttons, and the outlines of group

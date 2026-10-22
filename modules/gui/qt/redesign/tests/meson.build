@@ -63,6 +63,8 @@ vlc_tests += {
         '../../tests/test_redesign_widget_palette.cpp',
         '../cpp/widgetpalette.hpp',
         '../cpp/widgetpalette.cpp',
+        '../cpp/widgetstyle.hpp',
+        '../cpp/widgetstyle.cpp',
         '../../style/redesignpalette.hpp',
         '../../style/redesignpalette.cpp'
     ),

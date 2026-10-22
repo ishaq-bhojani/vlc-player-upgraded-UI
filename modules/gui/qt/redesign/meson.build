@@ -101,6 +101,8 @@ qt_plugin_sources += files(
     'cpp/settingsfile.hpp',
     'cpp/widgetpalette.cpp',
     'cpp/widgetpalette.hpp',
+    'cpp/widgetstyle.cpp',
+    'cpp/widgetstyle.hpp',
     '../style/redesignpalette.cpp',
     '../style/redesignpalette.hpp',
 )

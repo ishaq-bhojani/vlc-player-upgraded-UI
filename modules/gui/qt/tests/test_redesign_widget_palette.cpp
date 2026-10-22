@@ -27,6 +27,8 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QStyledItemDelegate>
+#include <QScreen>
+#include <QScreen>
 #include <QHash>
 #include <QHeaderView>
 #include <QImage>
@@ -146,6 +148,11 @@ QImage renderControls(bool dark)
     };
     row({box(QStringLiteral("Allow metadata network access"), false, true),
          box(QStringLiteral("Checked"), true, true)});
+    // a mouse click leaves the box focused but draws no ring; Tab moves the
+    // focus to the next one, with a ring
+    auto* clicked = box(QStringLiteral("Clicked with the mouse (no ring)"), false, true);
+    auto* tabbed = box(QStringLiteral("Reached with Tab (ring)"), false, true);
+    row({clicked, tabbed});
     row({box(QStringLiteral("Enable the Media Library"), true, false),
          box(QStringLiteral("Disabled"), false, false)});
     row({radio(QStringLiteral("Radio"), false, true), radio(QStringLiteral("Selected"), true, true),
@@ -169,12 +176,17 @@ QImage renderControls(bool dark)
     panel.show();
     if (!QTest::qWaitForWindowExposed(&panel))
         qWarning("the control sheet was not exposed");
+    panel.activateWindow();
+    if (!QTest::qWaitForWindowActive(&panel))
+        qWarning("the control sheet was not activated");
+    QTest::mouseClick(clicked, Qt::LeftButton);
+    QTest::keyClick(&panel, Qt::Key_Tab);
     return panel.grab().toImage();
 }
 
 // Every button state, drawn with the style through QStyleOption (hover and
 // pressed cannot be produced on a real widget without a mouse).
-QImage renderButtons(bool dark)
+QImage renderButtons(bool dark, qreal dpr)
 {
     const QPalette palette = redesign::toWidgetPalette(makeLookup(dark));
     QStyle* style = QApplication::style();
@@ -187,7 +199,8 @@ QImage renderButtons(bool dark)
         {"disabled", QStyle::State_None},
     };
     const int cellW = 120, cellH = 44, labelW = 90, headH = 22;
-    QImage image(labelW + cellW * 5, headH + cellH * 4, QImage::Format_ARGB32_Premultiplied);
+    QImage image(QSize(labelW + cellW * 5, headH + cellH * 4) * dpr, QImage::Format_ARGB32_Premultiplied);
+    image.setDevicePixelRatio(dpr);
     image.fill(palette.color(QPalette::Window));
     QPainter painter(&image);
     painter.setPen(palette.color(QPalette::WindowText));
@@ -246,8 +259,12 @@ private slots:
     {
         const QPalette before = QApplication::palette();
 
-        // no installFusionStyle() first: the saved-style path
         redesign::applyWidgetPalette(makeLookup(true));
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+        // the application palette keeps the source accent: SystemPalette reads it
+        // back for qt-accent-color=system, a contrast-adjusted one would feed back
+        QCOMPARE(QApplication::palette().color(QPalette::Accent), redesign::defaultAccent());
+#endif
         QCOMPARE(QApplication::palette().color(QPalette::Highlight),
                  makeLookup(true)(C::ButtonAccent, C::Bg, C::Primary, C::Normal));
         QVERIFY(QApplication::palette() != before);
@@ -343,7 +360,7 @@ private slots:
             const QColor window = p.color(group, QPalette::Window);
             const QColor base = p.color(group, QPalette::Base);
             const QColor button = p.color(group, QPalette::Button);
-            for (auto role : {QPalette::Mid, QPalette::Dark, QPalette::Shadow, QPalette::Accent}) {
+            for (auto role : {QPalette::Mid, QPalette::Dark, QPalette::Shadow}) {
                 const QColor c = p.color(group, role);
                 QVERIFY2(contrast(c, window) >= 3.0, qPrintable(QStringLiteral("role %1 vs Window %2").arg(int(role)).arg(contrast(c, window))));
                 QVERIFY2(contrast(c, base) >= 3.0, qPrintable(QStringLiteral("role %1 vs Base %2").arg(int(role)).arg(contrast(c, base))));
@@ -359,10 +376,18 @@ private slots:
         QVERIFY(contrast(midDisabled, p.color(QPalette::Disabled, QPalette::Window)) >= 2.0);
         QVERIFY(contrast(midDisabled, p.color(QPalette::Disabled, QPalette::Base)) >= 2.0);
         QVERIFY(midDisabled != p.color(QPalette::Active, QPalette::Mid));
-        // the accent role is the redesign accent, only moved where 3:1 needs it
-        if (contrast(accent, p.color(QPalette::Window)) >= 3.0 && contrast(accent, p.color(QPalette::Base)) >= 3.0)
-            QCOMPARE(p.color(QPalette::Accent), accent);
+        // the palette keeps the source accent (never the adjusted one, see
+        // applyThenEmptyRestoresTheOriginalPalette); the style paints widgetAccent()
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+        QCOMPARE(p.color(QPalette::Accent), accent);
+#endif
         QCOMPARE(p.color(QPalette::Highlight), accent);
+        const QColor painted = redesign::widgetAccent(p);
+        QVERIFY(contrast(painted, p.color(QPalette::Window)) >= 3.0);
+        QVERIFY(contrast(painted, p.color(QPalette::Base)) >= 3.0);
+        QVERIFY(contrast(redesign::focusRingColor(p, true), p.color(QPalette::Window)) >= 3.0);
+        QVERIFY(contrast(redesign::focusRingColor(p, true), p.color(QPalette::Base)) >= 3.0);
+        QVERIFY(contrast(redesign::focusRingColor(p, false), p.color(QPalette::Window)) >= 3.0);
     }
 
     void indicatorsAreVisibleInEveryState_data()
@@ -433,7 +458,8 @@ private slots:
         QVERIFY(contrast(hover.fill, normal.fill) < 1.5);
         // the default button wears the accent fill
         const auto def = redesign::buttonColors(p, QStyle::State_Enabled, true);
-        QCOMPARE(def.fill, QColor::fromRgb(accent.rgb()));
+        QCOMPARE(def.fill, QColor::fromRgb(redesign::widgetAccent(p).rgb()));
+        QVERIFY(contrast(def.fill, p.color(QPalette::Window)) >= 3.0); // also on the light scheme
         const auto defHover = redesign::buttonColors(p, QStyle::State_Enabled | QStyle::State_MouseOver, true);
         QVERIFY(defHover.fill != def.fill);
         // a disabled default button is a plain disabled button
@@ -481,9 +507,9 @@ private slots:
         for (int y = 0; y < one.height(); ++y)
             for (int x = 0; x < one.width(); ++x)
                 best = qMax(best, contrast(QColor(one.pixel(x, y)), p.color(QPalette::Window)));
-        QVERIFY2(best >= 2.8, qPrintable(QStringLiteral("strongest indicator pixel only %1:1 on the window").arg(best)));
+        QVERIFY2(best >= 3.0, qPrintable(QStringLiteral("strongest indicator pixel only %1:1 on the window").arg(best)));
 
-        QVERIFY(renderButtons(dark).save(previewDir().filePath(QStringLiteral("buttons-%1.png").arg(name))));
+        QVERIFY(renderButtons(dark, QGuiApplication::primaryScreen()->devicePixelRatio()).save(previewDir().filePath(QStringLiteral("buttons-%1.png").arg(name))));
 
         // the wizard page: a title, the "+" button (16 px in the .ui file) and the table
         QWidget page;
@@ -506,7 +532,7 @@ private slots:
         QVERIFY(removeButton);
         QVERIFY(removeButton->width() >= 24 && removeButton->height() >= 24);
         QCOMPARE(add->text(), QStringLiteral("Add folder\u2026"));
-        QVERIFY(qobject_cast<QStyledItemDelegate*>(table->itemDelegateForColumn(0)));
+        QVERIFY(dynamic_cast<QStyledItemDelegate*>(table->itemDelegateForColumn(0)));
         QVERIFY(page.grab().toImage().save(previewDir().filePath(QStringLiteral("mlfolders-%1.png").arg(name))));
     }
 
@@ -532,6 +558,167 @@ private slots:
         QVERIFY(add->maximumWidth() > 100);
         QVERIFY(add->height() >= 24);
         QCOMPARE(other->text(), QStringLiteral("+"));
+    }
+
+    // The ring of a focused check box label only follows keyboard focus (as in
+    // Fusion): a click must not leave one
+    void focusRingOnlyAfterTab()
+    {
+        const QPalette p = redesign::toWidgetPalette(makeLookup(true));
+        const QColor ring = redesign::widgetAccent(p);
+        auto countRing = [&](const QImage& image) {
+            int n = 0;
+            for (int y = 0; y < image.height(); ++y)
+                for (int x = 0; x < image.width(); ++x)
+                    n += QColor(image.pixel(x, y)).rgb() == ring.rgb();
+            return n;
+        };
+        QWidget page;
+        page.setPalette(p);
+        page.setAutoFillBackground(true);
+        auto* layout = new QVBoxLayout(&page);
+        auto* first = new QCheckBox(QStringLiteral("First"));
+        auto* second = new QCheckBox(QStringLiteral("Second"));
+        layout->addWidget(first);
+        layout->addWidget(second);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+        page.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&page));
+        // twice, so that the box is unchecked again (a checked box is filled with the ring colour)
+        QTest::mouseClick(first, Qt::LeftButton);
+        QTest::mouseClick(first, Qt::LeftButton);
+        QVERIFY(first->hasFocus());
+        QVERIFY(!first->isChecked());
+        QCOMPARE(countRing(page.grab().toImage()), 0);
+        QTest::keyClick(&page, Qt::Key_Tab);
+        QVERIFY(second->hasFocus());
+        QVERIFY(countRing(page.grab().toImage()) > 20);
+    }
+
+    // The default (accent) button's keyboard focus: a ring in the strong text
+    // colour, then a gap of window colour, then the accent fill
+    void defaultButtonFocusIsVisible_data()
+    {
+        QTest::addColumn<bool>("dark");
+        QTest::newRow("dark") << true;
+        QTest::newRow("light") << false;
+    }
+
+    void defaultButtonFocusIsVisible()
+    {
+        QFETCH(bool, dark);
+        const QPalette p = redesign::toWidgetPalette(makeLookup(dark));
+        QImage image(QSize(120, 44), QImage::Format_ARGB32_Premultiplied);
+        image.fill(p.color(QPalette::Window));
+        QPainter painter(&image);
+        QStyleOptionButton opt;
+        opt.palette = p;
+        opt.rect = QRect(0, 0, 120, 44);
+        opt.text = QStringLiteral("Next >");
+        opt.features = QStyleOptionButton::DefaultButton;
+        opt.state = QStyle::State_Enabled | QStyle::State_HasFocus | QStyle::State_KeyboardFocusChange;
+        QApplication::style()->drawControl(QStyle::CE_PushButton, &opt, &painter, nullptr);
+        painter.end();
+        const int y = 22;
+        const QColor ring = redesign::focusRingColor(p, true);
+        const QColor fill = redesign::widgetAccent(p);
+        QCOMPARE(QColor(image.pixel(0, y)).rgb(), ring.rgb());
+        QCOMPARE(QColor(image.pixel(1, y)).rgb(), ring.rgb());
+        QCOMPARE(QColor(image.pixel(2, y)).rgb(), p.color(QPalette::Window).rgb()); // the gap
+        QCOMPARE(QColor(image.pixel(3, y)).rgb(), p.color(QPalette::Window).rgb());
+        QCOMPARE(QColor(image.pixel(8, y)).rgb(), fill.rgb());
+        // without keyboard focus there is no ring
+        image.fill(p.color(QPalette::Window));
+        QPainter again(&image);
+        opt.state = QStyle::State_Enabled | QStyle::State_HasFocus;
+        QApplication::style()->drawControl(QStyle::CE_PushButton, &opt, &again, nullptr);
+        again.end();
+        QCOMPARE(QColor(image.pixel(0, y)).rgb(), p.color(QPalette::Window).rgb());
+    }
+
+    // The outlines Fusion draws itself must come out of the Mid redirect visible
+    void fusionOutlinesAreVisible_data()
+    {
+        QTest::addColumn<bool>("dark");
+        QTest::newRow("dark") << true;
+        QTest::newRow("light") << false;
+    }
+
+    void fusionOutlinesAreVisible()
+    {
+        QFETCH(bool, dark);
+        const QPalette p = redesign::toWidgetPalette(makeLookup(dark));
+        QWidget panel;
+        panel.setPalette(p);
+        panel.setAutoFillBackground(true);
+        auto* layout = new QVBoxLayout(&panel);
+        QList<QWidget*> controls;
+        auto* group = new QGroupBox(QStringLiteral("Group"));
+        (new QVBoxLayout(group))->addWidget(new QLabel(QStringLiteral("inside")));
+        controls << new QLineEdit(QStringLiteral("text")) << new QComboBox << new QSpinBox << group;
+        for (QWidget* w : controls)
+            layout->addWidget(w);
+        panel.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&panel));
+        controls.first()->clearFocus(); // a focused line edit is outlined in the accent
+        const QImage image = panel.grab().toImage();
+        const qreal dpr = image.devicePixelRatio();
+        for (QWidget* w : controls) {
+            // the left edge of the control, on its middle row (a group box:
+            // a little lower, below its title)
+            const int y = int((w->geometry().center().y() + (qobject_cast<QGroupBox*>(w) ? 10 : 0)) * dpr);
+            double best = 0;
+            const int left = int(w->geometry().left() * dpr);
+            for (int x = left; x < left + 8; ++x)
+                best = qMax(best, contrast(QColor(image.pixel(x, y)), p.color(QPalette::Window)));
+            QVERIFY2(best >= 2.9, qPrintable(QStringLiteral("%1: strongest outline pixel %2:1")
+                                                .arg(QString::fromLatin1(w->metaObject()->className())).arg(best)));
+        }
+    }
+
+    // Advanced preferences must not offer another style: it would replace this one
+    void styleChoiceIsHiddenInAdvancedPreferences()
+    {
+        QWidget page;
+        auto* layout = new QHBoxLayout(&page);
+        auto* label = new QLabel(QStringLiteral("Force window style:"));
+        label->setObjectName(QStringLiteral("stylesLabel"));
+        auto* combo = new QComboBox;
+        combo->setObjectName(QStringLiteral("stylesCombo"));
+        combo->addItems({QStringLiteral("Fusion"), QStringLiteral("Windows")});
+        label->setBuddy(combo);
+        layout->addWidget(label);
+        layout->addWidget(combo);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+        QVERIFY(!combo->isVisible());
+        QVERIFY(!label->isVisible());
+        // unpolish (a style change) shows them again
+        QApplication::style()->unpolish(combo);
+        QVERIFY(!combo->isHidden());
+        QApplication::style()->polish(combo);
+        QVERIFY(combo->isHidden());
+    }
+
+    void unpolishRestoresTheFolderTable()
+    {
+        QWidget page;
+        auto* layout = new QVBoxLayout(&page);
+        auto* add = new QPushButton(QStringLiteral("+"));
+        add->setMaximumSize(16, 16);
+        auto* table = new MLFoldersEditor;
+        layout->addWidget(add);
+        layout->addWidget(table);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+        QVERIFY(table->verticalHeader()->isHidden());
+        QApplication::style()->unpolish(table);
+        QApplication::style()->unpolish(add);
+        QVERIFY(!table->verticalHeader()->isHidden());
+        QVERIFY(table->showGrid());
+        QCOMPARE(add->text(), QStringLiteral("+"));
+        QCOMPARE(add->maximumSize(), QSize(16, 16));
     }
 
     void everyRoleIsOpaqueOrDefined()
