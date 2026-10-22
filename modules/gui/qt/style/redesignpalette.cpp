@@ -354,7 +354,10 @@ void accentFromSetting(const char* value, QColor& base, QColor& light)
     if (value && !qstrcmp(value, "system")) {
         // qGuiApp would be a bad cast when only a QCoreApplication exists
         if (auto app = qobject_cast<QGuiApplication*>(QCoreApplication::instance()))
-            base = app->palette().color(QPalette::Normal, QPalette::Accent);
+        {
+            const QVariant system = app->property(systemAccentProperty);
+            base = system.isValid() ? system.value<QColor>() : app->palette().color(QPalette::Normal, QPalette::Accent);
+        }
     }
 #endif
     if (!base.isValid())

@@ -50,7 +50,8 @@ QColor parseAccent(const char* value, QColor fallback);
 
 /**
  * Resolves the qt-accent-color setting for the redesign: "system" gives the
- * system accent (Qt >= 6.6, needs a QGuiApplication), otherwise parseAccent();
+ * system accent (Qt >= 6.6, needs a QGuiApplication; the QApplication property
+ * systemAccentProperty when set, else the application palette), otherwise parseAccent();
  * an unsupported or invalid value gives defaultAccent(). light is base.lighter(150).
  */
 void accentFromSetting(const char* value, QColor& base, QColor& light);
@@ -63,6 +64,14 @@ QColor onAccentColor(QColor accent);
 
 /** hover = base.lighter(115), pressed = base.darker(115). */
 AccentShades accentShades(QColor base);
+
+/**
+ * Name of the QApplication property that holds the system accent (see
+ * widgetpalette.hpp, systemAccent()): the application palette's Accent is the
+ * redesign accent once the redesign palette is applied, so the "system"
+ * setting reads this property first.
+ */
+constexpr const char* systemAccentProperty = "redesignSystemAccent";
 
 /** Calls the sink once for every slot of Table B (dark or light column). */
 void fillPalette(const ColorSink& sink, bool dark, const AccentShades& accent);

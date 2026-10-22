@@ -69,9 +69,16 @@ QColor mixColors(const QColor& a, const QColor& b, qreal t);
 QColor widgetAccent(const QPalette& palette);
 
 /**
+ * The accent of the system palette (the palette the application had before the
+ * redesign touched it). Also published as the QApplication property
+ * systemAccentProperty, which accentFromSetting("system") reads.
+ */
+QColor systemAccent();
+
+/**
  * The 2 px focus ring of a button or check box label: the accent, or for the
- * accent filled default button the strong text colour (the ring is set off
- * from the fill by a gap, so it never merges with it).
+ * accent filled default button the text colour of that button (4.5:1 against
+ * the fill; the ring is drawn inside the fill).
  */
 QColor focusRingColor(const QPalette& palette, bool onDefaultButton);
 

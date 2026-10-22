@@ -24,10 +24,11 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QStyledItemDelegate>
-#include <QScreen>
 #include <QScreen>
 #include <QHash>
 #include <QHeaderView>
@@ -385,8 +386,8 @@ private slots:
         const QColor painted = redesign::widgetAccent(p);
         QVERIFY(contrast(painted, p.color(QPalette::Window)) >= 3.0);
         QVERIFY(contrast(painted, p.color(QPalette::Base)) >= 3.0);
-        QVERIFY(contrast(redesign::focusRingColor(p, true), p.color(QPalette::Window)) >= 3.0);
-        QVERIFY(contrast(redesign::focusRingColor(p, true), p.color(QPalette::Base)) >= 3.0);
+        // the default button's ring is inside its accent fill
+        QVERIFY(contrast(redesign::focusRingColor(p, true), painted) >= 4.5);
         QVERIFY(contrast(redesign::focusRingColor(p, false), p.color(QPalette::Window)) >= 3.0);
     }
 
@@ -629,10 +630,11 @@ private slots:
         const int y = 22;
         const QColor ring = redesign::focusRingColor(p, true);
         const QColor fill = redesign::widgetAccent(p);
-        QCOMPARE(QColor(image.pixel(0, y)).rgb(), ring.rgb());
-        QCOMPARE(QColor(image.pixel(1, y)).rgb(), ring.rgb());
-        QCOMPARE(QColor(image.pixel(2, y)).rgb(), p.color(QPalette::Window).rgb()); // the gap
-        QCOMPARE(QColor(image.pixel(3, y)).rgb(), p.color(QPalette::Window).rgb());
+        QVERIFY(contrast(ring, fill) >= 4.5);
+        // the body fills the rect; 2 px of fill, then the 2 px ring, then fill again
+        QCOMPARE(QColor(image.pixel(1, y)).rgb(), fill.rgb());
+        QCOMPARE(QColor(image.pixel(2, y)).rgb(), ring.rgb());
+        QCOMPARE(QColor(image.pixel(3, y)).rgb(), ring.rgb());
         QCOMPARE(QColor(image.pixel(8, y)).rgb(), fill.rgb());
         // without keyboard focus there is no ring
         image.fill(p.color(QPalette::Window));
@@ -640,7 +642,39 @@ private slots:
         opt.state = QStyle::State_Enabled | QStyle::State_HasFocus;
         QApplication::style()->drawControl(QStyle::CE_PushButton, &opt, &again, nullptr);
         again.end();
-        QCOMPARE(QColor(image.pixel(0, y)).rgb(), p.color(QPalette::Window).rgb());
+        QCOMPARE(QColor(image.pixel(2, y)).rgb(), fill.rgb());
+    }
+
+    // A push button's drawn body fills its rect (no inset swallowing the hit
+    // area), default or not
+    void buttonBodyFillsItsRect()
+    {
+        const QPalette p = redesign::toWidgetPalette(makeLookup(true));
+        for (bool isDefault : {false, true}) {
+            QImage image(QSize(120, 44), QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::magenta);
+            QPainter painter(&image);
+            QStyleOptionButton opt;
+            opt.palette = p;
+            opt.rect = QRect(0, 0, 120, 44);
+            opt.state = QStyle::State_Enabled;
+            if (isDefault)
+                opt.features = QStyleOptionButton::DefaultButton;
+            QApplication::style()->drawControl(QStyle::CE_PushButtonBevel, &opt, &painter, nullptr);
+            painter.end();
+            // from the middle of the left edge down the middle column: the first and
+            // last pixel that is not the magenta background
+            int top = -1, bottom = -1;
+            for (int y = 0; y < image.height(); ++y) {
+                if (QColor(image.pixel(60, y)).rgb() != QColor(Qt::magenta).rgb()) {
+                    if (top < 0)
+                        top = y;
+                    bottom = y;
+                }
+            }
+            QVERIFY(top >= 0 && top <= 1);
+            QVERIFY(bottom >= 42);
+        }
     }
 
     // The outlines Fusion draws itself must come out of the Mid redirect visible
@@ -681,6 +715,83 @@ private slots:
             QVERIFY2(best >= 2.9, qPrintable(QStringLiteral("%1: strongest outline pixel %2:1")
                                                 .arg(QString::fromLatin1(w->metaObject()->className())).arg(best)));
         }
+    }
+
+    // Combo boxes (editable or not), line edits and spin boxes are drawn with the
+    // same frame height
+    void fieldFramesShareTheirHeight()
+    {
+        const QPalette p = redesign::toWidgetPalette(makeLookup(true));
+        QWidget panel;
+        panel.setPalette(p);
+        panel.setAutoFillBackground(true);
+        auto* layout = new QVBoxLayout(&panel);
+        auto* edit = new QLineEdit(QStringLiteral("text"));
+        auto* combo = new QComboBox;
+        combo->addItems({QStringLiteral("Combo box"), QStringLiteral("Other")});
+        auto* editable = new QComboBox;
+        editable->setEditable(true);
+        editable->addItems({QStringLiteral("Editable"), QStringLiteral("Other")});
+        auto* spin = new QSpinBox;
+        const QList<QWidget*> fields{edit, combo, editable, spin};
+        for (QWidget* w : fields)
+            layout->addWidget(w);
+        panel.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&panel));
+        edit->clearFocus();
+        const QImage image = panel.grab().toImage();
+        const qreal dpr = image.devicePixelRatio();
+        auto frameHeight = [&](QWidget* w) {
+            // rows at the widget's horizontal middle (the arrows are right of it) that
+            // are outline coloured: first to last
+            const int x = int((w->geometry().left() + w->geometry().width() / 3) * dpr);
+            int top = -1, bottom = -1;
+            const int y0 = int(w->geometry().top() * dpr) - 4, y1 = int(w->geometry().bottom() * dpr) + 4;
+            for (int y = y0; y <= y1; ++y) {
+                if (contrast(QColor(image.pixel(x, y)), p.color(QPalette::Window)) >= 2.5 && top < 0)
+                    top = y;
+                if (contrast(QColor(image.pixel(x, y)), p.color(QPalette::Window)) >= 2.5 && top >= 0 && y > top + 4)
+                    bottom = y;
+            }
+            return (bottom - top + 1) / dpr;
+        };
+        const qreal reference = frameHeight(edit);
+        QVERIFY(reference > 15);
+        for (QWidget* w : fields) {
+            QVERIFY2(qAbs(frameHeight(w) - reference) <= 1.0,
+                     qPrintable(QStringLiteral("%1 frame %2 px, line edit %3 px")
+                                    .arg(QString::fromLatin1(w->metaObject()->className()))
+                                    .arg(frameHeight(w)).arg(reference)));
+        }
+    }
+
+    // The style hides these by object name: the names must exist in the .ui
+    void styleComboNamesExistInThePreferencesUi()
+    {
+        const QString path = QFileInfo(QStringLiteral(__FILE__)).dir().filePath(QStringLiteral("../dialogs/preferences/sprefs_interface.ui"));
+        QFile ui(path);
+        if (!ui.open(QIODevice::ReadOnly))
+            QSKIP("the source tree is not reachable from this test binary");
+        const QByteArray text = ui.readAll();
+        QVERIFY2(text.contains("name=\"stylesCombo\""), "sprefs_interface.ui lost stylesCombo: redesign hides it by that name");
+        QVERIFY2(text.contains("name=\"stylesLabel\""), "sprefs_interface.ui lost stylesLabel: redesign hides it by that name");
+    }
+
+    // qt-accent-color=system reads the system accent, not the redesign accent that
+    // the application palette holds after the palette is applied
+    void systemAccentIsNotReadBackFromTheRedesignPalette()
+    {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+        const QColor system = redesign::systemAccent();
+        redesign::applyWidgetPalette(makeLookup(true, redesign::accentSwatches()[5]));
+        QCOMPARE(redesign::systemAccent(), system);
+        QColor base, light;
+        redesign::accentFromSetting("system", base, light);
+        QCOMPARE(base, system);
+        redesign::applyWidgetPalette(redesign::ColorLookup());
+#else
+        QSKIP("QPalette::Accent needs Qt 6.6");
+#endif
     }
 
     // Advanced preferences must not offer another style: it would replace this one

@@ -150,11 +150,11 @@ public:
         case PE_PanelButtonCommand: {
             const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
             drawButtonPanel(option, painter, button && (button->features & QStyleOptionButton::DefaultButton), false,
-                            4);
+                            panelRadius(widget));
             return;
         }
         case PE_PanelButtonTool:
-            drawButtonPanel(option, painter, false, option->state & State_AutoRaise, 3);
+            drawButtonPanel(option, painter, false, option->state & State_AutoRaise, panelRadius(widget));
             return;
         case PE_FrameFocusRect:
             // like Fusion: only after a key press, never after a mouse click; and
@@ -412,25 +412,34 @@ private:
         painter->restore();
     }
 
-    // The body of a button is inset by `inset` px: 2 px for the focus ring (strong
-    // text colour on the accent default button, the accent otherwise) and the rest
-    // as a gap between ring and body.
-    void drawButtonPanel(const QStyleOption* option, QPainter* painter, bool isDefault, bool flat, int inset) const
+    // Fusion also paints a combo box as a button panel: it gets the radius of the
+    // line edits and spin boxes next to it
+    static qreal panelRadius(const QWidget* widget) { return qobject_cast<const QComboBox*>(widget) ? 2 : 5; }
+
+    // The body fills the whole rect. The focus ring is drawn over it: on the border
+    // (accent) of a normal button, and on the accent filled default button inside
+    // the fill, 2 px in, in the text colour of the button (4.5:1 against the fill).
+    void drawButtonPanel(const QStyleOption* option, QPainter* painter, bool isDefault, bool flat, qreal radius) const
     {
         const ButtonColors colors = buttonColors(option->palette, option->state, isDefault, flat);
         const qreal dpr = painter->device()->devicePixelRatio();
         const qreal line = std::max(1.0, std::round(dpr)) / dpr; // one device pixel
-        const QRectF body = snap(QRectF(option->rect).adjusted(inset, inset, -inset, -inset), dpr);
+        const QRectF body = snap(QRectF(option->rect), dpr);
         const bool hasBorder = colors.border.alpha() > 0;
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing);
         painter->setBrush(colors.fill);
         painter->setPen(hasBorder ? QPen(colors.border, line) : Qt::NoPen);
-        painter->drawRoundedRect(hasBorder ? body.adjusted(line / 2, line / 2, -line / 2, -line / 2) : body, 5, 5);
+        painter->drawRoundedRect(hasBorder ? body.adjusted(line / 2, line / 2, -line / 2, -line / 2) : body, radius,
+                                 radius);
         painter->restore();
         if ((option->state & State_HasFocus) && (option->state & State_KeyboardFocusChange)
-            && (option->state & State_Enabled))
-            drawFocusRing(painter, QRectF(option->rect), 7, focusRingColor(option->palette, isDefault));
+            && (option->state & State_Enabled)) {
+            if (isDefault)
+                drawFocusRing(painter, body.adjusted(2, 2, -2, -2), radius, focusRingColor(option->palette, true));
+            else
+                drawFocusRing(painter, body, radius, focusRingColor(option->palette, false));
+        }
     }
 
     void drawIndicator(bool radio, const QStyleOption* option, QPainter* painter) const

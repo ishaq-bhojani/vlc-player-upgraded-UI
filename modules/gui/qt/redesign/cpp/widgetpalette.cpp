@@ -23,6 +23,8 @@
 
 #include <QApplication>
 
+#include <algorithm>
+
 #include "widgetstyle.hpp"
 #include "../../style/redesignpalette.hpp"
 
@@ -34,11 +36,26 @@ namespace
 
 using C = ColorContext;
 
+QColor sourceAccent(const QPalette& p)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+    return p.color(QPalette::Active, QPalette::Accent);
+#else
+    return p.color(QPalette::Active, QPalette::Highlight);
+#endif
+}
+
 // The application palette before the redesign touched anything (the system
 // colours), kept to give them back when a theme provider supplies its own.
-QPalette& originalPalette()
+const QPalette& originalPalette()
 {
-    static QPalette original = QApplication::palette();
+    static const QPalette original = [] {
+        const QPalette palette = QApplication::palette();
+        // SystemPalette's qt-accent-color=system reads this, not the application
+        // palette, which holds the redesign colours after the first apply
+        QApplication::instance()->setProperty(systemAccentProperty, sourceAccent(palette));
+        return palette;
+    }();
     return original;
 }
 
@@ -70,20 +87,31 @@ QColor mixColors(const QColor& a, const QColor& b, qreal t)
 
 QColor widgetAccent(const QPalette& p)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
-    const QColor accent = p.color(QPalette::Active, QPalette::Accent);
-#else
-    const QColor accent = p.color(QPalette::Active, QPalette::Highlight);
-#endif
-    return ensureContrast(accent, p.color(QPalette::Active, QPalette::BrightText),
-                          {p.color(QPalette::Active, QPalette::Window), p.color(QPalette::Active, QPalette::Base)}, 3.0);
+    // one entry: every button and indicator of a repaint asks with the same palette
+    static QRgb key[4];
+    static QColor cached;
+    const QColor window = p.color(QPalette::Active, QPalette::Window);
+    const QColor base = p.color(QPalette::Active, QPalette::Base);
+    const QColor strong = p.color(QPalette::Active, QPalette::BrightText);
+    const QColor accent = sourceAccent(p);
+    const QRgb now[4] = {accent.rgba(), window.rgba(), base.rgba(), strong.rgba()};
+    if (cached.isValid() && std::equal(now, now + 4, key))
+        return cached;
+    cached = ensureContrast(accent, strong, {window, base}, 3.0);
+    std::copy(now, now + 4, key);
+    return cached;
+}
+
+QColor systemAccent()
+{
+    return sourceAccent(originalPalette());
 }
 
 QColor focusRingColor(const QPalette& p, bool onDefaultButton)
 {
-    // the default button is filled with the accent: its ring is the strong text
-    // colour, set off from the fill by a gap
-    return onDefaultButton ? p.color(QPalette::Active, QPalette::BrightText) : widgetAccent(p);
+    // the default button is filled with the accent: its ring (inside the fill) is
+    // the text colour of that button, 4.5:1 against the fill
+    return onDefaultButton ? buttonColors(p, QStyle::State_Enabled, true).text : widgetAccent(p);
 }
 
 QColor ensureContrast(const QColor& from, const QColor& toward, const QVector<QColor>& against, double ratio)
