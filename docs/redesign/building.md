@@ -28,6 +28,7 @@ and tells you).
 bash extras/redesign/dev-build.sh            # debugoptimized build
 bash extras/redesign/dev-build.sh --tests    # ... and build + run the Qt tests
 bash extras/redesign/dev-build.sh --release  # release build, separate volume (untested, see below)
+bash extras/redesign/dev-build.sh --installer  # ... and the NSIS installer, see "Installer" below
 ```
 
 What it does:
@@ -43,7 +44,7 @@ What it does:
    (git-ignored).
 
 Result: `build-win64/win64-meson/vlc-win64/vireo.exe`; double-click it or run it
-from a terminal. It uses your normal VLC profile (`%APPDATA%\vlc`).
+from a terminal. It keeps its settings in `%APPDATA%\vireo` (not in a VLC profile).
 
 Timing on a 12-core / 31 GB machine: about 11 minutes for a build from an empty
 volume (image already pulled; includes the ~650 MB contribs download), about 1.5
@@ -81,9 +82,30 @@ script):
 (`meson dist`, NSIS, MSI). That path has not been exercised here and is expected
 to need more work; use the default debugoptimized build for development.
 
+## Installer
+
+```bash
+bash extras/redesign/dev-build.sh --installer
+```
+
+builds everything as above with NSIS enabled and copies the installer to
+`build-win64/installer/vireo-<release version>-win64.exe` (about 60 MB; the version is the meson option
+`redesign_release_version`, 0.1.0 by default; the LZMA compression of the last step takes a few minutes).
+The 32-bit `nsProcess.dll` helper that the script needs is built with the image's i686 MinGW-w64 gcc
+(`extras/package/win32/NSIS/meson.build`); upstream only supports a clang that links `--target=i686-w64-mingw32`.
+`--installer` and `--tests` can be combined; a build without `--installer` has NSIS off.
+
+What the installer contains and where it puts things: `docs/redesign/branding.md` (section Windows
+packaging). Wine in the image is 32-bit only and the installer exits with an error there (not investigated), so it
+could not be tried in the container: install it on a Windows machine or VM. The MSI (`package-msi`) needs WiX, which the image does not have,
+so it is not built.
+
+The meson option `redesign_user_dir` (default `vireo`) is the per-user folder under `%APPDATA%`, also used by the
+installer's "Delete preferences and cache".
+
 ## Fork options and cached values
 
-The fork's meson options (`redesign_product_name`, `redesign_release_version`,
+The fork's meson options (`redesign_product_name`, `redesign_release_version`, `redesign_user_dir`,
 `redesign_update_url`, `redesign_build_number`; defaults in `meson_options.txt`) are
 stored by meson in the build directory, so a build directory that was configured
 before a default changed keeps the old value.
