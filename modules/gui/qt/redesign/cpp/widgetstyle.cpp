@@ -24,6 +24,7 @@
 #include "widgetpalette.hpp"
 
 #include <QApplication>
+#include <QAbstractItemModel>
 #include <QComboBox>
 #include <QHeaderView>
 #include <QLabel>
@@ -230,6 +231,14 @@ public:
                 break; // the disabled ButtonText stays
             QPalette p = option->palette;
             p.setColor(QPalette::ButtonText, option->palette.color(QPalette::Active, QPalette::BrightText));
+            const auto* header = qstyleoption_cast<const QStyleOptionHeader*>(option);
+            if (header && (header->textAlignment & Qt::AlignLeft) && widget && inFoldersEditor(widget)) {
+                QStyleOptionHeader inset(*header); // a left aligned label gets the 8 px of the paths
+                inset.rect.adjust(8, 0, 0, 0);
+                inset.palette = p;
+                QProxyStyle::drawControl(element, &inset, painter, widget);
+                return;
+            }
             PaletteScope scope(option, p);
             QProxyStyle::drawControl(element, option, painter, widget);
             return;
@@ -272,6 +281,12 @@ public:
             table->setAlternatingRowColors(true);
             table->horizontalHeader()->setHighlightSections(false);
             table->setItemDelegateForColumn(0, new FolderPathDelegate(table));
+            // the Path header lines up with the paths (CE_HeaderLabel adds the same
+            // 8 px); Remove and Reload stay centred over their buttons
+            if (QAbstractItemModel* model = table->model()) {
+                table->setProperty("vireoHeaderAlign", model->headerData(0, Qt::Horizontal, Qt::TextAlignmentRole));
+                model->setHeaderData(0, Qt::Horizontal, int(Qt::AlignVCenter | Qt::AlignLeft), Qt::TextAlignmentRole);
+            }
         } else if (auto* button = qobject_cast<QPushButton*>(widget)) {
             polishFolderButton(button);
         } else if (auto* combo = qobject_cast<QComboBox*>(widget);
@@ -295,11 +310,15 @@ public:
                 table->setShowGrid(table->property("vireoGrid").toBool());
                 table->setAlternatingRowColors(table->property("vireoAlternating").toBool());
                 table->horizontalHeader()->setHighlightSections(table->property("vireoHighlight").toBool());
+                if (QAbstractItemModel* model = table->model())
+                    model->setHeaderData(0, Qt::Horizontal, table->property("vireoHeaderAlign"), Qt::TextAlignmentRole);
                 if (auto* delegate = dynamic_cast<FolderPathDelegate*>(table->itemDelegateForColumn(0))) {
                     table->setItemDelegateForColumn(0, nullptr);
                     delete delegate;
                 }
             } else if (auto* button = qobject_cast<QPushButton*>(widget)) {
+                if (button->property("vireoLayout").toBool() && button->parentWidget()->layout())
+                    button->parentWidget()->layout()->setAlignment(button, Qt::Alignment());
                 button->setText(button->property("vireoText").toString());
                 button->setMinimumSize(button->property("vireoMin").toSize());
                 button->setMaximumSize(button->property("vireoMax").toSize());
@@ -353,8 +372,14 @@ private:
                                       ? QCoreApplication::translate("redesign", "Add folder…")
                                       : button->toolTip();
             button->setText(label);
-            button->setMinimumSize(0, 28);
-            button->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+            // as wide as its label plus padding, 32 px high, at the right edge
+            const QSize size(button->fontMetrics().horizontalAdvance(label) + 40, 32);
+            button->setMinimumSize(size);
+            button->setMaximumSize(size);
+            if (QLayout* layout = button->parentWidget()->layout()) {
+                button->setProperty("vireoLayout", true);
+                layout->setAlignment(button, Qt::AlignRight | Qt::AlignVCenter);
+            }
         }
     }
 

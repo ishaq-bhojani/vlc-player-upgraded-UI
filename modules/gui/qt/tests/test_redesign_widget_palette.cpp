@@ -532,6 +532,12 @@ private slots:
         QVERIFY(removeButton);
         QVERIFY(removeButton->width() >= 24 && removeButton->height() >= 24);
         QCOMPARE(add->text(), QStringLiteral("Add folder\u2026"));
+        // sized to its label (not stretched), standard height, at the right edge
+        QVERIFY(add->width() < 220 && add->width() > 80);
+        QCOMPARE(add->height(), 32);
+        QVERIFY(add->geometry().right() > page.width() - 30);
+        // the Path header is left aligned, Remove and Reload stay centred
+        QVERIFY(table->model()->headerData(0, Qt::Horizontal, Qt::TextAlignmentRole).toInt() & Qt::AlignLeft);
         QVERIFY(dynamic_cast<QStyledItemDelegate*>(table->itemDelegateForColumn(0)));
         QVERIFY(page.grab().toImage().save(previewDir().filePath(QStringLiteral("mlfolders-%1.png").arg(name))));
     }
