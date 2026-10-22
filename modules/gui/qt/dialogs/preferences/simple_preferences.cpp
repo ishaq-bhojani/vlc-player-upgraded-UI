@@ -76,6 +76,11 @@
 #ifdef _WIN32
 # include <vlc_charset.h>
 # include <shobjidl.h>
+/* Vireo: the registry names of this product. The ones of a stock VLC (the ProgIDs "VLC<ext>",
+ * the default-programs entry "VLC", HKCU\Software\VideoLAN\VLC) must stay untouched. */
+# define REG_PRODUCT        "Vireo"
+# define REG_LANG_KEY       "Software\\" REG_PRODUCT "\\"
+# define REG_APP_PATH_KEY   "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\vireo.exe"
 #endif
 #include <vlc_modules.h>
 
@@ -709,7 +714,7 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
 
             HKEY h_key;
             char *langReg = NULL;
-            if( RegOpenKeyEx( HKEY_CURRENT_USER, TEXT("Software\\VideoLAN\\VLC\\"), 0, KEY_READ, &h_key )
+            if( RegOpenKeyEx( HKEY_CURRENT_USER, L"" REG_LANG_KEY, 0, KEY_READ, &h_key )
                     == ERROR_SUCCESS )
             {
                 WCHAR szData[256];
@@ -1378,9 +1383,8 @@ void SPrefsPanel::configML()
 
 void SPrefsPanel::cleanLang() {
     QVLCRegistry qvReg( HKEY_CURRENT_USER );
-    qvReg.DeleteValue( "Software\\VideoLAN\\VLC\\", "Lang" );
-    qvReg.DeleteKey( "Software\\VideoLAN\\", "VLC" );
-    qvReg.DeleteKey( "Software\\", "VideoLAN" );
+    qvReg.DeleteValue( REG_LANG_KEY, "Lang" );
+    qvReg.DeleteKey( "Software\\", REG_PRODUCT );
 }
 
 void SPrefsPanel::saveLang() {
@@ -1392,7 +1396,7 @@ void SPrefsPanel::saveLang() {
     else
     {
         QVLCRegistry qvReg( HKEY_CURRENT_USER );
-        qvReg.WriteRegistry( "Software\\VideoLAN\\VLC\\", "Lang", lang );
+        qvReg.WriteRegistry( REG_LANG_KEY, "Lang", lang );
     }
 }
 
@@ -1400,7 +1404,7 @@ bool SPrefsPanel::addType( const char * psz_ext, QTreeWidgetItem* current,
                            QTreeWidgetItem* parent, QVLCRegistry *qvReg )
 {
     bool b_temp;
-    const char* psz_VLC = "VLC";
+    const char* psz_VLC = REG_PRODUCT;
     current = new QTreeWidgetItem( parent, QStringList( psz_ext ) );
 
     char* psz_reg = qvReg->ReadRegistry( psz_ext, "", "" );
@@ -1435,7 +1439,7 @@ void SPrefsPanel::assoDialog()
                                 NULL, CLSCTX_INPROC_SERVER,
                                 IID_PPV_ARGS(&p_regui));
             if( SUCCEEDED(hr) )
-                p_regui->LaunchAdvancedAssociationUI(L"VLC" );
+                p_regui->LaunchAdvancedAssociationUI(L"" REG_PRODUCT );
         }
         CoUninitialize();
     }
@@ -1580,14 +1584,14 @@ void SPrefsPanel::updateCheckBoxes(QTreeWidgetItem* item, int column)
 
 void addAsso( QVLCRegistry *qvReg, const char *psz_ext )
 {
-    QString s_path( "VLC" ); s_path += psz_ext;
+    QString s_path( REG_PRODUCT ); s_path += psz_ext;
     QString s_path2 = s_path;
 
     /* Save a backup if already assigned */
     char *psz_value = qvReg->ReadRegistry( psz_ext, "", ""  );
 
     if( !EMPTY_STR(psz_value) && strcmp( qtu(s_path), psz_value ) )
-        qvReg->WriteRegistry( psz_ext, "VLC.backup", psz_value );
+        qvReg->WriteRegistry( psz_ext, REG_PRODUCT ".backup", psz_value );
     free( psz_value );
 
     /* Put a "link" to VLC.EXT as default */
@@ -1602,32 +1606,33 @@ void addAsso( QVLCRegistry *qvReg, const char *psz_ext )
 
         /* Get the installer path */
         QVLCRegistry qvReg2( HKEY_LOCAL_MACHINE );
-        QString str_temp = qvReg2.ReadRegistry( "Software\\VideoLAN\\VLC", "", "" );
+        /* the default value of the App Paths key is the full path of vireo.exe */
+        QString str_temp = qvReg2.ReadRegistry( REG_APP_PATH_KEY, "", "" );
 
         if( str_temp.size() )
         {
             qvReg->WriteRegistry( qtu( s_path.append( "\\Play\\command" ) ),
-                "", qtu( str_temp.append(" --started-from-file \"%1\"" ) ) );
+                "", qtu( QString( "\"%1\" --started-from-file \"%2\"" ).arg( str_temp, "%1" ) ) );
 
             qvReg->WriteRegistry( qtu( s_path2.append( "\\DefaultIcon" ) ),
-                        "", qtu( str_temp.append(",0") ) );
+                        "", qtu( str_temp + ",0" ) );
         }
     }
 }
 
 void delAsso( QVLCRegistry *qvReg, const char *psz_ext )
 {
-    QString s_path( "VLC"); s_path += psz_ext;
+    QString s_path( REG_PRODUCT ); s_path += psz_ext;
     char *psz_value = qvReg->ReadRegistry( psz_ext, "", "" );
 
     if( psz_value && !strcmp( qtu(s_path), psz_value ) )
     {
         free( psz_value );
-        psz_value = qvReg->ReadRegistry( psz_ext, "VLC.backup", "" );
+        psz_value = qvReg->ReadRegistry( psz_ext, REG_PRODUCT ".backup", "" );
         if( psz_value )
             qvReg->WriteRegistry( psz_ext, "", psz_value );
 
-        qvReg->DeleteValue( psz_ext, "VLC.backup" );
+        qvReg->DeleteValue( psz_ext, REG_PRODUCT ".backup" );
     }
     free( psz_value );
 }

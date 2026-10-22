@@ -159,6 +159,10 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
     LocalFree (wargv);
 
 #ifdef HAVE_BREAKPAD
+/* Vireo: crash dumps go to its own per-user folder (REDESIGN_USER_DIR_NAME) */
+# define CRASHDUMP_WIDE_(x) L##x
+# define CRASHDUMP_WIDE(x) CRASHDUMP_WIDE_(x)
+# define CRASHDUMP_SUBDIR CRASHDUMP_WIDE("\\" REDESIGN_USER_DIR_NAME "\\crashdump")
     void* eh = NULL;
     if(crash_handling)
     {
@@ -168,11 +172,11 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
         else
         {
             const size_t pathlen = wcslen( copath );
-            wchar_t *path = malloc( ( pathlen + wcslen(L"\\vlc\\crashdump") + 1 ) * sizeof(*path) );
+            wchar_t *path = malloc( ( pathlen + wcslen(CRASHDUMP_SUBDIR) + 1 ) * sizeof(*path) );
             if ( path != NULL)
             {
                 memcpy( path, copath, pathlen * sizeof(*path) );
-                memcpy( &path[pathlen], L"\\vlc\\crashdump", (wcslen(L"\\vlc\\crashdump") + 1)  * sizeof(*path) );
+                memcpy( &path[pathlen], CRASHDUMP_SUBDIR, (wcslen(CRASHDUMP_SUBDIR) + 1)  * sizeof(*path) );
                 CheckCrashDump( path );
                 eh = InstallCrashHandler( path );
                 free( path );
@@ -190,7 +194,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
     if (!lang)
     {
         HKEY h_key;
-        if( RegOpenKeyEx( HKEY_CURRENT_USER, TEXT("Software\\VideoLAN\\VLC\\"), 0, KEY_READ, &h_key )
+        if( RegOpenKeyEx( HKEY_CURRENT_USER, TEXT("Software\\Vireo\\"), 0, KEY_READ, &h_key )
                 == ERROR_SUCCESS )
         {
             WCHAR szData[256];

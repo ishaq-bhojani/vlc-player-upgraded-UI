@@ -863,6 +863,11 @@ option('redesign_build_number',
        max: 65535,
        description: 'Vireo: build number N of the fork release 4.0.0.N, compared by the updater with the status file (0 = development build)')
 
+option('redesign_user_dir',
+       type: 'string',
+       value: 'vireo',
+       description: 'Vireo: name of the per-user folder on Windows (under %APPDATA%: configuration, user data, cache, Qt settings); vlc gives the folder of a stock VLC, which then shares its data')
+
 # TODO: Missing rpi-omxil
 # TODO: Missing gst-decode
 # TODO: Missing libva

@@ -100,6 +100,7 @@ extern "C" char **environ;
 #include "redesign/cpp/iconfont.hpp"
 #include "redesign/cpp/branding.hpp"
 #include "redesign/cpp/brandicon.hpp"
+#include "redesign/cpp/settingsfile.hpp"
 #include "redesign/cpp/widgetpalette.hpp"
 #include "dialogs/extensions/extensions_manager.hpp" /* Extensions manager */
 #include "dialogs/help/help.hpp"     /* Launch Update */
@@ -984,8 +985,9 @@ static void *Thread( void *obj )
     {
         QString configDir = cConfigDir;
         free( cConfigDir );
-        if( configDir.endsWith( "\\vlc" ) )
-            configDir.chop( 4 ); /* the "\vlc" dir is added again by QSettings */
+        const QString userDir = QStringLiteral( "\\" ) + QLatin1String( redesign::settingsOrganization );
+        if( configDir.endsWith( userDir ) )
+            configDir.chop( userDir.size() ); /* the user dir is added again by QSettings */
         QSettings::setPath( QSettings::IniFormat, QSettings::UserScope, configDir );
     }
 #endif
@@ -996,7 +998,7 @@ static void *Thread( void *obj )
 #else
             QSettings::NativeFormat,
 #endif
-            QSettings::UserScope, "vlc", "vlc-qt-interface" );
+            QSettings::UserScope, redesign::settingsOrganization, redesign::settingsApplication );
 
     // It is guaranteed that the returned format is supported, if a format is returned.
     static const auto createCompatibleOpenGLFormat = []() -> std::optional<QSurfaceFormat> {

@@ -62,21 +62,31 @@ inline QString releaseVersion()
 }
 
 /**
- * "<name> <release version>", plus " (build N)" when the build number N of a numbered release
+ * "<release version>", plus " (build N)" when the build number N of a numbered release
  * (meson option redesign_build_number, the N of the updater's 4.0.0.N) is not 0.
  */
-inline QString versionTitle(const QString& name, const QString& release, int buildNumber)
+inline QString versionSuffix(const QString& release, int buildNumber)
 {
-    QString s = name + QLatin1Char(' ') + release;
+    QString s = release;
     if (buildNumber != 0)
         s += QStringLiteral(" (build %1)").arg(buildNumber);
     return s;
 }
 
-/** Credit line under the title of the About dialog: "Built on VLC media player <VLC version>". */
-inline QString builtOnLine(const QString& vlcVersion)
+/** "<name> <versionSuffix>", for example "Vireo 0.1.0". */
+inline QString versionTitle(const QString& name, const QString& release, int buildNumber)
 {
-    return QStringLiteral("Built on VLC media player %1").arg(vlcVersion).trimmed();
+    return name + QLatin1Char(' ') + versionSuffix(release, buildNumber);
+}
+
+/**
+ * Credit line under the title of the About dialog: the (translated) format, which has one %1
+ * ("Built on VLC media player %1"), filled with the VLC version. The caller translates the format
+ * (qtr) so that this header stays free of Qt Widgets and the translation machinery.
+ */
+inline QString builtOnLine(const QString& format, const QString& vlcVersion)
+{
+    return format.arg(vlcVersion).trimmed();
 }
 
 } // namespace redesign

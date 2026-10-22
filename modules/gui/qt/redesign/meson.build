@@ -98,6 +98,7 @@ qt_plugin_sources += files(
     'cpp/mllibrarymedia.hpp',
     'cpp/mlsubtitlestore.cpp',
     'cpp/mlsubtitlestore.hpp',
+    'cpp/settingsfile.hpp',
     'cpp/widgetpalette.cpp',
     'cpp/widgetpalette.hpp',
     '../style/redesignpalette.cpp',

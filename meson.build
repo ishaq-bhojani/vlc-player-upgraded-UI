@@ -1014,6 +1014,8 @@ redesign_build_number = get_option('redesign_build_number')
 cdata.set('VERSION_EXTRA',      vlc_version_extra + redesign_build_number)
 cdata.set_quoted('REDESIGN_UPDATE_URL', get_option('redesign_update_url'))
 cdata.set('REDESIGN_BUILD_NUMBER', redesign_build_number)
+# Vireo: its own per-user folder (%APPDATA%\vireo) so it never shares, resets or deletes the data of a stock VLC
+cdata.set_quoted('REDESIGN_USER_DIR_NAME', get_option('redesign_user_dir'))
 
 cdata.set('PACKAGE_VERSION_MAJOR',      vlc_version_major)
 cdata.set('PACKAGE_VERSION_MINOR',      vlc_version_minor)

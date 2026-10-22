@@ -46,11 +46,11 @@ void applyAboutBranding(QLabel* title, QLabel* description, QLabel* version, QLa
 
     /* "Vireo 0.1.0" (+ build number), then "Built on VLC media player <VLC version>" */
     const QString name = productName();
-    const QString heading = versionTitle( name, releaseVersion(), REDESIGN_BUILD_NUMBER );
+    const QString suffix = versionSuffix( releaseVersion(), REDESIGN_BUILD_NUMBER );
     title->setText("<html><head/><body><p><span style=\" font-size:26pt; color:#353535;\"> " + name.toHtmlEscaped()
-        + " </span><span style=\" font-size:14pt; color:#353535;\">" + heading.mid( name.size() ).toHtmlEscaped()
+        + " </span><span style=\" font-size:14pt; color:#353535;\">" + suffix.toHtmlEscaped()
         + "</span></p><p><span style=\" font-size:10pt; color:#353535;\"> "
-        + builtOnLine( QString::fromUtf8( VERSION_MESSAGE ) ).toHtmlEscaped()
+        + builtOnLine( qtr( "Built on VLC media player %1" ), QString::fromUtf8( VERSION_MESSAGE ) ).toHtmlEscaped()
         + "</span></p></body></html>");
     version->hide();
 

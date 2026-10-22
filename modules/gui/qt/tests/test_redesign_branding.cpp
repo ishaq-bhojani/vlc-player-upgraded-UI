@@ -22,6 +22,7 @@
 #include <QTest>
 
 #include "../redesign/cpp/branding.hpp"
+#include "../redesign/cpp/settingsfile.hpp"
 
 class TestRedesignBranding : public QObject
 {
@@ -54,11 +55,31 @@ private slots:
                  QStringLiteral("Vireo 0.1.0 (build 3)"));
     }
 
+    void versionSuffix()
+    {
+        QCOMPARE(redesign::versionSuffix(QStringLiteral("0.1.0"), 0), QStringLiteral("0.1.0"));
+        QCOMPARE(redesign::versionSuffix(QStringLiteral("0.1.0"), 3), QStringLiteral("0.1.0 (build 3)"));
+    }
+
     void builtOnLine()
     {
-        QCOMPARE(redesign::builtOnLine(QStringLiteral("4.0.0-dev Otto Chriek")),
+        const QString format = QStringLiteral("Built on VLC media player %1");
+        QCOMPARE(redesign::builtOnLine(format, QStringLiteral("4.0.0-dev Otto Chriek")),
                  QStringLiteral("Built on VLC media player 4.0.0-dev Otto Chriek"));
-        QCOMPARE(redesign::builtOnLine(QString()), QStringLiteral("Built on VLC media player"));
+        QCOMPARE(redesign::builtOnLine(format, QString()), QStringLiteral("Built on VLC media player"));
+    }
+
+    void settingsFileNames()
+    {
+        // one pair for every QSettings of the interface; on Windows the organisation is the
+        // per-user folder (REDESIGN_USER_DIR_NAME), never a stock VLC's "vlc"
+        const QString org = QString::fromLatin1(redesign::settingsOrganization);
+        QCOMPARE(QString::fromLatin1(redesign::settingsApplication), org + QStringLiteral("-qt-interface"));
+#ifdef _WIN32
+        QCOMPARE(org, QStringLiteral("vireo"));
+#else
+        QCOMPARE(org, QStringLiteral("vlc"));
+#endif
     }
 };
 

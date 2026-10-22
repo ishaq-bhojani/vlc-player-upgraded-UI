@@ -96,7 +96,8 @@ vlc_tests += {
     'name': 'test_qt_redesign_branding',
     'sources': files(
         '../../tests/test_redesign_branding.cpp',
-        '../cpp/branding.hpp'
+        '../cpp/branding.hpp',
+        '../cpp/settingsfile.hpp'
     ),
     'moc_sources': files(
         '../../tests/test_redesign_branding.cpp'
