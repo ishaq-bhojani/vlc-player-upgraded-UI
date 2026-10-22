@@ -2,7 +2,7 @@
 #
 # Reproducible Windows dev build for Vireo.
 #
-#   extras/redesign/dev-build.sh [--release] [--tests]
+#   extras/redesign/dev-build.sh [--release] [--tests] [--installer]
 #
 # Cross-builds VLC (x86_64, mingw-w64) inside the official VideoLAN Debian
 # container, then copies the installed tree and the Qt test executables to
@@ -10,6 +10,8 @@
 #
 #   --release   release build (build.sh -r) instead of debugoptimized
 #   --tests     after building, run extras/redesign/run-tests.sh
+#   --installer also build the NSIS installer (needs makensis, in the image):
+#               build-win64/installer/vireo-<release version>-win64.exe
 #
 # Layout:
 #   source tree      bind-mounted at /vlc  (read by the container)
@@ -17,6 +19,7 @@
 #                    bind mounts are far too slow for a full VLC build)
 #   output on host   build-win64/win64-meson/vlc-win64/vireo.exe
 #                    build-win64/win64-meson/tests/*.exe
+#                    build-win64/installer/vireo-<version>-win64.exe   (--installer)
 #
 # Requires Docker Desktop (WSL2 backend). Run from Git Bash or WSL.
 
@@ -30,11 +33,13 @@ PINNED_CONTRIB_SHA="c45a62bed8f1b2b98994b13770bdea67f95d2a52"
 
 RELEASE=0
 TESTS=0
+INSTALLER=0
 for arg in "$@"; do
     case "$arg" in
         --release) RELEASE=1 ;;
         --tests)   TESTS=1 ;;
-        -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --installer) INSTALLER=1 ;;
+        -h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "dev-build.sh: unknown option '$arg'" >&2; exit 2 ;;
     esac
 done
@@ -74,7 +79,7 @@ docker run --rm --user root -v "$VOLUME":/build "$IMAGE" \
 echo "==> Building in $IMAGE (volume: $VOLUME, flags: $BUILD_FLAGS)"
 docker run --rm \
     -e BUILD_FLAGS="$BUILD_FLAGS" \
-    -e WANT_TESTS="$TESTS" \
+    -e WANT_TESTS="$TESTS"     -e WANT_INSTALLER="$INSTALLER" \
     -e PINNED_CONTRIB_SHA="$PINNED_CONTRIB_SHA" \
     -e VLC_PREBUILT_CONTRIBS_URL="${VLC_PREBUILT_CONTRIBS_URL:-}" \
     -v "$VOLUME":/build \
@@ -92,6 +97,15 @@ docker run --rm -v "$VOLUME":/build:ro "$IMAGE" \
     tar -C "/build/$ARCH_DIR" -cf - $TAR_ITEMS \
     | tar -C "$OUT/$ARCH_DIR" -xf -
 if [ "$TESTS" = 1 ]; then mv "$OUT/$ARCH_DIR/tests-out" "$OUT/$ARCH_DIR/tests"; fi
+
+if [ "$INSTALLER" = 1 ]; then
+    echo "==> Copying the installer to $OUT/installer"
+    rm -rf "$OUT/installer"
+    mkdir -p "$OUT/installer"
+    docker run --rm -v "$VOLUME":/build:ro "$IMAGE"         tar -C "/build/$ARCH_DIR" -cf - installer-out         | tar -C "$OUT/installer" --strip-components=1 -xf -
+    ls "$OUT"/installer/vireo-*-win64.exe >/dev/null || { echo "installer missing from output" >&2; exit 1; }
+    echo "==> Installer: $(ls "$OUT"/installer/vireo-*-win64.exe)"
+fi
 
 test -f "$OUT/$ARCH_DIR/vlc-win64/vireo.exe" || { echo "vireo.exe missing from output" >&2; exit 1; }
 echo "==> Built: $OUT/$ARCH_DIR/vlc-win64/vireo.exe"

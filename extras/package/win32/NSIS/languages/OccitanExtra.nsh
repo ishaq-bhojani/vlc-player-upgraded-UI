@@ -41,7 +41,7 @@ ${LangFileString} ShellAssociation_Play "Legir"
 ${LangFileString} ContextMenuEntry_PlayWith "Legir amb Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Apondre a la lista de lectura de Vireo"
 
-${LangFileString} Link_VisitWebsite "Anar sul sit de VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Anar sul sit de Vireo"
 
 ${LangFileString} Name_InstTypeRecommended "Recomandat"
 ${LangFileString} Name_InstTypeMinimum "Minimum"

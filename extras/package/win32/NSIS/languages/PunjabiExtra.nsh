@@ -41,7 +41,7 @@ ${LangFileString} ShellAssociation_Play "ਚਲਾਓ"
 ${LangFileString} ContextMenuEntry_PlayWith "Vireo ਮੀਡਿਆ ਪਲੇਅਰ ਨਾਲ ਚਲਾਓ"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Vireo ਮੀਡਿਆ ਪਲੇਅਰ ਦੀ ਪਲੇਅ-ਲਿਸਟ ਵਿੱਚ ਸ਼ਾਮਲ"
 
-${LangFileString} Link_VisitWebsite "VideoLAN Vireo ਮੀਡਿਆ ਪਲੇਅਰ ਵੈੱਬਸਾਈਟ ਵੇਖੋ"
+${LangFileString} Link_VisitWebsite "Vireo ਮੀਡਿਆ ਪਲੇਅਰ ਵੈੱਬਸਾਈਟ ਵੇਖੋ"
 
 ${LangFileString} Name_InstTypeRecommended "ਸਿਫਾਰਸ਼ੀ"
 ${LangFileString} Name_InstTypeMinimum "ਘੱਟੋ-ਘੱਟ"

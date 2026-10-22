@@ -24,7 +24,7 @@
 # repository is mounted read-only, there is no network and no access to the
 # host display (QT_QPA_PLATFORM=offscreen on a virtual X server, dummy
 # audio/video output). Never launch the
-# Windows vlc.exe for this: it writes to the real %APPDATA%\vlc.
+# Windows vireo.exe for this: it writes to the real %APPDATA%\vireo.
 #
 #   --seconds N   how long each run is allowed to live (default 15)
 #   --media PATH  also open this file (a path inside the repository, e.g.

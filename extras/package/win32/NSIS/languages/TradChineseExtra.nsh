@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "刪除 Vireo 媒體播放器偏好設定與快
 ${LangFileString} ShellAssociation_Play "播放"
 ${LangFileString} ContextMenuEntry_PlayWith "以 Vireo 媒體播放器播放"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "新增至 Vireo 媒體播放器的播放清單"
-${LangFileString} Link_VisitWebsite "前往 the VideoLAN Vireo 媒體播放器網站"
+${LangFileString} Link_VisitWebsite "前往 Vireo 媒體播放器網站"
 ${LangFileString} Name_InstTypeRecommended "建議的安裝"
 ${LangFileString} Name_InstTypeMinimum "最小化安裝"
 ${LangFileString} Name_InstTypeFull "完整安裝"

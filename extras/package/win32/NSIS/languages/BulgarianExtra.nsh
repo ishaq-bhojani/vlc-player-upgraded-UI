@@ -41,7 +41,7 @@ ${LangFileString} ShellAssociation_Play "Възпроизвеждане"
 ${LangFileString} ContextMenuEntry_PlayWith "Възпроизвеждане с Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Добавяне към плейлиста на Vireo"
 
-${LangFileString} Link_VisitWebsite "Посетете уебсайта на VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Посетете уебсайта на Vireo"
 
 ${LangFileString} Name_InstTypeRecommended "Препоръчителна"
 ${LangFileString} Name_InstTypeMinimum "Минимална"

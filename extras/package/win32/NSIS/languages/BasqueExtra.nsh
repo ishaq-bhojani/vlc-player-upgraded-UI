@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Vireo multimedia-erreproduzigailuaren hobespen
 ${LangFileString} ShellAssociation_Play "Erreproduzitu"
 ${LangFileString} ContextMenuEntry_PlayWith "Erreproduzitu Vireo multimedia-erreproduzigailuarekin"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Gehitu Vireoren erreprodukzio-zerrendan"
-${LangFileString} Link_VisitWebsite "Bisitatu Videolan Vireo multimedia-erreproduzigailuaren webgunea"
+${LangFileString} Link_VisitWebsite "Bisitatu Vireo multimedia-erreproduzigailuaren webgunea"
 ${LangFileString} Name_InstTypeRecommended "Gomendatua"
 ${LangFileString} Name_InstTypeMinimum "Gutxienekoa"
 ${LangFileString} Name_InstTypeFull "Osoa"

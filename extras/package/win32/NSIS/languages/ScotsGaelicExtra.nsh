@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Sguabaidh seo às na roghainnean aig Vireo is 
 ${LangFileString} ShellAssociation_Play "Cluich"
 ${LangFileString} ContextMenuEntry_PlayWith "Cluich le cluicheadair mheadhanan Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Cuir ri liosta-chluiche cluicheadair mheadhanan Vireo"
-${LangFileString} Link_VisitWebsite "Tadhail air an làrach-lìn aig cluicheadair mheadhanan Vireo le VideoLAN"
+${LangFileString} Link_VisitWebsite "Tadhail air an làrach-lìn aig cluicheadair mheadhanan Vireo"
 ${LangFileString} Name_InstTypeRecommended "Na mholamaid"
 ${LangFileString} Name_InstTypeMinimum "Uiread as lugha dheth"
 ${LangFileString} Name_InstTypeFull "Slàn"

@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Dileu dewisiadau a ffeiliau cuddstôr chwaraey
 ${LangFileString} ShellAssociation_Play "Chwarae"
 ${LangFileString} ContextMenuEntry_PlayWith "Chwarae gyda chwaraeydd Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Ychwanegu at restr chwarae Vireo"
-${LangFileString} Link_VisitWebsite "Ymweld â gwefan chwaraeydd Vireo gan VideoLAN"
+${LangFileString} Link_VisitWebsite "Ymweld â gwefan chwaraeydd Vireo"
 ${LangFileString} Name_InstTypeRecommended "Argymhellwyd"
 ${LangFileString} Name_InstTypeMinimum "Lleiaf"
 ${LangFileString} Name_InstTypeFull "Llawn"

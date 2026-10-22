@@ -121,11 +121,12 @@
                         </Component>
 
                         <Component Id='CompTXT' Guid='422d43f0-94f5-4265-989b-742d2da3a40a' Win64="$(var.Win64)">
-                            <File Id='AUTHORS.txt' Name='AUTHORS.txt'  DiskId='1'  Source="$(var.VlcInstallPrefix)AUTHORS.txt"/>
+                            <File Id='VLC_AUTHORS.txt' Name='VLC-AUTHORS.txt' DiskId='1'  Source="$(var.VlcInstallPrefix)VLC-AUTHORS.txt"/>
                             <File Id='COPYING.txt' Name='COPYING.txt' DiskId='1'  Source="$(var.VlcInstallPrefix)COPYING.txt"/>
-                            <File Id='NEWS.txt' Name='NEWS.txt' DiskId='1'  Source="$(var.VlcInstallPrefix)NEWS.txt"/>
+                            <File Id='RELEASE_NOTES.txt' Name='RELEASE-NOTES.txt' DiskId='1'  Source="$(var.VlcInstallPrefix)RELEASE-NOTES.txt"/>
                             <File Id='README.txt' Name='README.txt' DiskId='1'  Source="$(var.VlcInstallPrefix)README.txt"/>
-                            <File Id='THANKS.txt' Name='THANKS.txt' DiskId='1'  Source="$(var.VlcInstallPrefix)THANKS.txt"/>
+                            <File Id='VLC_THANKS.txt' Name='VLC-THANKS.txt' DiskId='1'  Source="$(var.VlcInstallPrefix)VLC-THANKS.txt"/>
+                            <File Id='Inter_OFL.txt' Name='Inter-OFL.txt' DiskId='1'  Source="$(var.VlcInstallPrefix)Inter-OFL.txt"/>
                         </Component>
 
                         <Component Id='CompLibvlccore' Guid='a67b91b2-f31c-40b1-a424-807df44acf77' Win64="$(var.Win64)">
@@ -264,11 +265,9 @@
                               On="uninstall" />
                 <!-- Application shortcuts -->
                 <Shortcut Id="VLCShortcut" Name="$(var.ProductName)" Target="[APPLICATIONFOLDER]vireo.exe" />
-                <!--<Shortcut Id="SkinShortcut" Name="$(var.ProductName) skinned" Target="[APPLICATIONFOLDER]vireo.exe" Arguments="-Iskins" />-->
                 <Shortcut Id="VLCCleanShortcut" Name="Reset $(var.ProductName) preferences and cache files" Target="[APPLICATIONFOLDER]vireo.exe" Arguments="--reset-config --reset-plugins-cache vlc://quit" />
-                <Shortcut Id="NEWSShortcut" Name="Release Notes" Target="[APPLICATIONFOLDER]NEWS.txt" />
+                <Shortcut Id="ReleaseNotesShortcut" Name="Release Notes" Target="[APPLICATIONFOLDER]RELEASE-NOTES.txt" />
                 <util:InternetShortcut Id="WebsiteShortcut" Name="$(var.ProductName) website" Target="$(var.AboutURL)"/>
-                <util:InternetShortcut Id="DocumentationShortcut" Name="Documentation" Target="https://www.videolan.org/doc/"/>
                 <!-- RegistryValue which serves as KeyPath -->
                 <RegistryValue Root="HKCU"
                                Key="Software\Vireo"

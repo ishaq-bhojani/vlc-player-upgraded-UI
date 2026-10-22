@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Fshij preferencat dhe file-et e cache te Vireo
 ${LangFileString} ShellAssociation_Play "Luaj"
 ${LangFileString} ContextMenuEntry_PlayWith "Luaj me aparatin Vireo media "
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Shto tek lista e apartit Vireo media"
-${LangFileString} Link_VisitWebsite "Vizitoni faqen e aparatit VideoLAN Vireo media "
+${LangFileString} Link_VisitWebsite "Vizitoni faqen e aparatit Vireo media "
 ${LangFileString} Name_InstTypeRecommended "Rekomanduar"
 ${LangFileString} Name_InstTypeMinimum "Minimum"
 ${LangFileString} Name_InstTypeFull "Plotë"

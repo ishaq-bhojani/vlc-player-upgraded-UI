@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Apaga as preferências e os ficheiros da cache
 ${LangFileString} ShellAssociation_Play "Reproduzir"
 ${LangFileString} ContextMenuEntry_PlayWith "Reproduzir com o reprodutor de multimédia Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Adicione à Lista de Reprodução do reprodutor de multimédia Vireo"
-${LangFileString} Link_VisitWebsite "Visite o site da web do reprodutor de multimédia Vireo VideoLAN"
+${LangFileString} Link_VisitWebsite "Visite o site da web do reprodutor de multimédia Vireo"
 ${LangFileString} Name_InstTypeRecommended "Recomendado"
 ${LangFileString} Name_InstTypeMinimum "Mínima"
 ${LangFileString} Name_InstTypeFull "Completa"

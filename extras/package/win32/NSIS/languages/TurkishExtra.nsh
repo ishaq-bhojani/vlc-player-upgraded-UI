@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Vireo ortam oynatıcısının ayarlarını ve 
 ${LangFileString} ShellAssociation_Play "Oynat"
 ${LangFileString} ContextMenuEntry_PlayWith "Vireo ile oynat"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Vireo oynatma listesine ekle"
-${LangFileString} Link_VisitWebsite "VideoLAN Vireo web sitesini ziyaret et"
+${LangFileString} Link_VisitWebsite "Vireo web sitesini ziyaret et"
 ${LangFileString} Name_InstTypeRecommended "Önerilen"
 ${LangFileString} Name_InstTypeMinimum "En küçük"
 ${LangFileString} Name_InstTypeFull "Tam"

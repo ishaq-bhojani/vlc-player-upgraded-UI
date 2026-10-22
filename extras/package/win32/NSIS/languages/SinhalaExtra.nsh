@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Vireo මාධ්‍ය වදකයේ අ�
 ${LangFileString} ShellAssociation_Play "වයන්න"
 ${LangFileString} ContextMenuEntry_PlayWith "Vireo මාධ්‍ය වාදකය සමඟ වයන්න"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Vireo මාධ්‍ය වාදකයයේ වාදනලැයිස්තුව වෙත එක් කරන්න"
-${LangFileString} Link_VisitWebsite "VideoLAN Vireo මාධ්‍ය වාදකයේ අඩවිය වෙත පිවිසෙන්න"
+${LangFileString} Link_VisitWebsite "Vireo මාධ්‍ය වාදකයේ අඩවිය වෙත පිවිසෙන්න"
 ${LangFileString} Name_InstTypeRecommended "නිර්දේශිත"
 ${LangFileString} Name_InstTypeMinimum "අවම"
 ${LangFileString} Name_InstTypeFull "පූර්ණ"

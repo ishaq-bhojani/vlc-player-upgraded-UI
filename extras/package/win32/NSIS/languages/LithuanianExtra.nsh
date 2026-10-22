@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Ištrinti Vireo media grotuvo nustatymus bei p
 ${LangFileString} ShellAssociation_Play "Groti"
 ${LangFileString} ContextMenuEntry_PlayWith "Leisti per Vireo grotuvą"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Įtraukti į Vireo grojaraštį"
-${LangFileString} Link_VisitWebsite "Aplankyti VideoLAN Vireo grotuvo tinklalapį"
+${LangFileString} Link_VisitWebsite "Aplankyti Vireo grotuvo tinklalapį"
 ${LangFileString} Name_InstTypeRecommended "Rekomenduojamas"
 ${LangFileString} Name_InstTypeMinimum "Mažiausias"
 ${LangFileString} Name_InstTypeFull "Pilnas"

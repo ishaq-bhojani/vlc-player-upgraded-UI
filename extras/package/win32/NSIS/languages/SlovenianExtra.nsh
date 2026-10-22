@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Izbriše nastavitve predvajalnika Vireo in dat
 ${LangFileString} ShellAssociation_Play "Predvajaj"
 ${LangFileString} ContextMenuEntry_PlayWith "Predvajaj s predvajalnikom Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Dodaj na seznam predvajanja programa Vireo"
-${LangFileString} Link_VisitWebsite "Obišči spletišče predvajalnika VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Obišči spletišče predvajalnika Vireo"
 ${LangFileString} Name_InstTypeRecommended "Priporočena"
 ${LangFileString} Name_InstTypeMinimum "Osnovna"
 ${LangFileString} Name_InstTypeFull "Polna"

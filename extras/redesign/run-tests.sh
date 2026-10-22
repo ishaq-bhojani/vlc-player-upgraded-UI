@@ -86,7 +86,7 @@ in_list() { # needle, then list entries (matched up to the first '|')
 reason() { local e; for e in "${EXCLUDED[@]}"; do [ "${e%%|*}" = "$1" ] && echo "${e#*|}"; done; }
 
 # --- environment -------------------------------------------------------------
-# libvlc.dll / libvlccore.dll and the MinGW runtime live next to vlc.exe.
+# libvlc.dll / libvlccore.dll and the MinGW runtime live next to vireo.exe.
 export PATH="$VLC_DIR:$PATH"
 export QT_QPA_PLATFORM=offscreen
 

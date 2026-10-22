@@ -1,0 +1,43 @@
+Vireo release notes
+===================
+
+0.1.0 - first release
+---------------------
+
+Vireo is a Windows media player with a redesigned interface, built on VLC
+media player (VLC 4.0 development line). This is the first public release;
+expect rough edges, and please report problems at
+https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/issues
+
+Interface
+  - New main window: title bar, navigation rail, library panel and a stage
+    for video and music, with a new colour palette, icons and the Inter font.
+  - Home page with your recent media.
+  - Redesigned control bar and a floating mini player card.
+  - Queue panel, audio and subtitle track pop-ups, resume prompt.
+  - Music view with lyrics (sidecar .lrc files) and a waveform seek bar.
+  - Redesigned settings (general, interface, playback, audio, video,
+    subtitles, library, network, recording, performance, privacy,
+    extensions) and dialogs (open network stream, new playlist, add
+    subtitles, keyboard shortcuts).
+
+Optional tools
+  - yt-dlp and ffmpeg can be downloaded on request, after you give your
+    consent in a dialog; every download is checked before it is used.
+
+Updates
+  - Help > Check for Updates reads Vireo's own update channel on GitHub.
+    Update information and installers are verified with Vireo's signing key.
+
+Installation and your data
+  - Installs to Program Files\Vireo and can be used next to VLC media player.
+  - Settings, library and caches are kept in %APPDATA%\vireo. Vireo does not
+    use, change or delete the settings of VLC media player.
+  - File-type associations are registered under Vireo's own names.
+
+Known limitations
+  - Windows 10 and 11, 64-bit only.
+  - Not every part of the design is implemented yet; screens that are not
+    redesigned keep VLC's look with the new palette.
+  - The installer text is translated from VLC's; translations have not been
+    reviewed for Vireo.

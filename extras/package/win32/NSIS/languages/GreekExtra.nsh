@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Διαγράφει τις επιλογές κ�
 ${LangFileString} ShellAssociation_Play "Αναπαραγωγή"
 ${LangFileString} ContextMenuEntry_PlayWith "Αναπαραγωγή με τον αναπαραγωγό πολυμέσων Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Προσθήκη στη λίστα αναπαραγωγής του Vireo"
-${LangFileString} Link_VisitWebsite "Επισκεφτείτε την ιστοσελίδα του VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Επισκεφτείτε την ιστοσελίδα του Vireo"
 ${LangFileString} Name_InstTypeRecommended "Συνιστώμενο"
 ${LangFileString} Name_InstTypeMinimum "Ελάχιστο"
 ${LangFileString} Name_InstTypeFull "Πλήρης"

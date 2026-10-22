@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Вилучає налаштування мед
 ${LangFileString} ShellAssociation_Play "Відтворити"
 ${LangFileString} ContextMenuEntry_PlayWith "Відтворити через медіапрогравач Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Додати до списку відтворення медіапрогравача Vireo"
-${LangFileString} Link_VisitWebsite "Відвідати веб-сайт медіапрогравача Vireo від  VideoLAN"
+${LangFileString} Link_VisitWebsite "Відвідати веб-сайт медіапрогравача Vireo"
 ${LangFileString} Name_InstTypeRecommended "Рекомендовано"
 ${LangFileString} Name_InstTypeMinimum "Мінімальна"
 ${LangFileString} Name_InstTypeFull "Повна"

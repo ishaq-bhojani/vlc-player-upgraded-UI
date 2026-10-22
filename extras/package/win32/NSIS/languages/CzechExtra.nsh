@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Smaže nastavení a mezipaměť přehrávače 
 ${LangFileString} ShellAssociation_Play "Přehrát"
 ${LangFileString} ContextMenuEntry_PlayWith "Přehrát s Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Přidat do seznamu skladeb Vireo"
-${LangFileString} Link_VisitWebsite "Navštivte webové stránky přehrávače VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Navštivte webové stránky přehrávače Vireo"
 ${LangFileString} Name_InstTypeRecommended "Doporučená"
 ${LangFileString} Name_InstTypeMinimum "Minimální"
 ${LangFileString} Name_InstTypeFull "Plná"

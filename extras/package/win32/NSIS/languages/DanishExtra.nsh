@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Sletter Vireo's indstillinger og mellemlager-f
 ${LangFileString} ShellAssociation_Play "Afspil"
 ${LangFileString} ContextMenuEntry_PlayWith "Afspil med Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Føj til spilleliste i Vireo"
-${LangFileString} Link_VisitWebsite "Besøg hjemmesiden for VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Besøg hjemmesiden for Vireo"
 ${LangFileString} Name_InstTypeRecommended "Anbefalet"
 ${LangFileString} Name_InstTypeMinimum "Minimal"
 ${LangFileString} Name_InstTypeFull "Fuld"

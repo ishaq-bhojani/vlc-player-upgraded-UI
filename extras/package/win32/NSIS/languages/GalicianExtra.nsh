@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Elimina as preferencias do reprodutor multimed
 ${LangFileString} ShellAssociation_Play "Reproducir"
 ${LangFileString} ContextMenuEntry_PlayWith "Reproducir co Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Engadir á lista de reprodución do Vireo"
-${LangFileString} Link_VisitWebsite "Visitar a web do reprodutor multimedia VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Visitar a web do reprodutor multimedia Vireo"
 ${LangFileString} Name_InstTypeRecommended "Recomendada"
 ${LangFileString} Name_InstTypeMinimum "Mínima"
 ${LangFileString} Name_InstTypeFull "Completa"

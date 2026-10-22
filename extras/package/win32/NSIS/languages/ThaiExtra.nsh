@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "ลบแฟ้มค่าปรับแต�
 ${LangFileString} ShellAssociation_Play "เล่น"
 ${LangFileString} ContextMenuEntry_PlayWith "เล่นด้วยโปรแกรมเล่นสื่อ Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "เพิ่มรายการไปยังผังเล่นของโปรแกรมเล่นสื่อ Vireo"
-${LangFileString} Link_VisitWebsite "เยี่ยมชมเว็บไซต์ VideoLAN ของโปรแกรมเล่นสื่อ Vireo"
+${LangFileString} Link_VisitWebsite "เยี่ยมชมเว็บไซต์ของโปรแกรมเล่นสื่อ Vireo"
 ${LangFileString} Name_InstTypeRecommended "ตามที่แนะนำ"
 ${LangFileString} Name_InstTypeMinimum "ต่ำสุด"
 ${LangFileString} Name_InstTypeFull "เต็มที่"

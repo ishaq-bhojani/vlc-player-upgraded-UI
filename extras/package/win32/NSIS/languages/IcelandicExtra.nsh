@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Eyðir kjörstillingum Vireo og skrám í skyn
 ${LangFileString} ShellAssociation_Play "Spila"
 ${LangFileString} ContextMenuEntry_PlayWith "Spila með Vireo spilaranum"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Bæta á spilunarlista Vireo"
-${LangFileString} Link_VisitWebsite "Heimsækja vef VideoLAN Vireo margmiðlunarspilarans"
+${LangFileString} Link_VisitWebsite "Heimsækja vef Vireo margmiðlunarspilarans"
 ${LangFileString} Name_InstTypeRecommended "Mælt með"
 ${LangFileString} Name_InstTypeMinimum "Lágmarks"
 ${LangFileString} Name_InstTypeFull "Allt"

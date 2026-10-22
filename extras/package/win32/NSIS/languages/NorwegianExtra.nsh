@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Sletter innstillinger og mellomlager for Vireo
 ${LangFileString} ShellAssociation_Play "Spill av"
 ${LangFileString} ContextMenuEntry_PlayWith "Spill i Vireo mediespiller"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Legg til i Vireos spilleliste"
-${LangFileString} Link_VisitWebsite "Se nettstedet til VideoLAN Vireo mediespiller"
+${LangFileString} Link_VisitWebsite "Se nettstedet til Vireo mediespiller"
 ${LangFileString} Name_InstTypeRecommended "Anbefalt"
 ${LangFileString} Name_InstTypeMinimum "Minimum"
 ${LangFileString} Name_InstTypeFull "Fullstendig"

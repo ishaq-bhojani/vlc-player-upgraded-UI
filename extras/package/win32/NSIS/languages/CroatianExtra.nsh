@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Briše osobitosti i datoteke predmemorije Vire
 ${LangFileString} ShellAssociation_Play "Reproduciraj"
 ${LangFileString} ContextMenuEntry_PlayWith "Reproduciraj s Vireo medijskim izvođačem"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Dodaj na popis izvođenja Vireo medijskog izvođača"
-${LangFileString} Link_VisitWebsite "Posjetite web stranicu VideoLAN Vireo medijskog izvođača"
+${LangFileString} Link_VisitWebsite "Posjetite web stranicu Vireo medijskog izvođača"
 ${LangFileString} Name_InstTypeRecommended "Preporučeno"
 ${LangFileString} Name_InstTypeMinimum "Minimalno"
 ${LangFileString} Name_InstTypeFull "Potpuno"

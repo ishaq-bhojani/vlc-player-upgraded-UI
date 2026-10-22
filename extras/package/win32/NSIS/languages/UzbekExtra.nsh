@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Vireo media pleyer sozlamalari va kesh fayllar
 ${LangFileString} ShellAssociation_Play "Ijro etish"
 ${LangFileString} ContextMenuEntry_PlayWith "Vireo media pleyer bilan qo‘yish"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Vireo media pleyer ijro ro‘yxatiga qo‘shish"
-${LangFileString} Link_VisitWebsite "VideoLAN Vireo media pleyer veb sahifasiga tashrif buyuring"
+${LangFileString} Link_VisitWebsite "Vireo media pleyer veb sahifasiga tashrif buyuring"
 ${LangFileString} Name_InstTypeRecommended "Tavsiya etilgan"
 ${LangFileString} Name_InstTypeMinimum "Minimum"
 ${LangFileString} Name_InstTypeFull "To‘liq"

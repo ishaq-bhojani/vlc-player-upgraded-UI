@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Vymaže nastavenia programu Vireo a súbory vo
 ${LangFileString} ShellAssociation_Play "Prehrať"
 ${LangFileString} ContextMenuEntry_PlayWith "Prehrať v programe Vireo Media Player"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Pridať do playlistu Vireo"
-${LangFileString} Link_VisitWebsite "Navštíviť webovú stránku programu VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Navštíviť webovú stránku programu Vireo"
 ${LangFileString} Name_InstTypeRecommended "Odporúčaná konfigurácia"
 ${LangFileString} Name_InstTypeMinimum "Minimálna konfigurácia"
 ${LangFileString} Name_InstTypeFull "Úplná inštalácia"

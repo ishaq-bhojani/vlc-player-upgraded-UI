@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Törli a Vireo médialejátszó beállításai
 ${LangFileString} ShellAssociation_Play "Lejátszás"
 ${LangFileString} ContextMenuEntry_PlayWith "Lejátszás a Vireo médialejátszóval"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Hozzáadás a Vireo lejátszólistájához"
-${LangFileString} Link_VisitWebsite "A VideoLAN Vireo médialejátszó weboldalának felkeresése"
+${LangFileString} Link_VisitWebsite "A Vireo médialejátszó weboldalának felkeresése"
 ${LangFileString} Name_InstTypeRecommended "Javasolt"
 ${LangFileString} Name_InstTypeMinimum "Minimális"
 ${LangFileString} Name_InstTypeFull "Teljes"

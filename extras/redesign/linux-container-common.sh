@@ -44,8 +44,12 @@ text = open(opts, encoding="utf-8").read()
 defaults = {}
 for m in re.finditer(r"option\('(redesign_\w+)',(.*?)\n\n", text, re.S):
     v = re.search(r"value:\s*(?:'([^']*)'|(-?\d+))", m.group(2))
-    if v:
-        defaults[m.group(1)] = v.group(1) if v.group(1) is not None else v.group(2)
+    if not v:
+        sys.exit("meson_options.txt: no value: of option %s recognised (string or integer)" % m.group(1))
+    defaults[m.group(1)] = v.group(1) if v.group(1) is not None else v.group(2)
+if not defaults:
+    # a reformatted file (CRLF, no blank line between options) must not turn the refresh off silently
+    sys.exit("no redesign_ options found in " + opts)
 cached = {o["name"]: o["value"]
           for o in json.loads(subprocess.check_output(
               ["meson", "introspect", "--buildoptions", build]))

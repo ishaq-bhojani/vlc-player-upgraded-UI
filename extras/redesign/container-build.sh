@@ -71,7 +71,7 @@ export CPPFLAGS="${CPPFLAGS:-}$qt_private"
 export LDFLAGS="${LDFLAGS:-} -Wl,--allow-multiple-definition"
 
 # --- libstdc++ --------------------------------------------------------------
-# vlc.exe calls SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32) and
+# vireo.exe calls SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32) and
 # plugins are loaded with LOAD_LIBRARY_SEARCH_SYSTEM32 (src/win32/plugin.c), so a
 # plugin's DLL dependencies are only found if already loaded (libvlccore.dll
 # pulls in libgcc/libssp/libwinpthread) or in System32. libstdc++-6.dll is
@@ -79,11 +79,15 @@ export LDFLAGS="${LDFLAGS:-} -Wl,--allow-multiple-definition"
 # statically, as upstream does for its clang builds.
 export LDFLAGS="$LDFLAGS -static-libstdc++"
 
-# --- no installers ----------------------------------------------------------
-# The NSIS helper plugin (nsProcess.dll) is built whenever makensis exists and
-# does not link for x86_64 (32-bit symbol names in its .def). Dev builds do not
-# make installers, so turn it off.
-export MCONFIGFLAGS="${MCONFIGFLAGS:-} -Dnsis=disabled"
+# --- installer --------------------------------------------------------------
+# Normal dev builds do not make an installer, so NSIS is off. With WANT_INSTALLER=1
+# (dev-build.sh --installer) it is on: NSIS/meson.build builds the 32-bit nsProcess.dll
+# helper with the image's i686 MinGW-w64 gcc, and package-win32-exe runs makensis below.
+if [ "${WANT_INSTALLER:-0}" = 1 ]; then
+    export MCONFIGFLAGS="${MCONFIGFLAGS:-} -Dnsis=enabled"
+else
+    export MCONFIGFLAGS="${MCONFIGFLAGS:-} -Dnsis=disabled"
+fi
 
 # --- build + install --------------------------------------------------------
 /vlc/extras/package/win32/build.sh $BUILD_FLAGS
@@ -94,11 +98,21 @@ rm -rf "$B/vlc-win64"   # no stale files from earlier builds
 meson install -C "$B" --strip --no-rebuild
 
 # meson install does not ship the MinGW runtime DLLs (the NSIS/WiX packaging
-# does), but vlc.exe, the plugins and the test executables need them at run time.
+# does), but vireo.exe, the plugins and the test executables need them at run time.
 for dll in /usr/lib/gcc/x86_64-w64-mingw32/14-posix/{libgcc_s_seh-1,libssp-0}.dll \
            /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll; do
     cp "$dll" "$B/vlc-win64/"
 done
+
+# --- installer --------------------------------------------------------------
+# After the MinGW runtime DLLs are in vlc-win64/, because the NSIS script ships *.dll.
+if [ "${WANT_INSTALLER:-0}" = 1 ]; then
+    ninja -C "$B" package-win32-exe
+    rm -rf "$B/installer-out"
+    mkdir -p "$B/installer-out"
+    cp "$B"/vireo-*-win64.exe "$B/installer-out/"
+    ls -l "$B/installer-out"
+fi
 
 # --- test executables -------------------------------------------------------
 # They are build_by_default:false, so build every executable that a test of the
@@ -112,6 +126,9 @@ for t in json.load(sys.stdin):
         # a test run by an interpreter (test_qt_update_channel_urls: python3) has
         # no executable of the build tree to build or stage
         if not t["cmd"][0].startswith("/build/"):
+            continue
+        # does not compile with mingw-w64 (mkdtemp), see EXCLUDED in run-tests.sh
+        if t["cmd"][0].endswith("/test_qt_update_channel"):
             continue
         if t["cmd"][0] not in seen:
             seen.append(t["cmd"][0])

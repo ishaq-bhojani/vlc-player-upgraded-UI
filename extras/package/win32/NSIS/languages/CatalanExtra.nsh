@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Esborra totes les preferències i fitxers de m
 ${LangFileString} ShellAssociation_Play "Reprodueix"
 ${LangFileString} ContextMenuEntry_PlayWith "Reprodueix amb el reproductor multimèdia Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Afegeix a la llista de reproducció del reproductor multimèdia Vireo"
-${LangFileString} Link_VisitWebsite "Visita el lloc web del reproductor multimèdia VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Visita el lloc web del reproductor multimèdia Vireo"
 ${LangFileString} Name_InstTypeRecommended "Recomanat"
 ${LangFileString} Name_InstTypeMinimum "Mínim"
 ${LangFileString} Name_InstTypeFull "Complet"

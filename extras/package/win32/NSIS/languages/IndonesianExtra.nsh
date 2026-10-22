@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Hapus berkas preferensi dan tembolok pemutar m
 ${LangFileString} ShellAssociation_Play "Putar"
 ${LangFileString} ContextMenuEntry_PlayWith "Putar dengan pemutar media Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Tambahkan ke daftar putar pemutar media Vireo"
-${LangFileString} Link_VisitWebsite "Kunjungi situs web VideoLAN pemutar media Vireo"
+${LangFileString} Link_VisitWebsite "Kunjungi situs web pemutar media Vireo"
 ${LangFileString} Name_InstTypeRecommended "Direkomendasikan"
 ${LangFileString} Name_InstTypeMinimum "Minimum"
 ${LangFileString} Name_InstTypeFull "Penuh"

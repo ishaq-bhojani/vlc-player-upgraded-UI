@@ -26,7 +26,7 @@ ${LangFileString} Desc_Section92 "احذف تفضيلات مشغّل الوسا�
 ${LangFileString} ShellAssociation_Play "شغّل"
 ${LangFileString} ContextMenuEntry_PlayWith "شغّل بمشغّل الوسائط Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "أضِف إلى قائمة مشغّل الوسائط Vireo"
-${LangFileString} Link_VisitWebsite "زُر موقع مشغّل الوسائط Vireo من VideoLAN"
+${LangFileString} Link_VisitWebsite "زُر موقع مشغّل الوسائط Vireo"
 ${LangFileString} Name_InstTypeRecommended "مُوصى به"
 ${LangFileString} Name_InstTypeMinimum "الأدنى"
 ${LangFileString} Name_InstTypeFull "كامل"

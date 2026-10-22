@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Kustutab Vireo meediaesitaja eelistused ja vah
 ${LangFileString} ShellAssociation_Play "Esita"
 ${LangFileString} ContextMenuEntry_PlayWith "Esita Vireo meediaesitajaga"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Lisa Vireo meediaesitaja esitusloendisse"
-${LangFileString} Link_VisitWebsite "Külasta VideoLAN Vireo meediaesitaja veebilehte"
+${LangFileString} Link_VisitWebsite "Külasta Vireo meediaesitaja veebilehte"
 ${LangFileString} Name_InstTypeRecommended "Soovitatud"
 ${LangFileString} Name_InstTypeMinimum "Minimaalne"
 ${LangFileString} Name_InstTypeFull "Täieli"

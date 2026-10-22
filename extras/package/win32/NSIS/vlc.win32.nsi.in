@@ -6,7 +6,7 @@
 ; Vireo: values from docs/redesign/branding.md
 !define PRODUCT_NAME "Vireo"
 !define VERSION @VERSION@
-; display version (Apps & Features); VERSION above stays the engine version used for OutFile and upgrade checks
+; Vireo's release version: Apps & Features, the installer file name and the upgrade check (VERSION above is VLC's engine version)
 !define PRODUCT_VERSION "@REDESIGN_RELEASE_VERSION@"
 !define PRODUCT_GROUP "Vireo"
 !define PRODUCT_PUBLISHER "Vireo contributors"
@@ -16,6 +16,8 @@
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 !define PRODUCT_ID "{ab4a9427-0088-405d-92d2-599cd3752765}"
+; per-user folder under %APPDATA% (meson option redesign_user_dir): Vireo's own, never a stock VLC's "vlc"
+!define USER_DIR_NAME @REDESIGN_USER_DIR_NAME@
 
 !define MUI_LANGDLL_REGISTRY_ROOT "HKLM"
 !define MUI_LANGDLL_REGISTRY_KEY "${PRODUCT_DIR_REGKEY}"
@@ -47,9 +49,9 @@ Var 32bitPath
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Name "${PRODUCT_NAME}"
-@HAVE_WIN64_FALSE@                   OutFile ..\vireo-${VERSION}-win32.exe
-@HAVE_WIN64_TRUE@ @HAVE_ARM64_FALSE@ OutFile ..\vireo-${VERSION}-win64.exe
-@HAVE_WIN64_TRUE@ @HAVE_ARM64_TRUE@  OutFile ..\vireo-${VERSION}-winarm64.exe
+@HAVE_WIN64_FALSE@                   OutFile ..\vireo-${PRODUCT_VERSION}-win32.exe
+@HAVE_WIN64_TRUE@ @HAVE_ARM64_FALSE@ OutFile ..\vireo-${PRODUCT_VERSION}-win64.exe
+@HAVE_WIN64_TRUE@ @HAVE_ARM64_TRUE@  OutFile ..\vireo-${PRODUCT_VERSION}-winarm64.exe
 InstallDir "$@PROGRAMFILES@\${PRODUCT_NAME}"
 !ifdef NSIS_LZMA_COMPRESS_WHOLE
 SetCompressor lzma
@@ -335,10 +337,6 @@ skip_uninstall32_cleanup:
   ; URLs
   WriteIniStr "$INSTDIR\${PRODUCT_GROUP} Website.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   FileWrite $UninstallLog "${PRODUCT_GROUP} Website.url$\r$\n"
-  WriteIniStr "$INSTDIR\Documentation.url" "InternetShortcut" "URL" "https://www.videolan.org/doc/"
-  FileWrite $UninstallLog "Documentation.url$\r$\n"
-  WriteIniStr "$INSTDIR\New_Skins.url" "InternetShortcut" "URL" "https://www.videolan.org/vlc/skins.php"
-  FileWrite $UninstallLog "New_Skins.url$\r$\n"
 
   !insertmacro CloseUninstallLog
 
@@ -373,12 +371,8 @@ ${MementoSection} "$(Name_Section02a)" SEC02a
   CreateDirectory "$SMPROGRAMS\${PRODUCT_GROUP}"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\${PRODUCT_NAME}.lnk" \
     "$INSTDIR\vireo.exe" ""
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\${PRODUCT_NAME} skinned.lnk" \
-    "$INSTDIR\vireo.exe" "-Iskins"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\Documentation.lnk" \
-    "$INSTDIR\Documentation.url"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\Release Notes.lnk" \
-    "$INSTDIR\NEWS.txt" ""
+    "$INSTDIR\RELEASE-NOTES.txt" ""
   CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\${PRODUCT_GROUP} Website.lnk" \
     "$INSTDIR\${PRODUCT_GROUP} Website.url"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_GROUP}\${PRODUCT_NAME} - reset preferences and cache files.lnk" \
@@ -602,7 +596,7 @@ WinOk:
   ${If} $PreviousVersion == ""
     StrCpy $PerformUpdate 0
   ${Else}
-    Push "${VERSION}"
+    Push "${PRODUCT_VERSION}"
     Push $PreviousVersion
     Call VersionCompare
 
@@ -776,7 +770,7 @@ FunctionEnd
 Section -Post
   WriteUninstaller "$INSTDIR\uninstall.exe"
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "InstallDir" $INSTDIR
-  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "Version" "${VERSION}"
+  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "Version" "${PRODUCT_VERSION}"
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\vireo.exe"
 
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \

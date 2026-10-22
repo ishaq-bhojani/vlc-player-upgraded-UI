@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Vireo Einstellungen und Cache-Dateien löschen
 ${LangFileString} ShellAssociation_Play "Wiedergabe"
 ${LangFileString} ContextMenuEntry_PlayWith "Mit Vireo wiedergeben"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Zur Vireo Wiedergabeliste hinzufügen"
-${LangFileString} Link_VisitWebsite "Besuchen Sie die VideoLAN Vireo Webseite"
+${LangFileString} Link_VisitWebsite "Besuchen Sie die Vireo Webseite"
 ${LangFileString} Name_InstTypeRecommended "Empfohlen"
 ${LangFileString} Name_InstTypeMinimum "Minimal"
 ${LangFileString} Name_InstTypeFull "Voll"

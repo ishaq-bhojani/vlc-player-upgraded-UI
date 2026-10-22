@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Poistaa Vireo-mediatoistimen asetukset ja väl
 ${LangFileString} ShellAssociation_Play "Toista"
 ${LangFileString} ContextMenuEntry_PlayWith "Toista Vireo-mediatoistimella"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Lisää Vireo-mediatoistimen soittolistaan"
-${LangFileString} Link_VisitWebsite "Vieraile VideoLAN Vireo-mediatoistimen kotisivuilla"
+${LangFileString} Link_VisitWebsite "Vieraile Vireo-mediatoistimen kotisivuilla"
 ${LangFileString} Name_InstTypeRecommended "Suositeltava"
 ${LangFileString} Name_InstTypeMinimum "Vähintään"
 ${LangFileString} Name_InstTypeFull "Täysi"

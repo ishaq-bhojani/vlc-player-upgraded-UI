@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Vireo 미디어 플레이어 환경설정과 �
 ${LangFileString} ShellAssociation_Play "재생"
 ${LangFileString} ContextMenuEntry_PlayWith "Vireo 로 재생하기"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Vireo의 재생목록에 추가하기"
-${LangFileString} Link_VisitWebsite "VideoLAN Vireo 웹사이트에 방문하기"
+${LangFileString} Link_VisitWebsite "Vireo 웹사이트에 방문하기"
 ${LangFileString} Name_InstTypeRecommended "추천"
 ${LangFileString} Name_InstTypeMinimum "최소"
 ${LangFileString} Name_InstTypeFull "전체"

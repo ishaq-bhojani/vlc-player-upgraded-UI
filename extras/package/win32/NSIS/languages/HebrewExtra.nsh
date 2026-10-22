@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "מחיקת ההעדפות וקובצי המט�
 ${LangFileString} ShellAssociation_Play "נגינה"
 ${LangFileString} ContextMenuEntry_PlayWith "נגינה עם נגן המדיה Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "הוספה לרשימת ההשמעה של נגן המדיה Vireo"
-${LangFileString} Link_VisitWebsite "ביקור באתר של נגן המדיה Vireo מבית VideoLAN"
+${LangFileString} Link_VisitWebsite "ביקור באתר של נגן המדיה Vireo"
 ${LangFileString} Name_InstTypeRecommended "מומלצת"
 ${LangFileString} Name_InstTypeMinimum "מזערית"
 ${LangFileString} Name_InstTypeFull "מלאה"

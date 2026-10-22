@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Dzēsīs Vireo multivides atskaņotāja iestat
 ${LangFileString} ShellAssociation_Play "Atskaņot"
 ${LangFileString} ContextMenuEntry_PlayWith "Atskaņot ar Vireo mediju lasītāju"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Pievienot Vireo multivides atskaņotāja atskaņošanas sarakstu"
-${LangFileString} Link_VisitWebsite "Apmeklē VideoLAN Vireo multivides atskaņotāja Mājaslapu"
+${LangFileString} Link_VisitWebsite "Apmeklē Vireo multivides atskaņotāja Mājaslapu"
 ${LangFileString} Name_InstTypeRecommended "Ieteikts"
 ${LangFileString} Name_InstTypeMinimum "Minimums"
 ${LangFileString} Name_InstTypeFull "Pilns"

@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Briše postavljanja Vireo medijskog izvođača
 ${LangFileString} ShellAssociation_Play "Produciraj"
 ${LangFileString} ContextMenuEntry_PlayWith "Produciraj sa Vireo medijskim izvođačom"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Dodaj na listu izvođenja Vireo medijskog izvođača"
-${LangFileString} Link_VisitWebsite "Posjetite Web Stranicu VideoLAN Vireo medijskog izvođača"
+${LangFileString} Link_VisitWebsite "Posjetite Web Stranicu Vireo medijskog izvođača"
 ${LangFileString} Name_InstTypeRecommended "Preporučeno"
 ${LangFileString} Name_InstTypeMinimum "Minimalno"
 ${LangFileString} Name_InstTypeFull "Komplet"

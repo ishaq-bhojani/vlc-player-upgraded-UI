@@ -19,7 +19,9 @@
     IntOp $0 $0 + 1
     ReadRegStr $2 HKU "$1\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" AppData
     StrCmp $2 "" "${Index}-Loop"
-    RMDir /r "$2\vlc"
+    ; Vireo: only its own per-user folder (meson option redesign_user_dir), never a stock VLC's %APPDATA%\vlc
+    RMDir /r "$2\${USER_DIR_NAME}"
+    DeleteRegKey HKU "$1\Software\Vireo"   ; the interface language chosen in Preferences
     Goto "${Index}-Loop"
   "${Index}-End:"
   !undef Index

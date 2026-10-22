@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Удаляет медиаплеер Vireo и �
 ${LangFileString} ShellAssociation_Play "Воспроизвести"
 ${LangFileString} ContextMenuEntry_PlayWith "Воспроизвести в Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Добавить в плейлист Vireo"
-${LangFileString} Link_VisitWebsite "Посетить сайт VideoLAN медиаплеера Vireo"
+${LangFileString} Link_VisitWebsite "Посетить сайт медиаплеера Vireo"
 ${LangFileString} Name_InstTypeRecommended "Рекомендуемый"
 ${LangFileString} Name_InstTypeMinimum "Минимальный"
 ${LangFileString} Name_InstTypeFull "Полный"

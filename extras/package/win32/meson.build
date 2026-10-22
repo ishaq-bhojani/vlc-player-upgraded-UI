@@ -1,10 +1,12 @@
 # TODO handle msi packaging
 
-install_data('../../../AUTHORS',   rename : 'AUTHORS.txt', install_dir : '.')
-install_data('../../../COPYING',   rename : 'COPYING.txt', install_dir : '.')
-install_data('../../../NEWS',      rename : 'NEWS.txt',    install_dir : '.')
-install_data('../../../README.md', rename : 'README.txt',  install_dir : '.')
-install_data('../../../THANKS',    rename : 'THANKS.txt',  install_dir : '.')
+# Vireo: README.txt and RELEASE-NOTES.txt are Vireo's own (this directory); VLC's authors and
+# thanks files stay (GPL credit) under names that say whose they are; VLC's NEWS is not shipped.
+install_data('../../../COPYING',   rename : 'COPYING.txt',      install_dir : '.')
+install_data('README.txt',         install_dir : '.')
+install_data('RELEASE-NOTES.txt',  install_dir : '.')
+install_data('../../../AUTHORS',   rename : 'VLC-AUTHORS.txt',  install_dir : '.')
+install_data('../../../THANKS',    rename : 'VLC-THANKS.txt',    install_dir : '.')
 # Vireo: licence of the bundled Inter font; the installer picks up *.txt
 install_data('../../../modules/gui/qt/redesign/assets/fonts/OFL.txt', rename : 'Inter-OFL.txt', install_dir : '.')
 

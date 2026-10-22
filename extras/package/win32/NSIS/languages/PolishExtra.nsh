@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Usuwa ustawienia odtwarzacza Vireo i pamięci 
 ${LangFileString} ShellAssociation_Play "Odtwórz"
 ${LangFileString} ContextMenuEntry_PlayWith "Odtwórz w Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Dodaj do listy odtwarzania Vireo"
-${LangFileString} Link_VisitWebsite "Odwiedź witrynę VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "Odwiedź witrynę Vireo"
 ${LangFileString} Name_InstTypeRecommended "Zalecana"
 ${LangFileString} Name_InstTypeMinimum "Minimalna"
 ${LangFileString} Name_InstTypeFull "Pełna"

@@ -28,10 +28,15 @@ nsProcess_link_args = ['-static-libgcc']
 nsProcess_sources = files('nsProcess/nsProcess.c', 'nsProcess/nsis/pluginapi.c')
 nsProcess_src = []
 nsProcess_obj = []
+nsProcess_gcc32 = disabler()
 if host_machine.cpu_family() != 'x86'
     # nsProcess.dll needs to be a 32-bit DLL
     # with clang we can link a i686 DLL via -target i686-w64-mingw32
-    if cc.has_link_argument(['--target=i686-w64-mingw32'], required: nsis_required)
+    # Vireo: with gcc (the win64 Docker image) the i686 MinGW-w64 gcc builds and links the DLL itself
+    if not cc.has_link_argument(['--target=i686-w64-mingw32'], required: false)
+        nsProcess_gcc32 = find_program('i686-w64-mingw32-gcc', required: nsis_required)
+    endif
+    if cc.has_link_argument(['--target=i686-w64-mingw32'], required: false)
         nsProcess_link_args += '--target=i686-w64-mingw32'
 
         x86_compiler = generator(find_program('i686-w64-mingw32-gcc'),
@@ -45,16 +50,26 @@ else
     # for each architecture
     nsProcess_src = nsProcess_sources
 endif
-nsProcess = shared_library('nsProcess',
-                           nsProcess_src,
-                           c_args: nsProcess_cargs,
-                           link_args: nsProcess_link_args,
-                           objects: nsProcess_obj,
-                           vs_module_defs: 'nsProcess.def',
-                           name_prefix: '',
-                           link_language: 'c',  # avoid using nasm linker and miss the .dll.a
-                           install: true,
-                           install_dir: 'NSIS')
+if nsProcess_gcc32.found()
+    nsProcess = custom_target('nsProcess',
+                              input: [nsProcess_sources, files('nsProcess.def')],
+                              output: 'nsProcess.dll',
+                              command: [nsProcess_gcc32, '-shared', '-O2', nsProcess_cargs, nsProcess_link_args,
+                                        '-o', '@OUTPUT@', '@INPUT@'],
+                              install: true,
+                              install_dir: 'NSIS')
+else
+    nsProcess = shared_library('nsProcess',
+                               nsProcess_src,
+                               c_args: nsProcess_cargs,
+                               link_args: nsProcess_link_args,
+                               objects: nsProcess_obj,
+                               vs_module_defs: 'nsProcess.def',
+                               name_prefix: '',
+                               link_language: 'c',  # avoid using nasm linker and miss the .dll.a
+                               install: true,
+                               install_dir: 'NSIS')
+endif
 
 vlc_nsi = configure_file(
   input: 'vlc.win32.nsi.in',
@@ -98,7 +113,7 @@ if makensis.found()
     vlc_nsis = custom_target(
         command: [makensis, nsi_script_dir / 'vlc.win32.nsi'],
         input: vlc_nsi,
-        output: 'vireo-' + vlc_version + '-' + winstaller_suffix + '.exe', # real name but root build folder
+        output: 'vireo-' + get_option('redesign_release_version') + '-' + winstaller_suffix + '.exe', # real name but root build folder
         build_by_default: false,
         console: true,
         depends: nsProcess)

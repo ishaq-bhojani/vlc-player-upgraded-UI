@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "លុប​ចំណូល​ចិត្ត�
 ${LangFileString} ShellAssociation_Play "ចាក់"
 ${LangFileString} ContextMenuEntry_PlayWith "ចាក់​ជាមួយ​កម្មវិធី​ចាក់​មេឌៀ Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "បន្ថែម​ទៅ​បញ្ជី​ចាក់​កម្មវិធី​ចាក់​មេឌៀ​ Vireo"
-${LangFileString} Link_VisitWebsite "ទស្សនា​តំបន់​បណ្ដាញ​កម្មវិធី​ចាក់​មេឌៀ VideoLAN Vireo"
+${LangFileString} Link_VisitWebsite "ទស្សនា​តំបន់​បណ្ដាញ​កម្មវិធី​ចាក់​មេឌៀ Vireo"
 ${LangFileString} Name_InstTypeRecommended "បាន​ផ្ដល់​អនុសាសន៍"
 ${LangFileString} Name_InstTypeMinimum "អប្បបរមា"
 ${LangFileString} Name_InstTypeFull "ពេញ"

@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Raderar Vireo media players inställningar och
 ${LangFileString} ShellAssociation_Play "Spela upp"
 ${LangFileString} ContextMenuEntry_PlayWith "Spela upp i Vireo"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Lägg till i Vireo-listan"
-${LangFileString} Link_VisitWebsite "Besök VideoLANs webbsida för Vireo"
+${LangFileString} Link_VisitWebsite "Besök webbsidan för Vireo"
 ${LangFileString} Name_InstTypeRecommended "Rekommenderad"
 ${LangFileString} Name_InstTypeMinimum "Minimal"
 ${LangFileString} Name_InstTypeFull "Fullständig"

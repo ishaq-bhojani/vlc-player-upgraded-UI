@@ -27,7 +27,7 @@ ${LangFileString} Desc_Section92 "Vireoメディアプレイヤーの設定と�
 ${LangFileString} ShellAssociation_Play "再生"
 ${LangFileString} ContextMenuEntry_PlayWith "Vireoメディアプレイヤーで再生"
 ${LangFileString} ContextMenuEntry_AddToPlaylist "Vireoメディアプレイヤーのプレイリストに追加"
-${LangFileString} Link_VisitWebsite "VideoLAN Vireoメディアプレイヤーのウェブサイトを訪問"
+${LangFileString} Link_VisitWebsite "Vireoメディアプレイヤーのウェブサイトを訪問"
 ${LangFileString} Name_InstTypeRecommended "推奨"
 ${LangFileString} Name_InstTypeMinimum "最小"
 ${LangFileString} Name_InstTypeFull "すべて"
