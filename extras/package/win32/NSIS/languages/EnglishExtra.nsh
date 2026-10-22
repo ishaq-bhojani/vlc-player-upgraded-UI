@@ -63,6 +63,7 @@ ${LangFileString} Detail_CheckProcesses "Checking processes..."
 ${LangFileString} MessageBox_VLCRunning "Vireo appears to be running and will now be closed."
 ${LangFileString} MessageBox_VLCUnableToClose "This installer was unable to close Vireo, please do it manually."
 ${LangFileString} MessageBox_InstallAborted "Installation aborted!"
+${LangFileString} MessageBox_StockVLCFolder "This folder contains VLC media player. Vireo must not be installed over it. Please choose another folder."
 
 ${LangFileString} Reinstall_Headline "Already Installed"
 ${LangFileString} Reinstall_HeadlineInstall "Choose how you want to install Vireo."

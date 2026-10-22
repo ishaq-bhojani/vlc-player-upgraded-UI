@@ -9,6 +9,10 @@ VideoLAN.
 Vireo can be installed next to VLC media player. It has its own program
 folder, its own settings (%APPDATA%\vireo) and its own file-type registrations,
 and it never reads, changes or removes the settings of a VLC installation.
+One thing is shared: the recommended installation includes "File type
+associations", which makes Vireo the default program of those file types (VLC's
+own entries stay; the installer remembers the previous default and restores it
+when Vireo is removed). Untick that option to keep VLC as it is.
 
 Project and support
   https://github.com/ishaq-bhojani/vlc-player-upgraded-UI

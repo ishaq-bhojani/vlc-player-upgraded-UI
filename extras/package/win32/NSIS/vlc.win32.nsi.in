@@ -8,6 +8,8 @@
 !define VERSION @VERSION@
 ; Vireo's release version: Apps & Features, the installer file name and the upgrade check (VERSION above is VLC's engine version)
 !define PRODUCT_VERSION "@REDESIGN_RELEASE_VERSION@"
+; what the upgrade check stores and compares: release version.build number (the N of the updater's 4.0.0.N)
+!define PRODUCT_VERSION_FULL "@REDESIGN_RELEASE_VERSION@.@REDESIGN_BUILD_NUMBER@"
 !define PRODUCT_GROUP "Vireo"
 !define PRODUCT_PUBLISHER "Vireo contributors"
 !define PRODUCT_WEB_SITE "https://github.com/ishaq-bhojani/vlc-player-upgraded-UI"
@@ -89,7 +91,8 @@ RequestExecutionLevel admin
   !define MUI_UNICON "vireo.ico"
   !define MUI_COMPONENTSPAGE_SMALLDESC
 
-  ; Banner (welcome and finish page) for installer
+  ; Banner (welcome and finish page) for installer: the 100% panel, the fallback; the SHOW
+  ; callbacks (helpers\vireo_panels.nsh) swap in the panel of the display scaling
   !define MUI_WELCOMEFINISHPAGE_BITMAP "NSIS/vireo_branding.bmp"
   ; Banner for uninstaller
   !define MUI_UNWELCOMEFINISHPAGE_BITMAP "NSIS/vireo_branding.bmp"
@@ -97,6 +100,7 @@ RequestExecutionLevel admin
 ; Installer pages
   ; Welcome page
     !define MUI_PAGE_CUSTOMFUNCTION_PRE PageFastUpdatePre
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW VireoWelcomeShow
     !define MUI_WELCOMEPAGE_TITLE_3LINES
     !insertmacro MUI_PAGE_WELCOME
   ; Optional update page
@@ -111,11 +115,13 @@ RequestExecutionLevel admin
     !insertmacro MUI_PAGE_COMPONENTS
   ; Directory page
     !define MUI_PAGE_CUSTOMFUNCTION_PRE PageDirectoryPre
+    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE PageDirectoryLeave
     !insertmacro MUI_PAGE_DIRECTORY
   ; Instfiles page
     !insertmacro MUI_PAGE_INSTFILES
   ; Finish page
     !define MUI_PAGE_CUSTOMFUNCTION_PRE PageFastUpdatePre
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW VireoFinishShow
     !define MUI_FINISHPAGE_RUN
     !define MUI_FINISHPAGE_RUN_FUNCTION AppExecAs
     !define MUI_FINISHPAGE_LINK "$(Link_VisitWebsite)"
@@ -127,6 +133,7 @@ RequestExecutionLevel admin
     !insertmacro MUI_UNPAGE_CONFIRM
     !insertmacro MUI_UNPAGE_COMPONENTS
     !insertmacro MUI_UNPAGE_INSTFILES
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.VireoFinishShow
     !insertmacro MUI_UNPAGE_FINISH
 
   !addincludedir "languages"
@@ -250,6 +257,7 @@ RequestExecutionLevel admin
 !include helpers\extensions.nsh
 !include helpers\install.nsh
 !include helpers\utils.nsh
+!include helpers\vireo_panels.nsh
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ; Installer sections ;
@@ -549,6 +557,8 @@ ${MementoSectionDone}
 ;;; Start function
 Function .onInit
 
+  !insertmacro VIREO_EXTRACT_PANELS
+
 @HAVE_WIN64_TRUE@ SetRegView 64
 
 ${MementoSectionRestore}
@@ -596,7 +606,7 @@ WinOk:
   ${If} $PreviousVersion == ""
     StrCpy $PerformUpdate 0
   ${Else}
-    Push "${PRODUCT_VERSION}"
+    Push "${PRODUCT_VERSION_FULL}"
     Push $PreviousVersion
     Call VersionCompare
 
@@ -762,6 +772,15 @@ Function PageDirectoryPre
   ${EndIf}
 FunctionEnd
 
+; Vireo: never install over a stock VLC (vlc.exe without vireo.exe in the chosen folder)
+Function PageDirectoryLeave
+  ${If} ${FileExists} "$INSTDIR\vlc.exe"
+  ${AndIfNot} ${FileExists} "$INSTDIR\vireo.exe"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "$(MessageBox_StockVLCFolder)"
+    Abort
+  ${EndIf}
+FunctionEnd
+
 Function .OnInstSuccess
     ${MementoSectionSave}
 FunctionEnd
@@ -770,7 +789,7 @@ FunctionEnd
 Section -Post
   WriteUninstaller "$INSTDIR\uninstall.exe"
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "InstallDir" $INSTDIR
-  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "Version" "${PRODUCT_VERSION}"
+  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "Version" "${PRODUCT_VERSION_FULL}"
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\vireo.exe"
 
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
@@ -788,9 +807,9 @@ Section -Post
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
     "Publisher" "${PRODUCT_PUBLISHER}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
-    "VersionMajor"  "@VERSION_MAJOR@"
+    "VersionMajor"  "@REDESIGN_RELEASE_MAJOR@"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
-    "VersionMinor" "@VERSION_MINOR@"
+    "VersionMinor" "@REDESIGN_RELEASE_MINOR@"
 SectionEnd
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -887,6 +906,8 @@ SectionEnd
 !insertmacro MUI_UNFUNCTION_DESCRIPTION_END
 
 Function un.onInit
+
+  !insertmacro VIREO_EXTRACT_PANELS
 
 @HAVE_WIN64_TRUE@ SetRegView 64
 

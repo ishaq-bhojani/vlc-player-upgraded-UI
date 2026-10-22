@@ -33,7 +33,10 @@ Installation and your data
   - Installs to Program Files\Vireo and can be used next to VLC media player.
   - Settings, library and caches are kept in %APPDATA%\vireo. Vireo does not
     use, change or delete the settings of VLC media player.
-  - File-type associations are registered under Vireo's own names.
+  - File-type associations are registered under Vireo's own names. The
+    recommended installation includes them: Vireo becomes the default program
+    of those file types (the previous default is remembered and restored on
+    uninstall); untick "File type associations" to keep your current player.
 
 Known limitations
   - Windows 10 and 11, 64-bit only.

@@ -107,6 +107,7 @@ done
 # --- installer --------------------------------------------------------------
 # After the MinGW runtime DLLs are in vlc-win64/, because the NSIS script ships *.dll.
 if [ "${WANT_INSTALLER:-0}" = 1 ]; then
+    rm -f "$B"/vireo-*-win*.exe     # no installer of an older release version
     ninja -C "$B" package-win32-exe
     rm -rf "$B/installer-out"
     mkdir -p "$B/installer-out"

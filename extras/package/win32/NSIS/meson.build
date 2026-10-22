@@ -15,6 +15,11 @@ nsi_conf.set('PROGRAMFILES', have_win64 ? 'PROGRAMFILES64' : 'PROGRAMFILES')
 nsi_conf.set('HAVE_NLS_TRUE', nsi_conf.get('ENABLE_NLS', 0) == 1 ? '' : ';')
 # Vireo: display version of the installer (Apps & Features); the engine VERSION stays 4.0.0-dev style
 nsi_conf.set('REDESIGN_RELEASE_VERSION', get_option('redesign_release_version'))
+nsi_conf.set('REDESIGN_BUILD_NUMBER', get_option('redesign_build_number'))
+redesign_release_parts = get_option('redesign_release_version').split('.')
+assert(redesign_release_parts.length() == 3, 'redesign_release_version must be major.minor.patch')
+nsi_conf.set('REDESIGN_RELEASE_MAJOR', redesign_release_parts[0])
+nsi_conf.set('REDESIGN_RELEASE_MINOR', redesign_release_parts[1])
 
 nsProcess_cargs = ['-D_UNICODE=1', '-DUNICODE=1']
 if not have_win64
@@ -91,6 +96,8 @@ spad_nsi = configure_file(
 
 install_data('nsProcess.nsh',    install_dir : 'NSIS')
 install_data('vireo_branding.bmp', install_dir : 'NSIS')
+# Vireo: the same panel rendered for 125 to 200% display scaling (helpers/vireo_panels.nsh)
+install_data('vireo_branding_125.bmp', 'vireo_branding_150.bmp', 'vireo_branding_175.bmp', 'vireo_branding_200.bmp', install_dir : 'NSIS')
 install_subdir('languages',      install_dir : '.')
 install_subdir('helpers',        install_dir : '.')
 

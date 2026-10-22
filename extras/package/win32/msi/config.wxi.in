@@ -7,12 +7,11 @@
     <?define SupportURL = "https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/issues" ?>
     <?define UpdatesURL = "https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/releases" ?>
 
-    <?define VerMajor = "@VERSION_MAJOR@" ?>
-    <?define VerMinor = "@VERSION_MINOR@" ?>
-    <?define VerPatch = "@VERSION_REVISION@" ?>
-    <?define VerExtra = "@VERSION_EXTRA@" ?>
-    <?define Version = "$(var.VerMajor).$(var.VerMinor).$(var.VerPatch)" ?>
-    <?define VersionLong = "$(var.Version).$(var.VerExtra)" ?>
+    <!-- Vireo: ProductVersion is the release version plus the build number (meson options
+         redesign_release_version, redesign_build_number), e.g. 0.1.0.0, not VLC's engine version.
+         MajorUpgrade compares it, so it must only ever grow from one published MSI to the next. -->
+    <?define Version = "@REDESIGN_RELEASE_VERSION@" ?>
+    <?define VersionLong = "$(var.Version).@REDESIGN_BUILD_NUMBER@" ?>
 
     <?define VlcInstallPrefix = "@PREFIX_PATH@" ?>
 

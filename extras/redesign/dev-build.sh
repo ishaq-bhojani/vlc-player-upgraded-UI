@@ -39,7 +39,7 @@ for arg in "$@"; do
         --release) RELEASE=1 ;;
         --tests)   TESTS=1 ;;
         --installer) INSTALLER=1 ;;
-        -h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "dev-build.sh: unknown option '$arg'" >&2; exit 2 ;;
     esac
 done
@@ -79,7 +79,8 @@ docker run --rm --user root -v "$VOLUME":/build "$IMAGE" \
 echo "==> Building in $IMAGE (volume: $VOLUME, flags: $BUILD_FLAGS)"
 docker run --rm \
     -e BUILD_FLAGS="$BUILD_FLAGS" \
-    -e WANT_TESTS="$TESTS"     -e WANT_INSTALLER="$INSTALLER" \
+    -e WANT_TESTS="$TESTS" \
+    -e WANT_INSTALLER="$INSTALLER" \
     -e PINNED_CONTRIB_SHA="$PINNED_CONTRIB_SHA" \
     -e VLC_PREBUILT_CONTRIBS_URL="${VLC_PREBUILT_CONTRIBS_URL:-}" \
     -v "$VOLUME":/build \
@@ -102,8 +103,11 @@ if [ "$INSTALLER" = 1 ]; then
     echo "==> Copying the installer to $OUT/installer"
     rm -rf "$OUT/installer"
     mkdir -p "$OUT/installer"
-    docker run --rm -v "$VOLUME":/build:ro "$IMAGE"         tar -C "/build/$ARCH_DIR" -cf - installer-out         | tar -C "$OUT/installer" --strip-components=1 -xf -
-    ls "$OUT"/installer/vireo-*-win64.exe >/dev/null || { echo "installer missing from output" >&2; exit 1; }
+    docker run --rm -v "$VOLUME":/build:ro "$IMAGE" \
+        tar -C "/build/$ARCH_DIR" -cf - installer-out \
+        | tar -C "$OUT/installer" --strip-components=1 -xf -
+    [ "$(ls "$OUT"/installer/vireo-*-win64.exe 2>/dev/null | wc -l)" = 1 ] \
+        || { echo "expected exactly one installer in $OUT/installer" >&2; exit 1; }
     echo "==> Installer: $(ls "$OUT"/installer/vireo-*-win64.exe)"
 fi
 

@@ -36,6 +36,10 @@ wix_conf.set('BUILD_SKINS_TRUE', skins2_feasible ? '' : '#')
 wix_conf.set('HAVE_NLS_TRUE', wix_conf.get('ENABLE_NLS', 0) == 1 ? '' : '#')
 wix_conf.set('WINDOWS_ARCH', WIX_WINDOWS_ARCH)
 wix_conf.set('PREFIX_PATH', W_PREFIX)
+# Vireo: ProductVersion of the MSI (config.wxi.in)
+assert(get_option('redesign_release_version').split('.').length() == 3, 'redesign_release_version must be major.minor.patch')
+wix_conf.set('REDESIGN_RELEASE_VERSION', get_option('redesign_release_version'))
+wix_conf.set('REDESIGN_BUILD_NUMBER', get_option('redesign_build_number'))
 
 vlc_wix = configure_file(
     input: 'config.wxi.in',

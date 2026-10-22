@@ -94,6 +94,7 @@ builds everything as above with NSIS enabled and copies the installer to
 The 32-bit `nsProcess.dll` helper that the script needs is built with the image's i686 MinGW-w64 gcc
 (`extras/package/win32/NSIS/meson.build`); upstream only supports a clang that links `--target=i686-w64-mingw32`.
 `--installer` and `--tests` can be combined; a build without `--installer` has NSIS off.
+The installer's upgrade check and its MSI `ProductVersion` are `<release version>.<redesign_build_number>` (0.1.0.0 for a development build), so two published builds of one release version need different build numbers.
 
 What the installer contains and where it puts things: `docs/redesign/branding.md` (section Windows
 packaging). Wine in the image is 32-bit only and the installer exits with an error there (not investigated), so it
@@ -101,7 +102,7 @@ could not be tried in the container: install it on a Windows machine or VM. The 
 so it is not built.
 
 The meson option `redesign_user_dir` (default `vireo`) is the per-user folder under `%APPDATA%`, also used by the
-installer's "Delete preferences and cache".
+installer's "Delete preferences and cache"; meson refuses an empty value, `vlc` and path separators there (that section deletes the folder).
 
 ## Fork options and cached values
 
