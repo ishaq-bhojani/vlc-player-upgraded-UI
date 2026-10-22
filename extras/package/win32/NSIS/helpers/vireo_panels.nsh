@@ -12,6 +12,15 @@
 ; control. The 100% file stays MUI_WELCOMEFINISHPAGE_BITMAP: it is the fallback if anything
 ; below fails.
 
+; Reserve files for solid compression: put the panels at the head of the data block, so
+; extracting them in .onInit does not decompress the whole payload before the first page.
+; (This file is included before the first Section, which ReserveFile requires.)
+ReserveFile "NSIS\vireo_branding.bmp"
+ReserveFile "NSIS\vireo_branding_125.bmp"
+ReserveFile "NSIS\vireo_branding_150.bmp"
+ReserveFile "NSIS\vireo_branding_175.bmp"
+ReserveFile "NSIS\vireo_branding_200.bmp"
+
 ; Extract the five panels (call from .onInit and from un.onInit).
 !macro VIREO_EXTRACT_PANELS
   InitPluginsDir
