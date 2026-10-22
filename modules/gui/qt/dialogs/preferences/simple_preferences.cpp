@@ -32,6 +32,7 @@
 #include "maininterface/mainctx.hpp"
 #include "util/accessible_compat_attached.hpp"
 #include "util/color_scheme_model.hpp"
+#include "redesign/cpp/redesign.hpp"
 #include "util/proxycolumnmodel.hpp"
 #include "medialibrary/mlrecentmediamodel.hpp"
 
@@ -781,6 +782,18 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
             connect( ui.stylesCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
                      this, &SPrefsPanel::changeStyle );
 
+            /* The redesign has a single layout: no Modern/Classic choice. Its
+               layout options (menu bar, title bar, pinned controls) are hidden
+               and never registered, so saving does not write them. */
+            const bool redesignLayout = redesign::isEnabled( VLC_OBJECT( p_intf ) );
+            if( redesignLayout )
+            {
+                ui.LooknfeelSelection->hide();
+                ui.menuBarCheck->hide();
+                ui.titleBarCheckBox->hide();
+                ui.pinVideoControlsCheckbox->hide();
+            }
+
             radioGroup = new QButtonGroup(this);
             radioGroup->addButton( ui.modernButton, 0 );
             radioGroup->addButton( ui.classicButton, 1 );
@@ -827,12 +840,14 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
                                  ui.fileSkin, ui.skinBrowse );
 
             configBool( "metadata-network-access", ui.MetadataNetworkAccessMode );
-            configBool( "qt-menubar", ui.menuBarCheck );
+            if( !redesignLayout )
+            {
+                configBool( "qt-menubar", ui.menuBarCheck );
 
-
-            configBool( "qt-pin-controls", ui.pinVideoControlsCheckbox );
-            m_resetters.push_back(std::make_unique<PropertyResetter>(ui.pinVideoControlsCheckbox, "checked"));
-            QObject::connect( ui.pinVideoControlsCheckbox, &QtCheckboxChanged, p_intf->p_mi, &MainCtx::setPinVideoControls );
+                configBool( "qt-pin-controls", ui.pinVideoControlsCheckbox );
+                m_resetters.push_back(std::make_unique<PropertyResetter>(ui.pinVideoControlsCheckbox, "checked"));
+                QObject::connect( ui.pinVideoControlsCheckbox, &QtCheckboxChanged, p_intf->p_mi, &MainCtx::setPinVideoControls );
+            }
 
             ui.colorSchemeComboBox->setModel( p_intf->p_mi->getColorScheme() );
             ui.colorSchemeComboBox->setCurrentText( p_intf->p_mi->getColorScheme()->currentText() );
@@ -874,7 +889,8 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
 
             QObject::connect( ui.toolbarEditor, &QAbstractButton::clicked, provider, &DialogsProvider::showToolbarEditorDialog);
 
-            configBool( "qt-titlebar", ui.titleBarCheckBox );
+            if( !redesignLayout )
+                configBool( "qt-titlebar", ui.titleBarCheckBox );
 
             /* UPDATE options */
 #ifdef UPDATE_CHECK
