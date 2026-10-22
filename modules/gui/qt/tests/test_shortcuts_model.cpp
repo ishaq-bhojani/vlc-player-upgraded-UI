@@ -409,6 +409,18 @@ private slots:
         QCOMPARE(hotkeyOf("key-pause"), QString("Ctrl+Alt+Shift+F11"));
     }
 
+    void onboardingActionsExist()
+    {
+        // the actions of the essentials of OnboardingSteps.qml are real actions of the core
+        for (const char* action : {"key-play-pause", "key-jump-short", "key-jump+short", "key-vol-up",
+                                   "key-vol-down", "key-toggle-fullscreen", "key-subtitle-track",
+                                   "key-intf-show", "key-set-bookmark1"})
+            QVERIFY2(rowOf(action) >= 0, action);
+        // the 10 second jumps are the short ones (the medium ones jump a minute)
+        QVERIFY(!hotkeyOf("key-jump-short").isEmpty());
+        QVERIFY(!hotkeyOf("key-jump+short").isEmpty());
+    }
+
     void hotkeyForReadsLive()
     {
         // the onboarding card reads its keys by action, live

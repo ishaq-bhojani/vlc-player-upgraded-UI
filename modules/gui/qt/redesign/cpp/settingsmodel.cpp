@@ -44,7 +44,6 @@ namespace
 //! the keys marked `restart` in docs/redesign/settings-map.md (column notes): read only at
 //! startup or when a module is created. Change both together.
 const char* const restartKeys[] = {
-    "qt-accent-color",
     "file-logging",
     "logfile",
     "log-verbose",

@@ -459,7 +459,7 @@ void MainCtx::loadPrefs(const bool callSignals)
      * run can hold "Classic" there, and the redesign must not follow. Its shell
      * has no menu bar, unpinned controls, and on Windows the interface draws
      * the title bar. */
-    if (m_redesign)
+    if (!redesign::readsStockLayoutOptions(m_redesign))
     {
 #ifdef _WIN32
         m_windowTitlebar = false;
@@ -476,7 +476,7 @@ void MainCtx::loadPrefs(const bool callSignals)
 
     loadFromVLCOption(m_maxVolume, "qt-max-volume", &MainCtx::maxVolumeChanged);
 
-    if (!m_redesign)
+    if (redesign::readsStockLayoutOptions(m_redesign))
         loadFromVLCOption(m_pinVideoControls, "qt-pin-controls", &MainCtx::pinVideoControlsChanged);
 
     loadFromVLCOption(m_pinOpacity, "qt-fs-opacity", &MainCtx::pinOpacityChanged);

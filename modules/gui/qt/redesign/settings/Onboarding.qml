@@ -57,30 +57,61 @@ RedesignModalDialog {
         hasMediaLibrary: MainCtx.mediaLibraryAvailable
     }
 
+    //! the themes of the cards, drawn with their own palettes (not the one of the window)
+    readonly property SystemPalette lightPalette: SystemPalette {
+        objectName: "onboardingLightPalette"
+        source: ColorSchemeModel.Day
+        ctx: MainCtx
+    }
+
+    readonly property SystemPalette darkPalette: SystemPalette {
+        objectName: "onboardingDarkPalette"
+        source: ColorSchemeModel.Night
+        ctx: MainCtx
+    }
+
+    //! the card of the theme in use
+    readonly property string selectedKind: steps.kindFor(SettingsBridge.colorSchemes, SettingsBridge.colorSchemeIndex)
+
+    //! "qt-accent-color"
+    readonly property var accentSetting: RedesignSettings.item("qt-accent-color")
+
     //! "qt-privacy-ask": the setting that says the onboarding is still to be shown
     readonly property var askSetting: RedesignSettings.item("qt-privacy-ask")
 
-    // Signals
-
-    //! the onboarding was finished (or skipped): the preference is stored
-    signal finished()
+    // finish() ran
+    property bool _finished: false
 
     // Functions
 
     //! stores that the onboarding was seen and starts the scan of the media library
     function finish() {
+        if (_finished) // a double click on Finish, during the exit transition
+            return
+        _finished = true
         if (askSetting)
             askSetting.value = false
         if (MainCtx.mediaLibrary)
             MainCtx.mediaLibrary.reload()
         root.close()
-        finished()
     }
 
     //! "Space\tMedia Play Pause" -> "Space, Media Play Pause"
     function keysText(hotkey) {
         const keys = String(hotkey).split("\t").filter(key => key.length > 0)
         return keys.length > 0 ? keys.join(", ") : qsTr("Not set")
+    }
+
+    // Events
+
+    // the accent is live: the cards (their own palettes) read it again, like the shell does
+    Connections {
+        target: root.accentSetting
+
+        function onValueChanged() {
+            root.lightPalette.reloadAccent()
+            root.darkPalette.reloadAccent()
+        }
     }
 
     // Settings
@@ -120,10 +151,38 @@ RedesignModalDialog {
             wrapMode: Text.WordWrap
         }
 
-        ThemeRow {
+        // the three themes, each drawn as the window of the player
+        RowLayout {
             Layout.fillWidth: true
 
-            spec: ({ title: qsTr("Theme") })
+            spacing: RedesignStyle.spacingS
+
+            Accessible.role: Accessible.RadioButton
+            Accessible.name: qsTr("Theme")
+
+            Repeater {
+                model: root.steps.themeKinds
+
+                ThemePreviewCard {
+                    required property string modelData
+
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: VLCStyle.dp(150, VLCStyle.scale)
+
+                    kind: modelData
+                    text: modelData === "light" ? qsTr("Light")
+                                                : (modelData === "dark" ? qsTr("Dark") : qsTr("System"))
+                    selected: root.selectedKind === modelData
+                    lightPalette: root.lightPalette
+                    darkPalette: root.darkPalette
+
+                    onClicked: {
+                        const index = root.steps.schemeIndexFor(SettingsBridge.colorSchemes, modelData)
+                        if (index >= 0)
+                            SettingsBridge.colorSchemeIndex = index
+                    }
+                }
+            }
         }
 
         AccentRow {

@@ -27,10 +27,13 @@ import QtQml
  * is handled before the key reaches the hotkeys, so a hotkey on one of these keys may never fire.
  * The shortcuts page uses this list to warn, it does not forbid anything.
  *
- * Keep it in step with DialogHost.qml and GlobalShortcuts.qml.
+ * Keep it in step with DialogHost.qml and GlobalShortcuts.qml. An entry with `off: true` is a
+ * shortcut of GlobalShortcuts.qml that the shell turns off (RedesignInterface.qml): it stays in
+ * the list (test_shell_keys_sync wants every stock key listed) but the key is free, so
+ * reservedFor() does not report it.
  */
 QtObject {
-    // [{key, text}]: `key` in the notation of the hotkeys ("Ctrl+P"), `text` what the window does
+    // [{key, text, off?}]: `key` in the notation of the hotkeys ("Ctrl+P"), `text` what the window does
     readonly property var reserved: [
         {key: "Ctrl+P", text: qsTr("opens Settings")},
         {key: "Ctrl+L", text: qsTr("shows or hides the play queue")},
@@ -53,7 +56,7 @@ QtObject {
         {key: "Ctrl+H", text: qsTr("switches the minimal view")},
         {key: "Ctrl+Shift+W", text: qsTr("opens the VLM configuration")},
         {key: "F1", text: qsTr("opens the help")},
-        {key: "F10", text: qsTr("shows the menu bar")},
+        {key: "F10", text: qsTr("shows the menu bar"), off: true}, // the redesign has no menu bar
         {key: "F11", text: qsTr("switches the full screen of the interface")},
         {key: "Ctrl+=", text: qsTr("zooms the interface in")},
         {key: "Ctrl++", text: qsTr("zooms the interface in")},
@@ -89,7 +92,7 @@ QtObject {
             const wanted = normalize(key)
             if (wanted === "")
                 continue
-            const found = reserved.find(entry => normalize(entry.key) === wanted)
+            const found = reserved.find(entry => !entry.off && normalize(entry.key) === wanted)
             if (found)
                 return found.text
         }

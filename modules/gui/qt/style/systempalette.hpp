@@ -153,6 +153,9 @@ public:
     void classBegin() override { }
     void componentComplete() override;
 
+    //! Reads qt-accent-color again and rebuilds the palette (the redesign changes the accent live)
+    Q_INVOKABLE void reloadAccent();
+
 public slots:
     void setSource(ColorSchemeModel::ColorScheme source);
     void setCtx(MainCtx* ctx);
@@ -166,6 +169,7 @@ signals:
     void CSDMetricsChanged();
 
 private:
+    void loadAccent();
     void updatePalette();
 
     void makeLightPalette();

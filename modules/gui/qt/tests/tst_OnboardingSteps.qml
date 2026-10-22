@@ -104,12 +104,33 @@ TestCase {
         compare(model.currentStep, "done")
     }
 
+    // the model of the color scheme: the order of ColorSchemeModel (System, Day, Night)
+    readonly property var schemes: [{ kind: "system" }, { kind: "light" }, { kind: "dark" }]
+
+    // a card selects the row of its kind, and the row in use selects its card
+    function test_cardsMapToTheColorScheme() {
+        const model = createTemporaryObject(stepsComponent, testCase)
+        compare(model.themeKinds, ["system", "light", "dark"])
+        compare(model.schemeIndexFor(schemes, "system"), 0)
+        compare(model.schemeIndexFor(schemes, "light"), 1)
+        compare(model.schemeIndexFor(schemes, "dark"), 2)
+        compare(model.schemeIndexFor(schemes, "sepia"), -1)
+        for (let i = 0; i < schemes.length; ++i)
+            compare(model.kindFor(schemes, i), schemes[i].kind)
+        for (const kind of model.themeKinds)
+            compare(model.kindFor(schemes, model.schemeIndexFor(schemes, kind)), kind)
+        compare(model.kindFor(schemes, 7), "system")
+        compare(model.kindFor([], 0), "system")
+    }
+
     function test_essentialsAreActionsWithALabel() {
         const model = createTemporaryObject(stepsComponent, testCase)
-        verify(model.essentials.length >= 7)
-        for (const entry of model.essentials) {
-            verify(entry.action.startsWith("key-"), entry.action)
+        // the exact actions (test_qt_shortcuts_model checks that they exist): the 10 seconds
+        // jumps are the "short" ones, the "medium" ones jump a minute
+        compare(model.essentials.map(e => e.action), [
+            "key-play-pause", "key-jump-short", "key-jump+short", "key-vol-up", "key-vol-down",
+            "key-toggle-fullscreen", "key-subtitle-track", "key-intf-show", "key-set-bookmark1"])
+        for (const entry of model.essentials)
             verify(entry.label.length > 0, entry.action)
-        }
     }
 }

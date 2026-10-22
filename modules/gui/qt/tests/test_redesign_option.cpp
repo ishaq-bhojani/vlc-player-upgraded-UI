@@ -75,6 +75,13 @@ private slots:
         libvlc_release(vlc);
     }
 
+    void stockLayoutOptions()
+    {
+        // MainCtx::loadPrefs reads qt-menubar, qt-titlebar and qt-pin-controls only when this is true
+        QVERIFY(!redesign::readsStockLayoutOptions(true));
+        QVERIFY(redesign::readsStockLayoutOptions(false));
+    }
+
     void rootUrl()
     {
         QCOMPARE(redesign::rootQmlUrl(true),

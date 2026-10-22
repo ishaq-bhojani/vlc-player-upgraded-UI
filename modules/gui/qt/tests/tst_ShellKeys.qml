@@ -51,6 +51,12 @@ TestCase {
         compare(ShellKeys.reservedFor(""), "")
     }
 
+    // F10 (the menu bar) is turned off by the shell: the key is free for a hotkey
+    function test_turnedOffShortcutIsFree() {
+        compare(ShellKeys.reservedFor("F10"), "")
+        verify(ShellKeys.reservedFor("F11") !== "")
+    }
+
     // a value of several keys: any of them
     function test_severalKeys() {
         verify(ShellKeys.reservedFor("Space\tCtrl+P") !== "")

@@ -51,6 +51,13 @@ enum class FirstRun
 FirstRun firstRunFor(bool redesignEnabled);
 
 /**
+ * Whether the interface follows the layout options of the stock interface (qt-menubar,
+ * qt-titlebar, qt-pin-controls). The redesign does not: a profile shared with a stock run can
+ * hold "Classic" there, and the shell has its own layout.
+ */
+bool readsStockLayoutOptions(bool redesignEnabled);
+
+/**
  * URL of the root QML item of the interface: the redesign root window if
  * enabled, else the stock MainInterface.qml.
  */

@@ -52,17 +52,33 @@ QtObject {
     //! entry is the hotkey that shows or hides the controls.
     readonly property var essentials: [
         { action: "key-play-pause", label: qsTr("Play or pause") },
-        { action: "key-jump-medium", label: qsTr("Seek back 10 seconds") },
-        { action: "key-jump+medium", label: qsTr("Seek forward 10 seconds") },
+        { action: "key-jump-short", label: qsTr("Seek back 10 seconds") },
+        { action: "key-jump+short", label: qsTr("Seek forward 10 seconds") },
         { action: "key-vol-up", label: qsTr("Volume up") },
         { action: "key-vol-down", label: qsTr("Volume down") },
         { action: "key-toggle-fullscreen", label: qsTr("Full screen") },
         { action: "key-subtitle-track", label: qsTr("Next subtitle track") },
-        { action: "key-intf-show", label: qsTr("Show or hide the controls") },
+        { action: "key-intf-show", label: qsTr("Show or hide the controls (full screen)") },
         { action: "key-set-bookmark1", label: qsTr("Quick bookmark") }
     ]
 
+    //! the themes of the cards of the "theme" step, in order (the kinds of SettingsBridge.colorSchemes)
+    readonly property var themeKinds: ["system", "light", "dark"]
+
     // Functions
+
+    //! The row of the color scheme model (`schemes`: SettingsBridge.colorSchemes, [{kind}]) that a
+    //! card selects, -1 if the model has none of that kind.
+    function schemeIndexFor(schemes, kind) {
+        return schemes.findIndex(scheme => scheme.kind === kind)
+    }
+
+    //! The card ("system", "light" or "dark") of the scheme in use (`index`: the current row of the
+    //! color scheme model), "system" for an index out of range.
+    function kindFor(schemes, index) {
+        const scheme = schemes[index]
+        return scheme ? scheme.kind : "system"
+    }
 
     function next() {
         current = Math.min(current + 1, steps.length - 1)

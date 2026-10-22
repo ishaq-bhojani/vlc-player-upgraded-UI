@@ -165,6 +165,7 @@ qml_modules += {
         'settings/SettingsModal.qml',
         'settings/OnboardingSteps.qml',
         'settings/Onboarding.qml',
+        'settings/ThemePreviewCard.qml',
         'settings/pages/GeneralPage.qml',
         'settings/pages/InterfacePage.qml',
         'settings/pages/PrivacyPage.qml',

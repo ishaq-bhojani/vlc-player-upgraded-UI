@@ -32,6 +32,7 @@
 #include <vlc/vlc.h>
 #include <vlc_common.h>
 #include <vlc_configuration.h>
+#include <vlc_variables.h>
 #include <vlc_messages.h>
 #include <vlc_plugin.h>
 
@@ -405,9 +406,9 @@ private slots:
     void restartKeys()
     {
         for (const char* key : {"aout", "vout", "audio", "video", "qt-compositor", "lua",
-                                "media-library", "qt-accent-color", "file-logging", "logfile"})
+                                "media-library", "file-logging", "logfile"})
             QVERIFY2(SettingsModel::keyRequiresRestart(key), key);
-        for (const char* key : {"qt-pip-mode", "short-jump-size", "sub-autodetect-fuzzy",
+        for (const char* key : {"qt-pip-mode", "short-jump-size", "qt-accent-color", "sub-autodetect-fuzzy",
                                 "file-caching", "audio-replay-gain-preamp"})
             QVERIFY2(!SettingsModel::keyRequiresRestart(key), key);
     }
@@ -432,6 +433,17 @@ private slots:
         SettingItem* ask = m_model->item("qt-privacy-ask");
         QVERIFY(ask);
         ask->setValue(false);
+
+        // MainCtx::hasFirstrun and the live accent (SystemPalette::reloadAccent) read the
+        // options with var_Inherit*: they see a value written in the same session
+        vlc_object_t* obj = VLC_OBJECT(m_vlc->p_libvlc_int);
+        QVERIFY(!var_InheritBool(obj, "qt-privacy-ask"));
+        SettingItem* accent = m_model->item("qt-accent-color");
+        QVERIFY(accent);
+        accent->setValue("#2196f3");
+        char* inherited = var_InheritString(obj, "qt-accent-color");
+        QCOMPARE(QString::fromUtf8(inherited), QString("#2196f3"));
+        free(inherited);
 
         QFile saved(m_configFile);
         QVERIFY(saved.open(QIODevice::ReadOnly));

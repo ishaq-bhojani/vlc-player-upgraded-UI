@@ -40,6 +40,11 @@ FirstRun firstRunFor(bool redesignEnabled)
     return redesignEnabled ? FirstRun::Onboarding : FirstRun::Stock;
 }
 
+bool readsStockLayoutOptions(bool redesignEnabled)
+{
+    return !redesignEnabled;
+}
+
 QUrl rootQmlUrl(bool enabled)
 {
     return QUrl(enabled

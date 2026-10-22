@@ -26,7 +26,7 @@ import VLC.Redesign
  * @brief The accent row of the settings: the 9 swatches of Figma, the chosen one ringed.
  *
  * A pick is stored as "#rrggbb" in qt-accent-color (RedesignSettings.accentSwatches are written
- * that way). The accent is read once at startup: the row says so (Restart required).
+ * that way). The accent is live: RedesignInterface reloads the palette when the setting changes.
  */
 RowFrame {
     id: root
