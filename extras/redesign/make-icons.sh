@@ -6,9 +6,11 @@
 #
 #   share/icons/vireo.ico                                  exe, installer, shortcuts (10 sizes, 16..256)
 #   modules/gui/qt/redesign/assets/brand/png/vireo-N.png   Qt window, tray and About icons (16..256)
-#   extras/package/win32/NSIS/vireo_branding.bmp           NSIS welcome/finish panel (164 x 314)
+#   extras/package/win32/NSIS/vireo_branding.bmp           NSIS welcome/finish panel (164 x 314, 100%)
+#   extras/package/win32/NSIS/vireo_branding_{125,150,175,200}.bmp   the same panel rendered natively for
+#                                                          125/150/175/200% display scaling (205x393 ... 328x628)
 #   extras/package/win32/msi/vireo_bannrbmp.bmp            MSI dialog banner (494 x 58)
-#   build-win64/brand-preview/                             previews at 16/20/24/32/48/256 + sheet (git-ignored)
+#   build-win64/brand-preview/                             previews at 16/20/24/32/48/256 + sheet, nsis-panel(-150).png (git-ignored)
 #
 #   bash extras/redesign/make-icons.sh
 #
@@ -17,7 +19,8 @@
 # extras/redesign/make-icons.cpp and runs it; nothing else is touched.
 # Every file is written through a temporary name and renamed, then read back and validated
 # (PNG signature, decodes, expected size; every .ico entry present and equal to the image
-# rendered for it, 16-24 px from the small artwork; BMP header); the script exits non-zero otherwise.
+# rendered for it, 16-24 px from the small artwork; BMPs decoded again as B,G,R and a pixel of the mark
+# must read #D37918); the script exits non-zero otherwise.
 # Re-running on unchanged artwork changes no file.
 
 set -euo pipefail
@@ -41,5 +44,15 @@ for f in "$REPO"/modules/gui/qt/redesign/assets/brand/png/vireo-*.png; do
 done
 check extras/package/win32/NSIS/vireo_branding.bmp BM BMP
 check extras/package/win32/msi/vireo_bannrbmp.bmp BM BMP
+# Second, independent decoder (Python, from the BMP format): size and the colour of a pixel inside the mark.
+# The panel's mark pixel is the artwork point (140,128) of the icon drawn at (34,54) with size 96 on the 164 x 314 design.
+PY=python3; command -v python3 >/dev/null 2>&1 || PY=python
+bmpcheck() { ( cd "$REPO" && "$PY" extras/redesign/check_brand_bmp.py "$1" "$2" "$3" "$4" "$5" D37918 >/dev/null ) || { echo "make-icons.sh: $1 failed the BMP check" >&2; fail=1; }; }
+bmpcheck extras/package/win32/msi/vireo_bannrbmp.bmp 494 58 468 29
+for s in "100 164 314" "125 205 393" "150 246 471" "175 287 550" "200 328 628"; do
+    set -- $s
+    f=extras/package/win32/NSIS/vireo_branding_$1.bmp; [ "$1" = 100 ] && f=extras/package/win32/NSIS/vireo_branding.bmp
+    bmpcheck "$f" "$2" "$3" "$(( 8650 * $2 / 164 / 100 ))" "$(( 10200 * $3 / 314 / 100 ))"
+done
 [ "$(head -c 4 "$REPO/share/icons/vireo.ico" | od -An -tx1 | tr -d ' \n')" = "00000100" ] || { echo "make-icons.sh: share/icons/vireo.ico is not an icon" >&2; fail=1; }
 exit $fail

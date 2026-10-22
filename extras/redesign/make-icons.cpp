@@ -36,6 +36,10 @@ const int pngSizes[] = { 16, 24, 32, 48, 64, 128, 256 };
 const int smallMaxSize = 24;
 
 const QColor tileColor( 0x1B, 0x1B, 0x1B );
+const QColor markColor( 0xD3, 0x79, 0x18 );   // the play mark (vireo-icon.svg)
+
+// A point inside the mark in the 256 x 256 artwork (away from the dot and the edges).
+const QPointF markInArt( 140, 128 );
 
 QString root;
 
@@ -225,10 +229,12 @@ bool writeIco( const QString &rel, const std::vector<QImage> &images )
     return writeFile( rel, head + body, [&]( const QByteArray &d ) { return checkIco( d, images ); } );
 }
 
-// 24-bit bottom-up BMP, the form NSIS and WiX expect.
+// 24-bit bottom-up BMP, the form NSIS and WiX expect. The pixel order of a BMP is B, G, R
+// (not the R, G, B of QImage::Format_RGB888): writing the RGB bytes as they are swaps red
+// and blue (the orange mark #D37918 would show as #1879D3).
 QByteArray bmpBytes( const QImage &src )
 {
-    const QImage img = src.convertToFormat( QImage::Format_RGB888 );
+    const QImage img = src.convertToFormat( QImage::Format_RGB32 );
     const int w = img.width(), h = img.height();
     const int stride = ( w * 3 + 3 ) & ~3;
     const quint32 dataSize = quint32( stride * h );
@@ -240,19 +246,53 @@ QByteArray bmpBytes( const QImage &src )
     put32( b, 2835 ); put32( b, 2835 ); put32( b, 0 ); put32( b, 0 );
     for( int y = h - 1; y >= 0; --y )
     {
-        const uchar *line = img.constScanLine( y );
-        b.append( reinterpret_cast<const char *>( line ), w * 3 );
+        for( int x = 0; x < w; ++x )
+        {
+            const QRgb c = img.pixel( x, y );
+            b.append( char( qBlue( c ) ) );
+            b.append( char( qGreen( c ) ) );
+            b.append( char( qRed( c ) ) );
+        }
         b.append( QByteArray( stride - w * 3, 0 ) );
     }
     return b;
 }
 
-bool writeBmp( const QString &rel, const QImage &img )
+// Independent reader of a 24-bit BMP, written from the file format (not from the writer):
+// bottom-up rows, rows padded to 4 bytes, bytes of a pixel in the order B, G, R.
+bool decodeBmp( const QByteArray &d, QImage &out )
+{
+    if( !d.startsWith( "BM" ) || d.size() < 54 || get16( d, 28 ) != 24 || get32( d, 30 ) != 0 )
+        return false;
+    const int w = int( get32( d, 18 ) ), h = int( get32( d, 22 ) ), off = int( get32( d, 10 ) );
+    const int stride = ( w * 3 + 3 ) & ~3;
+    if( w <= 0 || h <= 0 || off + stride * h > d.size() )
+        return false;
+    out = QImage( w, h, QImage::Format_RGB32 );
+    for( int row = 0; row < h; ++row )
+        for( int x = 0; x < w; ++x )
+        {
+            const int o = off + row * stride + x * 3;   // file row 0 is the bottom line
+            out.setPixel( x, h - 1 - row, qRgb( quint8( d[o + 2] ), quint8( d[o + 1] ), quint8( d[o] ) ) );
+        }
+    return true;
+}
+
+// `mark` is a pixel that lies inside the orange mark; the decoded file must show exactly
+// the accent colour there (guards against the red/blue swap of the byte order).
+bool writeBmp( const QString &rel, const QImage &img, const QPoint &mark )
 {
     return writeFile( rel, bmpBytes( img ), [&]( const QByteArray &d ) {
-        const int stride = ( img.width() * 3 + 3 ) & ~3;
-        return d.startsWith( "BM" ) && get16( d, 28 ) == 24 && int( get32( d, 18 ) ) == img.width()
-            && int( get32( d, 22 ) ) == img.height() && d.size() == 54 + stride * img.height();
+        QImage back;
+        if( !decodeBmp( d, back ) || back.size() != img.size() || d.size() != 54 + ( ( img.width() * 3 + 3 ) & ~3 ) * img.height() )
+            return fail( rel + ": BMP header or size is wrong" );
+        if( back != img.convertToFormat( QImage::Format_RGB32 ) )
+            return fail( rel + ": decoded BMP differs from the rendered image" );
+        const QColor got( back.pixel( mark ) );
+        if( got != markColor )
+            return fail( rel + ": pixel " + QString::number( mark.x() ) + "," + QString::number( mark.y() )
+                         + " reads " + got.name() + ", expected the mark colour " + markColor.name() );
+        return true;
     } );
 }
 
@@ -264,13 +304,18 @@ QString interFamily()
     return fams.isEmpty() ? QString() : fams.first();
 }
 
-// Left panel of the NSIS welcome and finish pages (164 x 314).
-QImage nsisPanel( QSvgRenderer &icon, const QString &family )
+// Left panel of the NSIS welcome and finish pages. Designed on 164 x 314 (100% display scaling);
+// every size is rendered from the vector artwork at its own resolution, never resampled.
+struct PanelSize { int percent, w, h; };
+const PanelSize panelSizes[] = { { 100, 164, 314 }, { 125, 205, 393 }, { 150, 246, 471 }, { 175, 287, 550 }, { 200, 328, 628 } };
+
+QImage nsisPanel( QSvgRenderer &icon, const QString &family, int pw = 164, int ph = 314 )
 {
-    QImage img( 164, 314, QImage::Format_RGB32 );
+    QImage img( pw, ph, QImage::Format_RGB32 );
     img.fill( tileColor );
     QPainter p( &img );
     p.setRenderHints( QPainter::Antialiasing | QPainter::SmoothPixmapTransform | QPainter::TextAntialiasing );
+    p.scale( pw / 164.0, ph / 314.0 );
     icon.render( &p, QRectF( 34, 54, 96, 96 ) );
     QFont f( family.isEmpty() ? QStringLiteral( "sans-serif" ) : family );
     f.setPixelSize( 30 );
@@ -295,6 +340,16 @@ QImage msiBanner( QSvgRenderer &icon )
     p.setRenderHints( QPainter::Antialiasing | QPainter::SmoothPixmapTransform );
     icon.render( &p, QRectF( 494 - 54, 3, 52, 52 ) );
     return img;
+}
+
+// Pixel of the mark in the panel of a given size / in the banner.
+QPoint panelMark( int pw, int ph )
+{
+    return QPoint( int( ( 34 + markInArt.x() * 96 / 256 ) * pw / 164.0 ), int( ( 54 + markInArt.y() * 96 / 256 ) * ph / 314.0 ) );
+}
+QPoint bannerMark()
+{
+    return QPoint( int( 494 - 54 + markInArt.x() * 52 / 256 ), int( 3 + markInArt.y() * 52 / 256 ) );
 }
 
 } // namespace
@@ -342,8 +397,14 @@ int main( int argc, char **argv )
     const QString family = interFamily();
     if( family.isEmpty() )
         ok &= fail( "Inter-SemiBold.ttf not found" );
-    ok &= writeBmp( "extras/package/win32/NSIS/vireo_branding.bmp", nsisPanel( *icon, family ) );
-    ok &= writeBmp( "extras/package/win32/msi/vireo_bannrbmp.bmp", msiBanner( *icon ) );
+    for( const PanelSize &ps : panelSizes )
+    {
+        // 100% keeps the name the NSIS script uses as the fallback (MUI_WELCOMEFINISHPAGE_BITMAP)
+        const QString name = ps.percent == 100 ? QStringLiteral( "vireo_branding.bmp" )
+                                               : QStringLiteral( "vireo_branding_%1.bmp" ).arg( ps.percent );
+        ok &= writeBmp( "extras/package/win32/NSIS/" + name, nsisPanel( *icon, family, ps.w, ps.h ), panelMark( ps.w, ps.h ) );
+    }
+    ok &= writeBmp( "extras/package/win32/msi/vireo_bannrbmp.bmp", msiBanner( *icon ), bannerMark() );
 
     // Previews for the owner to check (not committed): the sizes that matter, and a sheet
     // that shows each of them enlarged on a light and a dark background.
@@ -373,6 +434,7 @@ int main( int argc, char **argv )
     sp.end();
     sheet.save( preview + "/vireo-sheet.png" );
     nsisPanel( *icon, family ).save( preview + "/nsis-panel.png" );
+    nsisPanel( *icon, family, 246, 471 ).save( preview + "/nsis-panel-150.png" );
     msiBanner( *icon ).save( preview + "/msi-banner.png" );
 
     delete icon;
