@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (C) 2026 VLC Reborn contributors
+ * Copyright (C) 2026 Vireo contributors
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *

@@ -69,6 +69,9 @@ EXCLUDED=(
     # prebuilt win64 Qt contrib does not ship it (upstream runs QML tests on a
     # native Linux job only). Covers all qml_tests entries (tst_FSM, tst_MediaText, tst_ReplayLogic).
     "qml_test.exe|Qt6QuickTest is not part of the win64 Qt contrib"
+    # Uses POSIX mkdtemp(), which mingw-w64 lacks, so it does not compile for Windows;
+    # the update channel is checked by linux-tests.sh (it needs libgcrypt and ELF anyway).
+    "test_qt_update_channel.exe|uses POSIX mkdtemp, covered by linux-tests.sh"
 )
 
 [ -d "$TESTS_DIR" ] || { echo "run-tests.sh: $TESTS_DIR not found; run extras/redesign/dev-build.sh --tests first" >&2; exit 2; }

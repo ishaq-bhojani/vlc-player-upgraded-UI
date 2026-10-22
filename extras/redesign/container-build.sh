@@ -109,6 +109,10 @@ import json, sys
 seen = []
 for t in json.load(sys.stdin):
     if any(s == "qt" or s.endswith(":qt") for s in t["suite"]):
+        # a test run by an interpreter (test_qt_update_channel_urls: python3) has
+        # no executable of the build tree to build or stage
+        if not t["cmd"][0].startswith("/build/"):
+            continue
         if t["cmd"][0] not in seen:
             seen.append(t["cmd"][0])
 print("\n".join(seen))')

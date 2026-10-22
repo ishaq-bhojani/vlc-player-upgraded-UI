@@ -29,6 +29,37 @@ linux_lock_configure_compile() {
         meson setup "$B" /vlc -Dextra_checks=true -Dqt=enabled
     fi
 
+    # --- cached fork options -------------------------------------------------
+    # meson keeps an option's value in the build directory, so a volume configured
+    # before a default of meson_options.txt changed (product name, release
+    # version, update URL) keeps the old value and the tests that check the
+    # default fail. These runners never set a redesign_* option themselves, so
+    # every cached redesign_* value is brought back to the default declared in
+    # meson_options.txt (the single source) before building.
+    python3 - "$B" /vlc/meson_options.txt <<'PY_EOF'
+import json, re, subprocess, sys
+
+build, opts = sys.argv[1], sys.argv[2]
+text = open(opts, encoding="utf-8").read()
+defaults = {}
+for m in re.finditer(r"option\('(redesign_\w+)',(.*?)\n\n", text, re.S):
+    v = re.search(r"value:\s*(?:'([^']*)'|(-?\d+))", m.group(2))
+    if v:
+        defaults[m.group(1)] = v.group(1) if v.group(1) is not None else v.group(2)
+cached = {o["name"]: o["value"]
+          for o in json.loads(subprocess.check_output(
+              ["meson", "introspect", "--buildoptions", build]))
+          if o["name"].startswith("redesign_")}
+args = ["-D%s=%s" % (k, d) for k, d in defaults.items()
+        if k in cached and str(cached[k]) != d]
+# an option added since the build directory was configured is picked up by
+# meson's own regeneration with its default, nothing to do for it here
+if args:
+    print("==> meson configure (cached fork options differ from meson_options.txt): "
+          + " ".join(args))
+    subprocess.check_call(["meson", "configure", build] + args)
+PY_EOF
+
     # --- build ---------------------------------------------------------------
     echo "==> meson compile"
     meson compile -C "$B"

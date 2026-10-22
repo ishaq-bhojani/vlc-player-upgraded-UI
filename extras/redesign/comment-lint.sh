@@ -71,7 +71,7 @@ if [ "${1:-}" = "--self-test" ]; then
 
     fixture clean_licence.qml pass <<'EOF'
 /*****************************************************************************
- * Copyright (C) 2026 VLC Reborn contributors
+ * Copyright (C) 2026 Vireo contributors
  *****************************************************************************/
 import QtQuick
 /**
@@ -160,7 +160,7 @@ EOF
 
     fixture lost_licence_close.qml fail <<'EOF'
 /*****************************************************************************
- * Copyright (C) 2026 VLC Reborn contributors
+ * Copyright (C) 2026 Vireo contributors
  *****************************************************************************
 import QtQuick
 /**

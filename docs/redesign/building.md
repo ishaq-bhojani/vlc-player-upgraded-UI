@@ -81,6 +81,29 @@ script):
 (`meson dist`, NSIS, MSI). That path has not been exercised here and is expected
 to need more work; use the default debugoptimized build for development.
 
+## Fork options and cached values
+
+The fork's meson options (`redesign_product_name`, `redesign_release_version`,
+`redesign_update_url`, `redesign_build_number`; defaults in `meson_options.txt`) are
+stored by meson in the build directory, so a build directory that was configured
+before a default changed keeps the old value.
+
+- `dev-build.sh` (win64): `build.sh` deletes `meson-private` and runs `meson setup`
+  again on every run, so the options always start from the defaults of
+  `meson_options.txt`. Pass a different value through `MCONFIGFLAGS`
+  (e.g. `-Dredesign_build_number=3`), never by editing the volume.
+- `linux-tests.sh` and `qml-smoke.sh` (native Linux, `linux-container-common.sh`):
+  the build directory is configured once and reused, so before every build the
+  script compares each cached `redesign_*` option with the default declared in
+  `meson_options.txt` (it parses that file, so there is one source) and runs
+  `meson configure -D...` for the ones that differ; the line `==> meson configure
+  (cached fork options differ ...)` is printed when it did. These runners never set
+  a `redesign_*` option themselves; to try a non-default value in the Linux tree run
+  `meson configure` by hand and expect the next run to put the default back.
+- The Docker volumes keep their old names (`vlc-reborn-build`,
+  `vlc-reborn-linux-build-<hash>`): renaming them would throw away the 25 GB of
+  contribs and objects they hold. They are internal and never shipped.
+
 ## Qt-plugin-only rebuild (fast iteration)
 
 UI work only touches `modules/gui/qt`, so rebuilding just the Qt plugin takes
