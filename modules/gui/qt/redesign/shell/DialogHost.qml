@@ -34,6 +34,7 @@ import VLC.Redesign
  *   addSubtitlesRequested(mode)   -> AddSubtitlesDialog on `mode` ("current", "playlist", "folder"
  *                                    or "" to let the dialog choose)
  *   keyboardShortcutsRequested()  -> KeyboardShortcutsDialog
+ *   onboardingRequested()         -> Onboarding (first run, MainCtx.requestRedesignOnboarding)
  *
  * The dialogs are based on RedesignModalDialog (a palette for what is in a popup); SettingsModal
  * is not a dialog but its popup has the same need and does it itself.
@@ -67,7 +68,7 @@ Item {
 
     //! a dialog is open (or still being closed)
     readonly property bool active: _networkStreamOpen || _newPlaylistOpen || _settingsOpen
-                                   || _addSubtitlesOpen || _shortcutsOpen
+                                   || _addSubtitlesOpen || _shortcutsOpen || _onboardingOpen
 
     // the media of the playlist being created
     property var _newPlaylistItems: []
@@ -83,6 +84,8 @@ Item {
     property bool _addSubtitlesLoaded: false
     property bool _shortcutsOpen: false
     property bool _shortcutsLoaded: false
+    property bool _onboardingOpen: false
+    property bool _onboardingLoaded: false
 
     // the mode the Add subtitles dialog opens on
     property string _addSubtitlesMode: ""
@@ -171,6 +174,16 @@ Item {
             _shortcutsLoaded = true // onLoaded shows it
     }
 
+    function openOnboarding() {
+        if (active)
+            return
+        _onboardingOpen = true
+        if (onboardingLoader.item)
+            _show(onboardingLoader.item)
+        else
+            _onboardingLoaded = true // onLoaded shows it
+    }
+
     function _show(dialog) {
         dialog.rootWindow = root.backdrop
         dialog.open()
@@ -203,6 +216,13 @@ Item {
         Qt.callLater(() => {
             if (!root._shortcutsOpen)
                 root._shortcutsLoaded = false
+        })
+    }
+
+    function _onboardingRelease() {
+        Qt.callLater(() => {
+            if (!root._onboardingOpen)
+                root._onboardingLoaded = false
         })
     }
 
@@ -241,6 +261,10 @@ Item {
 
         function onKeyboardShortcutsRequested() {
             root.openKeyboardShortcuts()
+        }
+
+        function onOnboardingRequested() {
+            root.openOnboarding()
         }
     }
 
@@ -371,6 +395,35 @@ Item {
         function onClosed() {
             root._shortcutsOpen = false
             root._shortcutsRelease()
+            root.closed()
+        }
+    }
+
+    // the folders step loads LibraryFolders.qml by name, only with a media library: this file
+    // names no type of the media library, so it loads with or without one
+    Loader {
+        id: onboardingLoader
+
+        active: root._onboardingLoaded
+
+        source: "Onboarding.qml"
+
+        onLoaded: root._show(item)
+
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                root._onboardingOpen = false
+                root._onboardingLoaded = false
+            }
+        }
+    }
+
+    Connections {
+        target: onboardingLoader.item
+
+        function onClosed() {
+            root._onboardingOpen = false
+            root._onboardingRelease()
             root.closed()
         }
     }

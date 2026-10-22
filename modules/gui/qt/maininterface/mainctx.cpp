@@ -276,8 +276,12 @@ MainCtx::MainCtx(qt_intf_t *_p_intf)
     if( var_InheritBool( p_intf, "qt-privacy-ask") )
     {
         //postpone dialog call, as composition might not be ready yet
-        QMetaObject::invokeMethod(this, [](){
-            THEDP->firstRunDialog();
+        QMetaObject::invokeMethod(this, [this](){
+            // the redesign has its own onboarding, never the QWidgets wizard
+            if (redesign::firstRunFor(m_redesign) == redesign::FirstRun::Onboarding)
+                emit requestRedesignOnboarding();
+            else
+                THEDP->firstRunDialog();
         }, Qt::QueuedConnection);
     }
     else if (m_medialib)
@@ -450,15 +454,30 @@ void MainCtx::loadPrefs(const bool callSignals)
         emit interfaceAlwaysOnTopChanged(b_interfaceOnTop);
     });
 
-    loadFromVLCOption(m_hasToolbarMenu, "qt-menubar", &MainCtx::hasToolbarMenuChanged);
+    /* The redesign does not read the layout options of the stock interface
+     * (qt-menubar, qt-titlebar, qt-pin-controls): a profile shared with a stock
+     * run can hold "Classic" there, and the redesign must not follow. Its shell
+     * has no menu bar, unpinned controls, and on Windows the interface draws
+     * the title bar. */
+    if (m_redesign)
+    {
+#ifdef _WIN32
+        m_windowTitlebar = false;
+#endif
+    }
+    else
+    {
+        loadFromVLCOption(m_hasToolbarMenu, "qt-menubar", &MainCtx::hasToolbarMenuChanged);
 
-    loadFromVLCOption(m_windowTitlebar, "qt-titlebar" , &MainCtx::useClientSideDecorationChanged);
+        loadFromVLCOption(m_windowTitlebar, "qt-titlebar" , &MainCtx::useClientSideDecorationChanged);
+    }
 
     loadFromVLCOption(m_smoothScroll, "qt-smooth-scrolling", &MainCtx::smoothScrollChanged);
 
     loadFromVLCOption(m_maxVolume, "qt-max-volume", &MainCtx::maxVolumeChanged);
 
-    loadFromVLCOption(m_pinVideoControls, "qt-pin-controls", &MainCtx::pinVideoControlsChanged);
+    if (!m_redesign)
+        loadFromVLCOption(m_pinVideoControls, "qt-pin-controls", &MainCtx::pinVideoControlsChanged);
 
     loadFromVLCOption(m_pinOpacity, "qt-fs-opacity", &MainCtx::pinOpacityChanged);
 
@@ -880,6 +899,8 @@ void MainCtx::onWindowClose( QWindow* )
 
 void MainCtx::toggleToolbarMenu()
 {
+    if (m_redesign) /* no menu bar in the redesign, and qt-menubar stays untouched */
+        return;
     setHasToolbarMenu(!m_hasToolbarMenu);
 }
 

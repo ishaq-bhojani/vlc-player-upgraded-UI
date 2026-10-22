@@ -418,8 +418,30 @@ private slots:
         SettingItem* ask = m_model->item("qt-privacy-ask");
         QVERIFY(ask);
         QCOMPARE(ask->type(), SettingItem::Bool);
+        // a fresh profile asks (the first run: the onboarding of the redesign)
+        QCOMPARE(ask->value(), QVariant(true));
+        QCOMPARE(cfgInt("qt-privacy-ask"), qlonglong(1));
         ask->setValue(false);
         QCOMPARE(cfgInt("qt-privacy-ask"), qlonglong(0));
+    }
+
+    void onboardingFinishPersists()
+    {
+        // Finish of the onboarding writes qt-privacy-ask = false through the item: it is
+        // saved by itself, so the next launch does not ask again
+        SettingItem* ask = m_model->item("qt-privacy-ask");
+        QVERIFY(ask);
+        ask->setValue(false);
+
+        QFile saved(m_configFile);
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        QVERIFY(saved.readAll().contains("\nqt-privacy-ask=0"));
+        saved.close();
+
+        stopVlc();
+        startVlc();
+        QCOMPARE(cfgInt("qt-privacy-ask"), qlonglong(0));
+        QCOMPARE(m_model->item("qt-privacy-ask")->value(), QVariant(false));
     }
 
     void subcategoryKeys()

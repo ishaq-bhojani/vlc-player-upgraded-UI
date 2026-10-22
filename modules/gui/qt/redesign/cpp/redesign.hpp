@@ -34,6 +34,23 @@ namespace redesign
 bool isEnabled(vlc_object_t* obj);
 
 /**
+ * What the first run (option "qt-privacy-ask") shows: the QWidgets wizard of
+ * the stock interface, or the onboarding of the redesign.
+ */
+enum class FirstRun
+{
+    Stock,
+    Onboarding,
+};
+
+/**
+ * The first run to show for the redesign being enabled or not. The wizard has
+ * a Modern/Classic layout page that makes no sense in the redesign, so the
+ * redesign never gets it.
+ */
+FirstRun firstRunFor(bool redesignEnabled);
+
+/**
  * URL of the root QML item of the interface: the redesign root window if
  * enabled, else the stock MainInterface.qml.
  */

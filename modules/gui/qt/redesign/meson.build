@@ -161,6 +161,8 @@ qml_modules += {
         'settings/ShortcutsPage.qml',
         'settings/SettingsSidebar.qml',
         'settings/SettingsModal.qml',
+        'settings/OnboardingSteps.qml',
+        'settings/Onboarding.qml',
         'settings/pages/GeneralPage.qml',
         'settings/pages/InterfacePage.qml',
         'settings/pages/PrivacyPage.qml',
@@ -255,4 +257,5 @@ qml_tests += {
     'tst_ShellKeys': files('../tests/tst_ShellKeys.qml'),
     'tst_WaveformMath': files('../tests/tst_WaveformMath.qml'),
     'tst_WaveformTrack': files('../tests/tst_WaveformTrack.qml'),
+    'tst_OnboardingSteps': files('../tests/tst_OnboardingSteps.qml'),
 }

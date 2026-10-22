@@ -116,6 +116,16 @@ QVariant ShortcutsModel::data(const QModelIndex& index, int role) const
     }
 }
 
+QString ShortcutsModel::hotkeyFor(const QString& actionKey) const
+{
+    for (const Action& action : m_actions)
+    {
+        if (action.key == actionKey)
+            return configValue(action.key);
+    }
+    return QString();
+}
+
 QHash<int, QByteArray> ShortcutsModel::roleNames() const
 {
     return {

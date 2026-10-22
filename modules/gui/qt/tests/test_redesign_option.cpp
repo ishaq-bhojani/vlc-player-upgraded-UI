@@ -60,6 +60,21 @@ private slots:
         libvlc_release(vlc);
     }
 
+    void firstRunByMode()
+    {
+        // the redesign shows its onboarding, never the QWidgets wizard (which has the
+        // Modern/Classic page); --no-qt-redesign keeps the wizard
+        QCOMPARE(redesign::firstRunFor(true), redesign::FirstRun::Onboarding);
+        QCOMPARE(redesign::firstRunFor(false), redesign::FirstRun::Stock);
+
+        const char* argv[] = {"--no-qt-redesign"};
+        libvlc_instance_t* vlc = libvlc_new(1, argv);
+        QVERIFY(vlc);
+        QCOMPARE(redesign::firstRunFor(redesign::isEnabled(VLC_OBJECT(vlc->p_libvlc_int))),
+                 redesign::FirstRun::Stock);
+        libvlc_release(vlc);
+    }
+
     void rootUrl()
     {
         QCOMPARE(redesign::rootQmlUrl(true),

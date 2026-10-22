@@ -409,6 +409,17 @@ private slots:
         QCOMPARE(hotkeyOf("key-pause"), QString("Ctrl+Alt+Shift+F11"));
     }
 
+    void hotkeyForReadsLive()
+    {
+        // the onboarding card reads its keys by action, live
+        QCOMPARE(m_model->hotkeyFor("key-play-pause"), hotkeyOf("key-play-pause"));
+        QVERIFY(!m_model->hotkeyFor("key-vol-up").isEmpty());
+        m_model->assign("key-vol-up", "Ctrl+Alt+Shift+F9", false);
+        QCOMPARE(m_model->hotkeyFor("key-vol-up"), QString("Ctrl+Alt+Shift+F9"));
+        QCOMPARE(m_model->hotkeyFor("no-such-action"), QString());
+        QCOMPARE(m_model->hotkeyFor("global-key-play-pause"), QString());
+    }
+
     void unknownActionIsIgnored()
     {
         QSignalSpy changed(m_model.get(), &QAbstractItemModel::dataChanged);

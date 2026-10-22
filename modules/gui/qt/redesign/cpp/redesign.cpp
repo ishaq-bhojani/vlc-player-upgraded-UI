@@ -35,6 +35,11 @@ bool isEnabled(vlc_object_t* obj)
     return var_InheritBool(obj, "qt-redesign");
 }
 
+FirstRun firstRunFor(bool redesignEnabled)
+{
+    return redesignEnabled ? FirstRun::Onboarding : FirstRun::Stock;
+}
+
 QUrl rootQmlUrl(bool enabled)
 {
     return QUrl(enabled

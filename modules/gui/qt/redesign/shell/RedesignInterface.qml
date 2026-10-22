@@ -289,6 +289,10 @@ Item {
         _syncPanelToQueue()
         root._completed = true
         Qt.callLater(_focusState)
+        // The request of MainCtx is queued at startup and may have been sent before this item
+        // existed: ask again here (a second request while the onboarding is open is ignored).
+        if (MainCtx.hasFirstrun)
+            Qt.callLater(ShellActions.onboardingRequested)
     }
 
     // The keys no item took: the search shortcut, else a hotkey. The video does not take the keyboard
@@ -379,6 +383,11 @@ Item {
 
         function onAskShow() {
             root._showBars()
+        }
+
+        // first run: the onboarding replaces the QWidgets wizard
+        function onRequestRedesignOnboarding() {
+            ShellActions.onboardingRequested()
         }
     }
 

@@ -583,6 +583,9 @@ signals:
     void useClientSideDecorationChanged();
     void hasToolbarMenuChanged();
 
+    /// first run in the redesign: show its onboarding (not the QWidgets wizard)
+    void requestRedesignOnboarding();
+
     /// forward window maximise query to the actual window or widget
     void requestInterfaceMaximized();
     /// forward window normal query to the actual window or widget

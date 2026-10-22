@@ -70,6 +70,12 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     /**
+     * The keys (VLC key syntax, tab separated) the action holds now, read live from the
+     * configuration; "" for an unknown action or no keys.
+     */
+    Q_INVOKABLE QString hotkeyFor(const QString& actionKey) const;
+
+    /**
      * The label of the first action (other than actionKey) that already uses one of the keys of
      * hotkey in the scope (global or not), "" if none or if hotkey is empty.
      */

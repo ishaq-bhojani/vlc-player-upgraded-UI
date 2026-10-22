@@ -49,6 +49,9 @@ QtObject {
     // open the "Keyboard shortcuts" dialog (the same page as Settings > Controls > Keyboard shortcuts)
     signal keyboardShortcutsRequested()
 
+    // open the first-run onboarding (MainCtx.requestRedesignOnboarding: qt-privacy-ask is set)
+    signal onboardingRequested()
+
     // open the "New playlist" dialog, which puts the media of `mediaIds` (a list of media library
     // ids, [] for an empty playlist) into the playlist it creates. It needs the media library.
     signal newPlaylistRequested(var mediaIds)
