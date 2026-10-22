@@ -54,14 +54,16 @@ T.AbstractButton {
     //! the shape of the drawing (width / height)
     readonly property real aspect: 1.6
 
-    // the width of the drawing, and its height
+    // the width of the drawing, and its height (from the real width)
     readonly property real _drawingWidth: width - leftPadding - rightPadding
     readonly property real _drawingHeight: _drawingWidth / aspect
 
     // Settings
 
     implicitWidth: VLCStyle.dp(150, VLCStyle.scale)
-    implicitHeight: topPadding + _drawingHeight + RedesignStyle.spacingS + label.implicitHeight + bottomPadding
+    // from implicitWidth, not from the width a layout gives: no layout loop
+    implicitHeight: topPadding + (implicitWidth - leftPadding - rightPadding) / aspect
+                    + RedesignStyle.spacingS + label.implicitHeight + bottomPadding
 
     padding: VLCStyle.dp(6, VLCStyle.scale)
 
@@ -121,7 +123,8 @@ T.AbstractButton {
         Rectangle {
             anchors.fill: parent
 
-            color: windowTheme.bg.primary
+            // the content area is the View, the bars are the Window (as in the shell)
+            color: viewTheme.bg.primary
         }
 
         // the title bar
@@ -131,7 +134,18 @@ T.AbstractButton {
             width: parent.width
             height: mini.unit * 5
 
-            color: windowTheme.bg.secondary
+            color: windowTheme.bg.primary
+
+            Rectangle {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+
+                height: Math.max(1, mini.unit * 0.5)
+                color: windowTheme.separator
+            }
 
             Row {
                 anchors {
@@ -246,7 +260,18 @@ T.AbstractButton {
 
             height: mini.unit * 8
 
-            color: windowTheme.bg.secondary
+            color: windowTheme.bg.primary
+
+            Rectangle {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                }
+
+                height: Math.max(1, mini.unit * 0.5)
+                color: windowTheme.separator
+            }
 
             Rectangle {
                 anchors {
@@ -292,56 +317,74 @@ T.AbstractButton {
             clip: true
 
             // light and dark: one window
-            Miniature {
+            Loader {
                 anchors.fill: parent
 
-                visible: root.kind !== "system"
-                pal: root.kind === "light" ? root.lightPalette : root.darkPalette
+                active: root.kind !== "system"
+
+                sourceComponent: Miniature {
+                    pal: root.kind === "light" ? root.lightPalette : root.darkPalette
+                }
             }
 
             // system: the dark window, and over its upper left half the light one. The half is
             // a rotated clipping rectangle whose right edge passes through the middle of the card
-            // (the content is turned back so that it stays upright).
-            Item {
+            // (the content is turned back so that it stays upright). A clip has no antialiasing,
+            // so a line along the diagonal (a rotated Rectangle, which is antialiased) hides it.
+            Loader {
                 anchors.fill: parent
 
-                visible: root.kind === "system"
+                active: root.kind === "system"
 
-                Miniature {
-                    anchors.fill: parent
+                sourceComponent: Item {
+                    Miniature {
+                        anchors.fill: parent
 
-                    pal: root.darkPalette
-                }
-
-                Item {
-                    id: half
-
-                    readonly property real reach: Math.sqrt(frame.width * frame.width + frame.height * frame.height)
-
-                    width: reach
-                    height: reach * 2
-                    x: frame.width / 2 - width
-                    y: frame.height / 2 - height / 2
-
-                    transformOrigin: Item.Right
-                    rotation: Math.atan2(frame.width, frame.height) * 180 / Math.PI
-
-                    clip: true
+                        pal: root.darkPalette
+                    }
 
                     Item {
-                        width: frame.width
-                        height: frame.height
-                        x: half.width - width / 2
-                        y: half.height / 2 - height / 2
+                        id: half
 
-                        transformOrigin: Item.Center
-                        rotation: -half.rotation
+                        readonly property real reach: Math.sqrt(frame.width * frame.width + frame.height * frame.height)
 
-                        Miniature {
-                            anchors.fill: parent
+                        width: reach
+                        height: reach * 2
+                        x: frame.width / 2 - width
+                        y: frame.height / 2 - height / 2
 
-                            pal: root.lightPalette
+                        transformOrigin: Item.Right
+                        rotation: Math.atan2(frame.width, frame.height) * 180 / Math.PI
+
+                        clip: true
+
+                        Item {
+                            width: frame.width
+                            height: frame.height
+                            x: half.width - width / 2
+                            y: half.height / 2 - height / 2
+
+                            transformOrigin: Item.Center
+                            rotation: -half.rotation
+
+                            Miniature {
+                                anchors.fill: parent
+
+                                pal: root.lightPalette
+                            }
                         }
+                    }
+
+                    // the diagonal, from the lower left to the upper right corner
+                    Rectangle {
+                        width: half.reach
+                        height: VLCStyle.dp(2, VLCStyle.scale)
+                        x: (frame.width - width) / 2
+                        y: (frame.height - height) / 2
+
+                        rotation: -Math.atan2(frame.height, frame.width) * 180 / Math.PI
+                        antialiasing: true
+                        color: theme.border
                     }
                 }
             }
@@ -363,12 +406,32 @@ T.AbstractButton {
         }
     }
 
-    background: Rectangle {
-        radius: RedesignStyle.radiusM
-        color: "transparent"
+    background: Item {
+        // the outline of the theme in use (accent), or a plain border
+        Rectangle {
+            anchors {
+                fill: parent
+                margins: VLCStyle.dp(3, VLCStyle.scale)
+            }
 
-        border.width: (root.selected || root.visualFocus) ? VLCStyle.dp(2, VLCStyle.scale) : VLCStyle.dp(1, VLCStyle.scale)
-        border.color: root.visualFocus ? theme.visualFocus
-                                       : (root.selected ? theme.accent : theme.border)
+            radius: RedesignStyle.radiusM
+            color: "transparent"
+
+            border.width: root.selected ? VLCStyle.dp(2, VLCStyle.scale) : VLCStyle.dp(1, VLCStyle.scale)
+            border.color: root.selected ? theme.accent : theme.border
+        }
+
+        // the keyboard focus, outside the outline
+        Rectangle {
+            anchors.fill: parent
+
+            visible: root.visualFocus
+
+            radius: RedesignStyle.radiusM + VLCStyle.dp(3, VLCStyle.scale)
+            color: "transparent"
+
+            border.width: VLCStyle.dp(2, VLCStyle.scale)
+            border.color: theme.visualFocus
+        }
     }
 }

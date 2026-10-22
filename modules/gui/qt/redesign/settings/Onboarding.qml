@@ -157,7 +157,7 @@ RedesignModalDialog {
 
             spacing: RedesignStyle.spacingS
 
-            Accessible.role: Accessible.RadioButton
+            Accessible.role: Accessible.Grouping
             Accessible.name: qsTr("Theme")
 
             Repeater {
