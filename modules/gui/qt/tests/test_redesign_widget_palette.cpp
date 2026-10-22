@@ -24,7 +24,9 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
+#include <QGridLayout>
 #include <QGroupBox>
+#include <QStyledItemDelegate>
 #include <QHash>
 #include <QHeaderView>
 #include <QImage>
@@ -483,18 +485,29 @@ private slots:
 
         QVERIFY(renderButtons(dark).save(previewDir().filePath(QStringLiteral("buttons-%1.png").arg(name))));
 
-        MLFoldersEditor table;
-        table.setPalette(p);
-        table.resize(620, 200);
-        table.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&table));
-        QVERIFY(!table.verticalHeader()->isVisible());
-        QVERIFY(!table.showGrid());
-        QVERIFY(table.verticalHeader()->defaultSectionSize() >= 30);
-        QWidget* removeButton = table.cellWidget(0, 1)->findChild<QPushButton*>();
+        // the wizard page: a title, the "+" button (16 px in the .ui file) and the table
+        QWidget page;
+        page.setPalette(p);
+        page.setAutoFillBackground(true);
+        auto* grid = new QGridLayout(&page);
+        grid->addWidget(new QLabel(QStringLiteral("Folders scanned by the Media Library")), 0, 0);
+        auto* add = new QPushButton(QStringLiteral("+"));
+        add->setMaximumSize(16, 16);
+        grid->addWidget(add, 0, 1);
+        auto* table = new MLFoldersEditor;
+        grid->addWidget(table, 1, 0, 1, 2);
+        page.resize(620, 240);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+        QVERIFY(!table->verticalHeader()->isVisible());
+        QVERIFY(!table->showGrid());
+        QVERIFY(table->verticalHeader()->defaultSectionSize() >= 30);
+        QWidget* removeButton = table->cellWidget(0, 1)->findChild<QPushButton*>();
         QVERIFY(removeButton);
         QVERIFY(removeButton->width() >= 24 && removeButton->height() >= 24);
-        QVERIFY(table.grab().toImage().save(previewDir().filePath(QStringLiteral("mlfolders-%1.png").arg(name))));
+        QCOMPARE(add->text(), QStringLiteral("Add folder\u2026"));
+        QVERIFY(qobject_cast<QStyledItemDelegate*>(table->itemDelegateForColumn(0)));
+        QVERIFY(page.grab().toImage().save(previewDir().filePath(QStringLiteral("mlfolders-%1.png").arg(name))));
     }
 
     // The "+" of the first run wizard and of Advanced preferences is a 16 px

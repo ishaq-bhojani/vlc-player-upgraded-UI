@@ -23,10 +23,12 @@
 
 #include <QApplication>
 #include <QHeaderView>
+#include <QLayout>
 #include <QPainter>
 #include <QPainterPath>
 #include <QProxyStyle>
 #include <QPushButton>
+#include <QStyledItemDelegate>
 #include <QStyleFactory>
 #include <QStyleOption>
 #include <QTableView>
@@ -290,6 +292,27 @@ bool besideFoldersEditor(const QWidget* w)
     return false;
 }
 
+// Path column of the folder table: vertically centred like the buttons next
+// to it, 8 px of left padding, the normal Text colour.
+class FolderPathDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem opt(option);
+        initStyleOption(&opt, index);
+        opt.displayAlignment = Qt::AlignVCenter | Qt::AlignLeft;
+        opt.rect.adjust(8, 0, 0, 0);
+        for (auto group : {QPalette::Active, QPalette::Inactive})
+            opt.palette.setColor(group, QPalette::Text, option.palette.color(group, QPalette::Text));
+        const QWidget* widget = option.widget;
+        QStyle* style = widget ? widget->style() : QApplication::style();
+        style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+    }
+};
+
 /**
  * Fusion with the controls that its palette handling leaves unreadable on the
  * redesign colours. Fusion draws every outline in window().darker(140), which
@@ -408,18 +431,26 @@ public:
             table->setShowGrid(false);
             table->setAlternatingRowColors(true);
             table->horizontalHeader()->setHighlightSections(false);
+            if (!dynamic_cast<FolderPathDelegate*>(table->itemDelegateForColumn(0)))
+                table->setItemDelegateForColumn(0, new FolderPathDelegate(table));
         } else if (auto* button = qobject_cast<QPushButton*>(widget)) {
             const bool inside = inFoldersEditor(button);
             const bool beside = !inside && besideFoldersEditor(button);
             const QString text = button->text();
             if ((inside || beside) && (text == QLatin1String("-") || text == QStringLiteral("⟳"))) {
                 button->setFixedSize(28, 28); // the stock 18 px is below a usable hit area
+                if (inside && button->parentWidget()->layout()) {
+                    // the cell layout passes Qt::AlignCenter as the stretch factor, so the
+                    // button sits off centre inside the default margins
+                    button->parentWidget()->layout()->setContentsMargins(0, 0, 0, 0);
+                    button->parentWidget()->layout()->setAlignment(button, Qt::AlignCenter);
+                }
                 if (button->toolTip().isEmpty())
                     button->setToolTip(button->accessibleName());
             } else if (beside && text == QLatin1String("+")) {
                 // a labelled button instead of a 16 px "+"
                 const QString label = button->toolTip().isEmpty()
-                                          ? QCoreApplication::translate("redesign", "Add folder...")
+                                          ? QCoreApplication::translate("redesign", "Add folder\u2026")
                                           : button->toolTip();
                 button->setText(label);
                 button->setMinimumSize(0, 28);
