@@ -94,7 +94,7 @@ builds everything as above with NSIS enabled and copies the installer to
 The 32-bit `nsProcess.dll` helper that the script needs is built with the image's i686 MinGW-w64 gcc
 (`extras/package/win32/NSIS/meson.build`); upstream only supports a clang that links `--target=i686-w64-mingw32`.
 `--installer` and `--tests` can be combined; a build without `--installer` has NSIS off.
-The installer's upgrade check and its MSI `ProductVersion` are `<release version>.<redesign_build_number>` (0.1.0.0 for a development build), so two published builds of one release version need different build numbers.
+The NSIS installer's upgrade check and the MSI `ProductVersion` are `<release version>.<redesign_build_number>` (0.1.0.0 for a development build). The NSIS check compares all four fields, so two published builds of one release version need different build numbers. Windows Installer compares only the first three fields of `ProductVersion` when it looks for an older version to upgrade, so for the MSI two builds of one release version are the same version: a new MSI needs a new release version, not only a new build number.
 
 What the installer contains and where it puts things: `docs/redesign/branding.md` (section Windows
 packaging). Wine in the image is 32-bit only and the installer exits with an error there (not investigated), so it

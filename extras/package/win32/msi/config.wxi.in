@@ -9,7 +9,9 @@
 
     <!-- Vireo: ProductVersion is the release version plus the build number (meson options
          redesign_release_version, redesign_build_number), e.g. 0.1.0.0, not VLC's engine version.
-         MajorUpgrade compares it, so it must only ever grow from one published MSI to the next. -->
+         MajorUpgrade compares only its first three fields (Windows Installer ignores the fourth), so
+         the release version must grow from one published MSI to the next; a new build number alone
+         is not an upgrade. -->
     <?define Version = "@REDESIGN_RELEASE_VERSION@" ?>
     <?define VersionLong = "$(var.Version).@REDESIGN_BUILD_NUMBER@" ?>
 
