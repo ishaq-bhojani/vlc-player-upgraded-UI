@@ -617,6 +617,14 @@ WinOk:
 
   !insertmacro MUI_LANGDLL_DISPLAY
 
+  ; Vireo: a silent install (/S) has no directory page, so PageDirectoryLeave never runs
+  ${If} ${Silent}
+  ${AndIf} ${FileExists} "$INSTDIR\vlc.exe"
+  ${AndIfNot} ${FileExists} "$INSTDIR\vireo.exe"
+    SetErrorLevel 2
+    Quit
+  ${EndIf}
+
 FunctionEnd
 
 ;;; Page to upgrade / downgrade or customize the installation
