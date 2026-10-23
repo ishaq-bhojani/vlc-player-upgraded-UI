@@ -76,12 +76,14 @@ Latest work, all reviewed:
 
 ## Next tasks, in order
 
-1. The live check above; fix whatever it finds.
-2. Small parked items from the last reviews:
-   - meson assert: `redesign_user_dir` must not be `.` or `..`.
-   - `package.mak` still lists the deleted `BengaliExtra.nsh`.
-   - The MSI ignores the 4th version field; correct `building.md`.
-   - Optional: a silent-install guard for VLC's folder.
+1. Done 2026-10-23 on the new machine: the portable preview opened in 3 s (onboarding
+   shown, no hang); the installer pages at 150% (sharp orange panel) and the refusal of
+   VLC's folder were checked on screen. Not yet checked: the rest of the onboarding,
+   Settings → Advanced… dialogs, Space play/pause on a real video, the finish page.
+2. Done 2026-10-23: the parked items (`redesign_user_dir` must not end with `.` or a
+   space, `package.mak`, MSI version note, silent-install guard). The silent guard is
+   compiled but was not run: it only applies when `Software\Vireo\InstallDir` names a
+   folder with `vlc.exe` (`.onInit` overwrites `/D=`).
 3. Task 26 (address bar, view modes, forward nav, panel list mode, Ctrl+F), 27
    (right-click menu + Hide UI, gives the onboarding a real Hide UI key), 28 (shortcut
    toast).
