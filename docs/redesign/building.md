@@ -102,7 +102,8 @@ could not be tried in the container: install it on a Windows machine or VM. The 
 so it is not built.
 
 The meson option `redesign_user_dir` (default `vireo`) is the per-user folder under `%APPDATA%`, also used by the
-installer's "Delete preferences and cache"; meson refuses an empty value, `vlc` and path separators there (that section deletes the folder).
+installer's "Delete preferences and cache", which deletes that folder. So meson refuses an empty value, `vlc`, path
+separators and a name that ends with `.` or a space (Windows drops those, so `..` or `...` would name `%APPDATA%` or its parent).
 
 ## Fork options and cached values
 

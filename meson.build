@@ -1015,11 +1015,13 @@ cdata.set('VERSION_EXTRA',      vlc_version_extra + redesign_build_number)
 cdata.set_quoted('REDESIGN_UPDATE_URL', get_option('redesign_update_url'))
 cdata.set('REDESIGN_BUILD_NUMBER', redesign_build_number)
 # Vireo: its own per-user folder (%APPDATA%\vireo) so it never shares, resets or deletes the data of a stock VLC
-# (the NSIS delete-preferences section removes this folder, so it must never be empty or VLC's "vlc")
+# (the NSIS delete-preferences section removes this folder, so it must never be empty or VLC's "vlc"; Windows
+# drops a trailing "." or space, so "..", "..." or " " would name %APPDATA% itself or its parent)
 redesign_user_dir = get_option('redesign_user_dir')
-assert(redesign_user_dir != '' and redesign_user_dir.to_lower() != 'vlc'
+assert(redesign_user_dir != '' and not redesign_user_dir.endswith('.') and not redesign_user_dir.endswith(' ')
+       and redesign_user_dir.to_lower() != 'vlc'
        and not redesign_user_dir.contains('\\') and not redesign_user_dir.contains('/'),
-       'redesign_user_dir must be a folder name that is not empty, not "vlc" and has no path separator')
+       'redesign_user_dir must be a folder name that is not empty, not "vlc", has no path separator and does not end with "." or a space')
 cdata.set_quoted('REDESIGN_USER_DIR_NAME', redesign_user_dir)
 
 cdata.set('PACKAGE_VERSION_MAJOR',      vlc_version_major)
