@@ -197,7 +197,6 @@ EXTRA_DIST += \
 	extras/package/win32/NSIS/vlc.win32.nsi.in \
 	extras/package/win32/NSIS/spad.nsi.in \
 	extras/package/win32/NSIS/vlc_branding.bmp \
-	extras/package/win32/NSIS/languages/BengaliExtra.nsh \
 	extras/package/win32/NSIS/languages/BasqueExtra.nsh \
 	extras/package/win32/NSIS/languages/PortugueseBRExtra.nsh \
 	extras/package/win32/NSIS/languages/BulgarianExtra.nsh \
