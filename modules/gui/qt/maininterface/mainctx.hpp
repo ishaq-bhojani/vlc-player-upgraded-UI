@@ -569,6 +569,7 @@ signals:
     void askBoss();
     void askRaise();
     void kc_pressed(); /* easter eggs */
+    void hotkeySent(int key, int modifiers); /* Vireo: the shortcut toast */
 
     void playerPlaylistWidthChanged(double);
     void interfaceAlwaysOnTopChanged(bool);

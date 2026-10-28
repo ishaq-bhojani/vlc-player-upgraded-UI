@@ -1217,6 +1217,27 @@ Item {
                     rightMargin: VLCStyle.margin_large
                 }
             }
+
+            // "Space — Play/Pause": what a key sent as a hotkey did (MainCtx.hotkeySent)
+            ShortcutToast {
+                id: shortcutToast
+
+                z: 21
+
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: parent.top
+                    topMargin: (titleBar.visible ? titleBar.height : 0) + VLCStyle.margin_large
+                }
+
+                Connections {
+                    target: MainCtx
+
+                    function onHotkeySent(key, modifiers) {
+                        shortcutToast.show(HotkeyFeedback.describe(key, modifiers))
+                    }
+                }
+            }
         }
 
         Loader {

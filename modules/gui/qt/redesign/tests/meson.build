@@ -524,3 +524,31 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
 }
+
+# HotkeyFeedback: the text of the shortcut toast, with a libvlc instance (the key actions of
+# the core and their default keys) and the real key converter of the Qt interface.
+vlc_tests += {
+    'name': 'test_qt_hotkey_feedback',
+    'sources': files(
+        '../../tests/test_hotkey_feedback.cpp',
+        '../cpp/hotkeyfeedback.hpp',
+        '../cpp/hotkeyfeedback.cpp',
+        '../cpp/shortcutsmodel.hpp',
+        '../cpp/shortcutsmodel.cpp',
+        '../../util/vlchotkeyconverter.hpp',
+        '../../util/vlchotkeyconverter.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_hotkey_feedback.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/hotkeyfeedback.hpp',
+        '../cpp/shortcutsmodel.hpp',
+        '../../util/vlchotkeyconverter.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_with': [libvlccore, libvlc],
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

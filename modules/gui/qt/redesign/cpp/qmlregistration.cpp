@@ -29,6 +29,7 @@
 
 #include "currentmediafavorite.hpp"
 #include "effectscontroller.hpp"
+#include "hotkeyfeedback.hpp"
 #include "measuredgain.hpp"
 #include "measuredgainvlc.hpp"
 #include "mlfavoritebackend.hpp"
@@ -181,6 +182,8 @@ void registerQmlTypes(MainCtx* ctx)
         });
     qmlRegisterSingletonType<ShortcutsModel>(uri, versionMajor, versionMinor, "ShortcutsModel",
         [intf](QQmlEngine*, QJSEngine*) { return new ShortcutsModel(VLC_OBJECT(intf)); });
+    qmlRegisterSingletonType<HotkeyFeedback>(uri, versionMajor, versionMinor, "HotkeyFeedback",
+        [intf](QQmlEngine*, QJSEngine*) { return new HotkeyFeedback(VLC_OBJECT(intf)); });
     qmlRegisterSingletonType<SubtitleAttacher>(uri, versionMajor, versionMinor, "SubtitleAttacher",
         [ctx](QQmlEngine*, QJSEngine*) {
             SubtitleAttacher* attacher = subtitleAttacherOf(ctx);

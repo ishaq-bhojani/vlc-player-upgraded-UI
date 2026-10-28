@@ -33,6 +33,7 @@ qt_cppargs += redesign_branding_cppargs
 moc_headers += files(
     'cpp/currentmediafavorite.hpp',
     'cpp/effectscontroller.hpp',
+    'cpp/hotkeyfeedback.hpp',
     'cpp/measuredgain.hpp',
     'cpp/mlrecentaudiomodel.hpp',
     'cpp/pinnavigation.hpp',
@@ -51,6 +52,8 @@ qt_plugin_sources += files(
     'cpp/aboutbranding.hpp',
     'cpp/brandicon.hpp',
     'cpp/branding.hpp',
+    'cpp/hotkeyfeedback.cpp',
+    'cpp/hotkeyfeedback.hpp',
     'cpp/lrcparser.cpp',
     'cpp/lrcparser.hpp',
     'cpp/measuredgain.cpp',
@@ -221,6 +224,7 @@ qml_modules += {
         'shell/RailModel.qml',
         'shell/ShellStates.qml',
         'shell/Stage.qml',
+        'shell/ShortcutToast.qml',
     ),
     'singletons': files(
         'theme/RedesignStyle.qml',

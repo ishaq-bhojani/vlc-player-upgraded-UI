@@ -90,7 +90,9 @@ Latest work, all reviewed:
    video. Not checked on screen: the search box filtering. Task 27 (right-click menu and
    Hide UI, Ctrl+H) done 2026-10-28; checked on screen: the menu entries and Hide UI hiding
    both bars. Not checked on screen: Esc and Ctrl+H restoring them, the Tools submenu.
-   Next: 28 (shortcut toast).
+   Task 28 (shortcut toast) done 2026-10-28; its text is unit-tested, the toast itself
+   was not seen on screen (posted keys did not reach the background preview).
+   Next: Task 15 (release workflow, smoke checklist), then rc1.
 4. Task 15 (release workflow, smoke checklist), then release candidate 1 to testers,
    unsigned.
 5. Task 53 (web playback via yt-dlp), 54 (downloads), R4 38–45 and 55, R5 48, R6 49–51.

@@ -572,6 +572,7 @@ void MainCtx::sendHotkey(Qt::Key key , Qt::KeyboardModifiers modifiers)
 {
     QKeyEvent event(QEvent::KeyPress, key, modifiers );
     int vlckey = qtEventToVLCKey(&event);
+    emit hotkeySent(key, modifiers.toInt()); /* Vireo: the shortcut toast */
     var_SetInteger(vlc_object_instance(p_intf), "key-pressed", vlckey);
 }
 
