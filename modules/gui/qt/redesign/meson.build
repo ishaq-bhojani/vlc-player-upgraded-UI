@@ -42,6 +42,7 @@ moc_headers += files(
     'cpp/sidecarlyrics.hpp',
     'cpp/subtitleattacher.hpp',
     'cpp/toolmanager.hpp',
+    'cpp/uivisibility.hpp',
     'cpp/waveform.hpp',
 )
 
@@ -78,6 +79,8 @@ qt_plugin_sources += files(
     'cpp/subtitleattacher.cpp',
     'cpp/subtitleattacher.hpp',
     'cpp/subtitleattachervlc.cpp',
+    'cpp/uivisibility.cpp',
+    'cpp/uivisibility.hpp',
     'cpp/subtitleattachervlc.hpp',
     'cpp/toolmanager.cpp',
     'cpp/toolmanager.hpp',

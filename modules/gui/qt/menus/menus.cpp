@@ -52,6 +52,7 @@
 #include "medialibrary/medialib.hpp"
 #include "medialibrary/mlrecentmediamodel.hpp"
 #include "medialibrary/mlbookmarkmodel.hpp"
+#include "redesign/cpp/uivisibility.hpp"
 
 
 #include <QMenu>
@@ -750,6 +751,8 @@ QMenu* VLCMenuBar::PopupMenu( qt_intf_t *p_intf, bool show )
     input_item_t* p_input = THEMIM->getInput();
     QAction *action;
     bool b_isFullscreen = false;
+    /* Vireo: the redesign has its own menu (☰) and settings, see below */
+    const bool b_redesign = p_intf->p_mi && p_intf->p_mi->isRedesign();
 
     PopupMenuPlaylistEntries( menu, p_intf );
     menu->addSeparator();
@@ -797,6 +800,16 @@ QMenu* VLCMenuBar::PopupMenu( qt_intf_t *p_intf, bool show )
         action->setText( qtr( "&Playback" ) );
         if( action->menu()->isEmpty() )
             action->setEnabled( false );
+
+        /* Vireo: hides the bars of the player until toggled off, Esc or Ctrl+H */
+        if( b_redesign )
+        {
+            action = menu->addAction( qtr( "Hide UI" ) );
+            action->setCheckable( true );
+            action->setChecked( UiVisibility::instance()->hidden() );
+            action->setShortcut( QKeySequence( "Ctrl+H" ) );
+            connect( action, &QAction::toggled, UiVisibility::instance(), &UiVisibility::setHidden );
+        }
     }
 
     menu->addSeparator();
@@ -841,9 +854,20 @@ QMenu* VLCMenuBar::PopupMenu( qt_intf_t *p_intf, bool show )
             ToolsMenu( p_intf, toolsMenu );
             menu->addMenu( toolsMenu );
 
+            /* Vireo: Preferences is Settings of ☰; the toolbar editor and the View menu are
+             * the layout of the stock interface */
+            if( b_redesign )
+            {
+                for( QAction* tool : toolsMenu->actions() )
+                    if( tool->text() == qtr( "&Preferences" ) || tool->text() == qtr( "Customi&ze Interface..." ) )
+                        toolsMenu->removeAction( tool );
+            }
+            else
+            {
             QMenu* viewMenu = new QMenu( qtr( "V&iew" ), menu );
             ViewMenu( p_intf, viewMenu );
             menu->addMenu( viewMenu );
+            }
         }
     }
 
@@ -864,6 +888,9 @@ QMenu* VLCMenuBar::PopupMenu( qt_intf_t *p_intf, bool show )
         addDPStaticEntry( menu, qtr( "Quit" ), ":/menu/exit.svg",
                           &DialogsProvider::quit, "Ctrl+Q", QAction::QuitRole );
     }
+    else if( b_redesign ) /* Vireo: opening media is in ☰ */
+        addDPStaticEntry( menu, qtr( "Quit" ), ":/menu/exit.svg",
+                          &DialogsProvider::quit, "Ctrl+Q", QAction::QuitRole );
     else
         PopupMenuStaticEntries( menu );
 

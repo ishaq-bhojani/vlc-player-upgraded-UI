@@ -126,11 +126,15 @@ TestCase {
     function test_essentialsAreActionsWithALabel() {
         const model = createTemporaryObject(stepsComponent, testCase)
         // the exact actions (test_qt_shortcuts_model checks that they exist): the 10 seconds
-        // jumps are the "short" ones, the "medium" ones jump a minute
-        compare(model.essentials.map(e => e.action), [
+        // jumps are the "short" ones, the "medium" ones jump a minute; Hide UI is a shortcut of
+        // the window (fixed keys), not a hotkey
+        compare(model.essentials.map(e => e.action ?? e.keys), [
             "key-play-pause", "key-jump-short", "key-jump+short", "key-vol-up", "key-vol-down",
-            "key-toggle-fullscreen", "key-subtitle-track", "key-intf-show", "key-set-bookmark1"])
-        for (const entry of model.essentials)
-            verify(entry.label.length > 0, entry.action)
+            "key-toggle-fullscreen", "key-subtitle-track", "Ctrl+H", "key-set-bookmark1"])
+        for (const entry of model.essentials) {
+            verify(entry.label.length > 0, entry.action ?? entry.keys)
+            // one of the two, never both
+            verify((entry.action === undefined) !== (entry.keys === undefined), entry.label)
+        }
     }
 }

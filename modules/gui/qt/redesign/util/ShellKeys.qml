@@ -22,7 +22,8 @@ import QtQml
  * @brief The keys that the window takes before the player's hotkeys see them.
  *
  * ShortcutsModel only knows the hotkeys of the core (the "key-*" options). The window has
- * shortcuts of its own: Ctrl+P of the redesign (DialogHost.qml, Settings), and the shortcuts of
+ * shortcuts of its own: Ctrl+P of the redesign (DialogHost.qml, Settings), Ctrl+H (Hide UI,
+ * RedesignInterface.qml), and the shortcuts of
  * the stock interface that the redesign still loads (menus/qml/GlobalShortcuts.qml). A Qt shortcut
  * is handled before the key reaches the hotkeys, so a hotkey on one of these keys may never fire.
  * The shortcuts page uses this list to warn, it does not forbid anything.
@@ -53,7 +54,7 @@ QtObject {
         {key: "Ctrl+J", text: qsTr("shows the codec information")},
         {key: "Ctrl+M", text: qsTr("shows the messages")},
         {key: "Ctrl+T", text: qsTr("jumps to a time")},
-        {key: "Ctrl+H", text: qsTr("switches the minimal view")},
+        {key: "Ctrl+H", text: qsTr("hides or shows the bars (Hide UI)")}, // the redesign's, the stock one is off
         {key: "Ctrl+Shift+W", text: qsTr("opens the VLM configuration")},
         {key: "F1", text: qsTr("opens the help")},
         {key: "F10", text: qsTr("shows the menu bar"), off: true}, // the redesign has no menu bar

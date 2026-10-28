@@ -225,8 +225,10 @@ RedesignModalDialog {
 
                     required property var modelData
 
-                    // read live: the keys of the configuration now
-                    readonly property string keys: root.keysText(ShortcutsModel.hotkeyFor(modelData.action))
+                    // a hotkey is read live (the keys of the configuration now); a shortcut of the
+                    // window has fixed keys
+                    readonly property string keys: shortcut.modelData.keys
+                                                   ?? root.keysText(ShortcutsModel.hotkeyFor(shortcut.modelData.action))
 
                     Layout.fillWidth: true
 

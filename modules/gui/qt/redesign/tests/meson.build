@@ -505,3 +505,22 @@ vlc_tests += {
     'link_args': qt_link_args,
     'dependencies': [qt6_dep, qtest_qt6_dep],
 }
+
+vlc_tests += {
+    'name': 'test_qt_ui_visibility',
+    'sources': files(
+        '../../tests/test_ui_visibility.cpp',
+        '../cpp/uivisibility.hpp',
+        '../cpp/uivisibility.cpp'
+    ),
+    'moc_sources': files(
+        '../../tests/test_ui_visibility.cpp'
+    ),
+    'moc_headers': files(
+        '../cpp/uivisibility.hpp'
+    ),
+    'suite': ['qt'],
+    'include_directories' : qt_include_dir,
+    'link_args': qt_link_args,
+    'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+}

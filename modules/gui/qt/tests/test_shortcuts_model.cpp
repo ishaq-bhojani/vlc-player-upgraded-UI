@@ -412,9 +412,10 @@ private slots:
     void onboardingActionsExist()
     {
         // the actions of the essentials of OnboardingSteps.qml are real actions of the core
+        // (Hide UI, Ctrl+H, is a shortcut of the window, not an action)
         for (const char* action : {"key-play-pause", "key-jump-short", "key-jump+short", "key-vol-up",
                                    "key-vol-down", "key-toggle-fullscreen", "key-subtitle-track",
-                                   "key-intf-show", "key-set-bookmark1"})
+                                   "key-set-bookmark1"})
             QVERIFY2(rowOf(action) >= 0, action);
         // the 10 second jumps are the short ones (the medium ones jump a minute)
         QVERIFY(!hotkeyOf("key-jump-short").isEmpty());

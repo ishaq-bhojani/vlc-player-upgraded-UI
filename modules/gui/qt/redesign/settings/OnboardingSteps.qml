@@ -47,9 +47,9 @@ QtObject {
     //! the last step is shown: the onboarding can be finished
     readonly property bool canFinish: current === steps.length - 1
 
-    //! The shortcuts of the card of the "shortcuts" step: the action (a key of ShortcutsModel,
-    //! its keys are read live) and what it does. "Hide UI" has no hotkey of its own yet: the
-    //! entry is the hotkey that shows or hides the controls.
+    //! The shortcuts of the card of the "shortcuts" step: what it does, and either `action` (a key
+    //! of ShortcutsModel, its keys are read live) or `keys` (a shortcut of the window, not a hotkey:
+    //! Hide UI is Ctrl+H, RedesignInterface.qml).
     readonly property var essentials: [
         { action: "key-play-pause", label: qsTr("Play or pause") },
         { action: "key-jump-short", label: qsTr("Seek back 10 seconds") },
@@ -58,7 +58,7 @@ QtObject {
         { action: "key-vol-down", label: qsTr("Volume down") },
         { action: "key-toggle-fullscreen", label: qsTr("Full screen") },
         { action: "key-subtitle-track", label: qsTr("Next subtitle track") },
-        { action: "key-intf-show", label: qsTr("Show or hide the controls (full screen)") },
+        { keys: "Ctrl+H", label: qsTr("Hide UI (show or hide the bars)") },
         { action: "key-set-bookmark1", label: qsTr("Quick bookmark") }
     ]
 

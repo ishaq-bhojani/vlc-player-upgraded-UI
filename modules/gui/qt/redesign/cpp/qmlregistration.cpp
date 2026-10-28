@@ -42,6 +42,7 @@
 #include "subtitleattacher.hpp"
 #include "subtitleattachervlc.hpp"
 #include "toolmanagervlc.hpp"
+#include "uivisibility.hpp"
 #include "waveform.hpp"
 #include "waveformvlc.hpp"
 
@@ -188,6 +189,12 @@ void registerQmlTypes(MainCtx* ctx)
         });
     qmlRegisterSingletonType<ToolManager>(uri, versionMajor, versionMinor, "ToolManager",
         [intf](QQmlEngine*, QJSEngine*) { return createToolManager(VLC_OBJECT(intf)); });
+    qmlRegisterSingletonType<UiVisibility>(uri, versionMajor, versionMinor, "UiVisibility",
+        [](QQmlEngine*, QJSEngine*) {
+            UiVisibility* visibility = UiVisibility::instance();
+            QQmlEngine::setObjectOwnership(visibility, QQmlEngine::CppOwnership);
+            return visibility;
+        });
     WaveformProvider::setDefaultEnvironment([intf] { return makeVlcWaveformEnvironment(VLC_OBJECT(intf)); });
     qmlRegisterType<WaveformProvider>(uri, versionMajor, versionMinor, "WaveformProvider");
     qmlRegisterSingletonType<MeasuredGain>(uri, versionMajor, versionMinor, "MeasuredGain",

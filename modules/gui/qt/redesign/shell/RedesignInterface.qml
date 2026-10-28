@@ -308,7 +308,10 @@ Item {
         else
             root._showBars()
 
-        if ((event.key === Qt.Key_Escape) && root._panelIsOverlay) {
+        if ((event.key === Qt.Key_Escape) && UiVisibility.hidden) {
+            // Hide UI ends first (before the overlay and the fullscreen)
+            UiVisibility.hidden = false
+        } else if ((event.key === Qt.Key_Escape) && root._panelIsOverlay) {
             // the overlay closes first
             root.watchPanelOpen = false
         } else if (KeyHelper.matchSearch(event)) {
@@ -355,6 +358,25 @@ Item {
         keepBottomBar: trackPopup.opened
         // the main menu opens under the menu button of the title bar: the bar stays while it is open
         keepTopBar: mainMenu.opened
+        // Hide UI: the right-click menu (C++) and Ctrl+H toggle it, Esc ends it
+        uiHidden: UiVisibility.hidden
+
+        // Hide UI is about the player: the library always comes back with its bars, and they are
+        // not hidden the next time the player is shown
+        onStateChanged: {
+            if (state === "browse")
+                UiVisibility.hidden = false
+        }
+    }
+
+    // Hide UI. The stock Ctrl+H (the minimal view, GlobalShortcuts.qml) is turned off below. Only
+    // while the player is shown: the library has no bars to hide.
+    Shortcut {
+        sequence: "Ctrl+H"
+        context: Qt.ApplicationShortcut
+        enabled: MainCtx.useGlobalShortcuts && (shellStates.state !== "browse")
+
+        onActivated: UiVisibility.toggle()
     }
 
     HoverHandler {
@@ -842,7 +864,10 @@ Item {
                             height: parent.height
 
                             Navigation.cancelAction: function() {
-                                if (root._panelIsOverlay)
+                                // Esc ends Hide UI first, wherever the focus is (see Keys.onPressed)
+                                if (UiVisibility.hidden)
+                                    UiVisibility.hidden = false
+                                else if (root._panelIsOverlay)
                                     root.watchPanelOpen = false
                                 else if (shellStates.state === "browse")
                                     History.previous(Qt.BacktabFocusReason)
@@ -1200,12 +1225,13 @@ Item {
 
             // Ctrl+P opens the Settings modal (DialogHost.qml): the stock shortcut of the same key is
             // turned off, or the two would be ambiguous and neither would fire. F10 (the menu bar,
-            // which the redesign does not have) is turned off too, so that the key is free for a hotkey.
+            // which the redesign does not have) is turned off too, so that the key is free for a hotkey,
+            // and Ctrl+H (the minimal view of the stock interface), which is Hide UI here.
             // UPSTREAM COUPLING (docs/redesign/upstream-touchpoints.md): it looks for the Shortcut of
             // GlobalShortcuts.qml that has this key; without a match nothing is changed.
             onLoaded: {
                 for (const child of item.data) {
-                    if (child.portableText === "Ctrl+P" || child.portableText === "F10")
+                    if (child.portableText === "Ctrl+P" || child.portableText === "F10" || child.portableText === "Ctrl+H")
                         child.enabled = false
                 }
             }
