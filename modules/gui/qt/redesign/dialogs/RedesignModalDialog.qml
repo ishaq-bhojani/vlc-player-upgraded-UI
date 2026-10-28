@@ -17,6 +17,7 @@
  *****************************************************************************/
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Templates as T
 
 import VLC.Dialogs
 import VLC.Style
@@ -86,17 +87,51 @@ ModalDialog {
         spacing: VLCStyle.margin_small
     }
 
-    footer: RowLayout {
-        id: footerLayout
-
-        // the footer is not under the body: its own context
-        readonly property ColorContext footerContext: ColorContext {
+    // The padding of a dialog is the one of its body only: the header and the footer span the whole
+    // popup. Both get the padding of the body here, so the title and the buttons line up with it
+    // (the header of ModalDialog has a padding of its own, 6 px, and the footer had none: the
+    // buttons touched the edges).
+    header: T.Label {
+        readonly property ColorContext headerContext: ColorContext {
             palette: VLCStyle.palette
             colorSet: ColorContext.Window
         }
 
-        spacing: VLCStyle.margin_small
+        visible: root.title !== ""
 
-        Item { Layout.fillWidth: true }
+        leftPadding: root.leftPadding
+        rightPadding: root.rightPadding
+        topPadding: root.topPadding
+        bottomPadding: 0
+
+        text: root.title
+        elide: Text.ElideRight
+        font.bold: true
+        color: headerContext.fg.primary
+    }
+
+    footer: T.Pane {
+        leftPadding: root.leftPadding
+        rightPadding: root.rightPadding
+        bottomPadding: root.bottomPadding
+        topPadding: 0
+
+        // a template Pane computes no size of its own
+        implicitWidth: implicitContentWidth + leftPadding + rightPadding
+        implicitHeight: implicitContentHeight + topPadding + bottomPadding
+
+        contentItem: RowLayout {
+            id: footerLayout
+
+            // the footer is not under the body: its own context
+            readonly property ColorContext footerContext: ColorContext {
+                palette: VLCStyle.palette
+                colorSet: ColorContext.Window
+            }
+
+            spacing: VLCStyle.margin_small
+
+            Item { Layout.fillWidth: true }
+        }
     }
 }
