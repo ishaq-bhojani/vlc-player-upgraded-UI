@@ -84,9 +84,11 @@ Latest work, all reviewed:
    space, `package.mak`, MSI version note, silent-install guard). The silent guard is
    compiled but was not run: it only applies when `Software\Vireo\InstallDir` names a
    folder with `vlc.exe` (`.onInit` overwrites `/D=`).
-3. Task 26 (address bar, view modes, forward nav, panel list mode, Ctrl+F), 27
-   (right-click menu + Hide UI, gives the onboarding a real Hide UI key), 28 (shortcut
-   toast).
+3. Done 2026-10-28: Task 26 (library header; it reuses each page's own sort and search,
+   owner decision; Ctrl+F stays "open a folder"). Checked on screen: Videos, grouping,
+   group crumbs, back / forward, view modes, network folder crumbs, the panel beside a
+   video. Not checked on screen: the search box filtering. Next: 27 (right-click menu +
+   Hide UI, gives the onboarding a real Hide UI key), 28 (shortcut toast).
 4. Task 15 (release workflow, smoke checklist), then release candidate 1 to testers,
    unsigned.
 5. Task 53 (web playback via yt-dlp), 54 (downloads), R4 38–45 and 55, R5 48, R6 49–51.

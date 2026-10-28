@@ -184,7 +184,8 @@ Item {
         const showsPage = (shellStates.state === "browse") || (shellStates.panelMode === "overlay")
         if (showsPage) {
             libraryHost.forceActiveFocus(Qt.TabFocusReason)
-            if (libraryPages.currentItem)
+            // the compact list covers the page: it has the focus (Loader.focus), not the page
+            if (libraryPages.currentItem && !compactList.active)
                 libraryPages.setCurrentItemFocus(Qt.TabFocusReason)
         } else {
             stage.forceActiveFocus()
@@ -825,6 +826,7 @@ Item {
                                                                        : (shellStates.state === "browse") ? "strip"
                                                                                                           : shellStates.panelMode
                             title: root.pageTitle
+                            page: libraryPages
 
                             onBrowseRequested: root.leaveToBrowse()
                         }
@@ -853,11 +855,28 @@ Item {
 
                                 anchors.fill: parent
 
-                                focus: true
+                                focus: !compactList.active
 
                                 pageModel: root.pageModel
 
                                 Navigation.parentItem: libraryHost
+                            }
+
+                            // The "list" view mode (always beside the video): the items of the page in
+                            // compact rows, over the page, which keeps its own view underneath.
+                            Loader {
+                                id: compactList
+
+                                anchors.fill: parent
+
+                                active: libraryPanel.showsCompactList
+                                focus: active
+
+                                sourceComponent: CompactListView {
+                                    content: libraryPanel.pageContent
+
+                                    Navigation.parentItem: libraryHost
+                                }
                             }
                         }
 

@@ -27,7 +27,8 @@ import VLC.Redesign
 
 /**
  * @brief The library panel: a resizable drawer on the left of the stage that shows the page of
- * the library the rail selected, and the header of that page (back, title).
+ * the library the rail selected, and the header of that page (library/ViewHeader.qml: back,
+ * forward, address, view mode, sort, search).
  *
  * The page itself is not created here: the shell owns it and puts it into `body` or into the
  * Stage (the page is one item that moves, so it keeps its scroll position and selection).
@@ -48,8 +49,16 @@ FocusScope {
 
     property string mode: "hidden"
 
-    // title of the header: the page that is shown
+    // the name of the rail entry that is shown: the first crumb of the address
     property string title
+
+    // the PageLoader of the library, the page the header works on (library/ViewHeader.qml)
+    property Item page: null
+
+    // the shell covers the page with a CompactListView of `pageContent` (the view mode is "list",
+    // always beside the video)
+    readonly property bool showsCompactList: viewHeader.showsCompactList
+    readonly property Item pageContent: viewHeader.content
 
     // where the shell puts the page (docked and overlay modes)
     readonly property alias body: bodyItem
@@ -154,26 +163,15 @@ FocusScope {
         height: RedesignStyle.titleBarHeight
         spacing: RedesignStyle.spacingXS
 
-        Widgets.IconToolButton {
-            Layout.preferredWidth: RedesignStyle.titleBarHeight
+        ViewHeader {
+            id: viewHeader
+
+            Layout.fillWidth: true
             Layout.fillHeight: true
 
-            font.pixelSize: VLCStyle.icon_normal
-            text: VLCIcons.back
-            description: qsTr("Previous")
-            enabled: !History.previousEmpty
-
-            onClicked: History.previous()
-        }
-
-        Text {
-            Layout.fillWidth: true
-
-            elide: Text.ElideRight
-            verticalAlignment: Text.AlignVCenter
-            text: root.title
-            font.pixelSize: VLCStyle.fontSize_large
-            color: theme.fg.primary
+            page: root.page
+            compact: !root.strip
+            rootLabel: root.title
         }
 
         Widgets.IconToolButton {
