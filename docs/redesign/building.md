@@ -27,7 +27,7 @@ and tells you).
 ```bash
 bash extras/redesign/dev-build.sh            # debugoptimized build
 bash extras/redesign/dev-build.sh --tests    # ... and build + run the Qt tests
-bash extras/redesign/dev-build.sh --release  # release build, separate volume (untested, see below)
+bash extras/redesign/dev-build.sh --release  # release build type, separate volume (see below)
 bash extras/redesign/dev-build.sh --installer  # ... and the NSIS installer, see "Installer" below
 ```
 
@@ -78,9 +78,26 @@ script):
   runtime DLLs (`libgcc_s_seh-1`, `libssp-0`, `libwinpthread-1`) are copied into
   `vlc-win64/`, since `meson install` does not.
 
-`--release` passes `build.sh -r`, which also asks for an installer package
-(`meson dist`, NSIS, MSI). That path has not been exercised here and is expected
-to need more work; use the default debugoptimized build for development.
+`--release` passes `build.sh -r -i none`: the release build type (`--buildtype release`,
+no debug), without the packaging `-r` alone asks for (`meson dist`, NSIS and the MSI,
+which needs WiX). The NSIS installer comes from `--installer`, as for a dev build. The
+release workflow (`.github/workflows/redesign-release.yml`) builds the same way; checked
+locally on 2026-10-29 (`MCONFIGFLAGS="-Dredesign_build_number=1" dev-build.sh --release
+--installer`: libvlccore 4.0.0.1, the installer, the player starts). `MCONFIGFLAGS` from
+the environment reaches the meson setup of `build.sh` (it prepends its own options).
+
+## Releases
+
+A tag `v<major>.<minor>.<patch>[-suffix]` runs `.github/workflows/redesign-release.yml`:
+the release build above with `-Dredesign_release_version=<the tag's numbers>` and
+`-Dredesign_build_number=<the run number>`, then `extras/redesign/release-assets.sh`
+(installer, portable zip with an empty `portable` folder, signed `status-win-x64`,
+`<installer>.asc`, `SHA256SUMS`) and a GitHub Release. A tag with a suffix (`-rc1`) is a
+pre-release, which the updater of installed copies does not see (it reads the latest
+release); a tag without one is the latest release. Run the workflow by hand for a dry run:
+it builds and assembles the files without signing or publishing (artifact
+`release-assets`). The binaries are not Authenticode-signed yet. Before a final tag, run
+`docs/redesign/smoke-checklist.md` on the candidate.
 
 ## Installer
 

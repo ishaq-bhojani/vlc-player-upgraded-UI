@@ -92,7 +92,13 @@ Latest work, all reviewed:
    both bars. Not checked on screen: Esc and Ctrl+H restoring them, the Tools submenu.
    Task 28 (shortcut toast) done 2026-10-28; its text is unit-tested, the toast itself
    was not seen on screen (posted keys did not reach the background preview).
-   Next: Task 15 (release workflow, smoke checklist), then rc1.
+   Task 15 (release workflow, smoke checklist) prepared 2026-10-29: the workflow and
+   `release-assets.sh` are written, the release build and the assets were checked
+   locally (throwaway signing key); the workflow itself has not run on GitHub. OWNER:
+   push `v0.1.0-rc1` (or run the workflow by hand first for a dry run), then the smoke
+   checklist, then `v0.1.0`. Not done: Authenticode signing (Trusted Signing, later);
+   the version text of the binaries still reads "4.0.0-dev" with a build number (the
+   updater compares the numbers, so only cosmetic).
 4. Task 15 (release workflow, smoke checklist), then release candidate 1 to testers,
    unsigned.
 5. Task 53 (web playback via yt-dlp), 54 (downloads), R4 38–45 and 55, R5 48, R6 49–51.

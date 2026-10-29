@@ -1,0 +1,214 @@
+# Release workflow for Vireo.
+#
+# A tag v<major>.<minor>.<patch>[-suffix] (v0.1.0-rc1, v0.1.0) builds a release and publishes
+# a GitHub Release with:
+#   vireo-<version>-win64.exe            the NSIS installer
+#   vireo-<version>-win64.exe.asc        its update signature (the updater checks it)
+#   vireo-<version>-win64-portable.zip   the player with an empty "portable" folder
+#   status-win-x64, status-win-x64.asc   the signed update status file
+#   SHA256SUMS
+# A tag with a suffix (-rc1) is a pre-release: GitHub's "latest" release, which the
+# updater of the installed copies reads (releases/latest/download/status-win-x64), stays
+# the last stable one, so testers of a candidate install it by hand.
+#
+# Run by hand (workflow_dispatch) it builds and assembles the same files without
+# publishing or signing anything: a dry run, the files are a workflow artifact.
+#
+# Version: the release version is the tag's numbers (meson option
+# redesign_release_version, the installer name); the build number is the run number
+# (redesign_build_number, version 4.0.0.<run>, what the updater compares), so it grows
+# with every release.
+#
+# Secrets: UPDATE_GPG_KEY, UPDATE_GPG_PASSPHRASE (extras/redesign/make-status.sh). The
+# binaries and the installer are NOT Authenticode-signed yet (owner decision: rc1 goes
+# out unsigned; Trusted Signing comes later, see docs/redesign/HANDOFF.md).
+#
+# The build is the one of redesign-ci.yml (win64 job) with the release build type
+# (build.sh -r -i none) and the NSIS installer (WANT_INSTALLER=1).
+
+name: redesign-release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: redesign-release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    container:
+      # Same image as redesign-ci.yml and extras/redesign/dev-build.sh.
+      image: registry.videolan.org/vlc-debian-win64-posix:20260611225331
+      options: --user root
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+              TAG="$GITHUB_REF_NAME"
+          else
+              # dry run: the release version of the sources (meson_options.txt)
+              V=$(sed -n "/option('redesign_release_version'/,/)/s/.*value: *'\([0-9.]*\)'.*/\1/p" meson_options.txt)
+              [ -n "$V" ] || { echo "redesign_release_version not found in meson_options.txt" >&2; exit 1; }
+              TAG="v$V-dryrun"
+          fi
+          [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-[0-9A-Za-z.]+)?$ ]] \
+              || { echo "tag must be v<major>.<minor>.<patch>[-suffix], got $TAG" >&2; exit 1; }
+          VERSION="${BASH_REMATCH[1]}"
+          BUILD="$GITHUB_RUN_NUMBER"
+          [ "$BUILD" -ge 1 ] && [ "$BUILD" -le 65535 ] || { echo "run number $BUILD out of range" >&2; exit 1; }
+          PRERELEASE=false
+          [ -z "${BASH_REMATCH[2]}" ] || PRERELEASE=true
+          {
+              echo "tag=$TAG"
+              echo "version=$VERSION"
+              echo "build=$BUILD"
+              echo "prerelease=$PRERELEASE"
+          } >> "$GITHUB_OUTPUT"
+          echo "release $TAG: version $VERSION, build number $BUILD, pre-release $PRERELEASE"
+
+      # As in redesign-ci.yml: container-build.sh expects /vlc (sources) and /build.
+      - name: Prepare container paths
+        run: |
+          git config --global --add safe.directory '*'
+          if [ -d /vlc ] && [ ! -L /vlc ]; then rmdir /vlc; fi
+          ln -sfn "$GITHUB_WORKSPACE" /vlc
+          mkdir -p /build
+
+      - name: Cache prebuilt contribs
+        uses: actions/cache@v4
+        with:
+          path: /build/contrib/contrib-win64/vlc-contrib-x86_64-w64-mingw32-latest.tar.zst
+          key: contrib-win64-${{ hashFiles('contrib/src/**') }}
+
+      - name: Build (extras/redesign/container-build.sh)
+        working-directory: /build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
+        run: |
+          PINNED_CONTRIB_SHA=$(sed -n 's/^PINNED_CONTRIB_SHA="\([0-9a-f]*\)".*/\1/p' /vlc/extras/redesign/dev-build.sh)
+          [ -n "$PINNED_CONTRIB_SHA" ] || { echo "PINNED_CONTRIB_SHA not found in dev-build.sh" >&2; exit 1; }
+          export PINNED_CONTRIB_SHA
+          # -r: release build type; -i none: not upstream's meson dist / MSI packaging (no
+          # WiX in the image), the NSIS installer is made by container-build.sh
+          export BUILD_FLAGS="-r -i none -m -p -a x86_64"
+          export WANT_INSTALLER=1
+          export MCONFIGFLAGS="-Dredesign_release_version=$VERSION -Dredesign_build_number=$BUILD"
+          bash /vlc/extras/redesign/container-build.sh
+
+      - name: Release notes
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # the message of an annotated tag, else "Vireo <version>" (the updater shows it)
+          NOTES=/build/release-notes.txt
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && git fetch --depth=1 origin "+refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null \
+             && [ "$(git cat-file -t "$TAG")" = "tag" ]; then
+              git tag -l --format='%(contents)' "$TAG" | sed '/-----BEGIN PGP SIGNATURE-----/,$d' > "$NOTES"
+          fi
+          grep -q '[^[:space:]]' "$NOTES" 2>/dev/null || printf 'Vireo %s\n' "$VERSION" > "$NOTES"
+          cat "$NOTES"
+
+      - name: Assemble the release assets
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
+          RELEASE_NOTES_FILE: /build/release-notes.txt
+          UPDATE_GPG_KEY: ${{ secrets.UPDATE_GPG_KEY }}
+          UPDATE_GPG_PASSPHRASE: ${{ secrets.UPDATE_GPG_PASSPHRASE }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+              # dry run: nothing is signed
+              export RELEASE_ASSETS_UNSIGNED=1
+              unset UPDATE_GPG_KEY UPDATE_GPG_PASSPHRASE
+          elif [ -z "$UPDATE_GPG_KEY" ]; then
+              echo "UPDATE_GPG_KEY is not set: a release without a signed status file would break the updater" >&2
+              exit 1
+          fi
+          bash extras/redesign/release-assets.sh "$TAG" "$BUILD" "$GITHUB_REPOSITORY" \
+              /build/win64-meson/vlc-win64 "/build/win64-meson/installer-out/vireo-$VERSION-win64.exe" dist
+
+      - name: Upload the release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: dist
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload the release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: /build/release-notes.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload meson logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-meson-logs
+          path: /build/win64-meson/meson-logs
+          if-no-files-found: ignore
+          retention-days: 7
+
+  publish:
+    name: publish
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download the release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: dist
+
+      - name: Download the release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: notes
+
+      # The status file is signed as it is: uploaded byte for byte (gh uploads files as
+      # they are). A release that exists already (a re-run) gets its assets replaced.
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          FLAGS=(--repo "$GITHUB_REPOSITORY" --verify-tag --title "Vireo ${TAG#v}")
+          [ "$PRERELEASE" = "true" ] && FLAGS+=(--prerelease) || FLAGS+=(--latest)
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+              gh release create "$TAG" dist/* "${FLAGS[@]}" --notes-file notes/release-notes.txt
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY"

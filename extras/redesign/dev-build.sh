@@ -8,7 +8,9 @@
 # container, then copies the installed tree and the Qt test executables to
 # build-win64/ so they can be run natively on Windows.
 #
-#   --release   release build (build.sh -r) instead of debugoptimized
+#   --release   release build type (build.sh -r -i none: -r alone would also run
+#               upstream's meson dist and MSI packaging, which needs WiX; the
+#               NSIS installer comes from --installer, as for a dev build)
 #   --tests     after building, run extras/redesign/run-tests.sh
 #   --installer also build the NSIS installer (needs makensis, in the image):
 #               build-win64/installer/vireo-<release version>-win64.exe
@@ -20,6 +22,9 @@
 #   output on host   build-win64/win64-meson/vlc-win64/vireo.exe
 #                    build-win64/win64-meson/tests/*.exe
 #                    build-win64/installer/vireo-<version>-win64.exe   (--installer)
+#
+# Environment: MCONFIGFLAGS is passed to the meson setup of build.sh, e.g.
+#   MCONFIGFLAGS="-Dredesign_build_number=3" extras/redesign/dev-build.sh
 #
 # Requires Docker Desktop (WSL2 backend). Run from Git Bash or WSL.
 
@@ -39,7 +44,7 @@ for arg in "$@"; do
         --release) RELEASE=1 ;;
         --tests)   TESTS=1 ;;
         --installer) INSTALLER=1 ;;
-        -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "dev-build.sh: unknown option '$arg'" >&2; exit 2 ;;
     esac
 done
@@ -55,7 +60,7 @@ VOLUME="vlc-reborn-build"
 BUILD_FLAGS="-m -p -a x86_64"
 if [ "$RELEASE" = 1 ]; then
     VOLUME="vlc-reborn-build-release"
-    BUILD_FLAGS="-r $BUILD_FLAGS"
+    BUILD_FLAGS="-r -i none $BUILD_FLAGS"
 fi
 
 OUT="$REPO/build-win64"
@@ -81,7 +86,7 @@ docker run --rm \
     -e BUILD_FLAGS="$BUILD_FLAGS" \
     -e WANT_TESTS="$TESTS" \
     -e WANT_INSTALLER="$INSTALLER" \
-    -e PINNED_CONTRIB_SHA="$PINNED_CONTRIB_SHA" \
+    -e PINNED_CONTRIB_SHA="$PINNED_CONTRIB_SHA"     -e MCONFIGFLAGS="${MCONFIGFLAGS:-}" \
     -e VLC_PREBUILT_CONTRIBS_URL="${VLC_PREBUILT_CONTRIBS_URL:-}" \
     -v "$VOLUME":/build \
     -v "$REPO_MOUNT":/vlc \
