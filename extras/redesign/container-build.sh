@@ -46,6 +46,18 @@ esac
 exec /usr/bin/wine "$@"
 SHIM_EOF
 chmod +x "$SHIM/wine"
+# winepath: build.sh gives it to meson as `cygpath`, and msi/meson.build calls it for the Windows
+# paths of config.wxi (the MSI itself is not built here). The conversion needs no wine, and wine
+# does not run on the GitHub runners (32-bit: "wineserver: socket: Function not implemented").
+cat > "$SHIM/winepath" <<'SHIM_EOF'
+#!/bin/sh
+if [ "$1" = "-w" ] && [ "$#" -eq 2 ]; then
+    printf 'Z:%s\n' "$2" | tr '/' '\\'
+    exit 0
+fi
+exec /usr/bin/winepath "$@"
+SHIM_EOF
+chmod +x "$SHIM/winepath"
 export PATH="$SHIM:$PATH"
 
 # --- Qt private headers -----------------------------------------------------
