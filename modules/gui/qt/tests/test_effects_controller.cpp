@@ -78,8 +78,8 @@ class TestEffectsController : public QObject
 private slots:
     void initTestCase()
     {
-        setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 1);
-        setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 1);
+        setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 0);
+        setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 0);
 
         // a throwaway profile: the configuration of the user is neither read nor written
         QVERIFY(m_dir.isValid());

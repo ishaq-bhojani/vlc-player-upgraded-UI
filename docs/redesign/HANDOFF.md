@@ -69,10 +69,9 @@ Latest work, all reviewed:
   install the new build (or run a portable copy) and check the installer pages at 150%,
   the onboarding theme cards, Settings → Advanced… dialogs, and Space play/pause on a
   real video. If it still hangs, debug it (log stops right after the version lines).
-- Win64 native test run: 9 Qt tests fail on mingw (effects_controller, measured_gain,
-  ml_recent_audio_model, redesign_option, redesign_widget_palette, settings_model,
-  subtitle_attacher, tool_manager, waveform); never baselined against pre-rebrand. The
-  Linux run (54/54) is the gate.
+- Win64 native test run: 25 passed, 0 failed (2026-10-30; the 9 earlier failures were
+  triaged: 8 were test or runner setup, tool_manager also found a real race, fixed).
+  Excluded tests and why: `docs/redesign/building.md`.
 
 ## Next tasks, in order
 

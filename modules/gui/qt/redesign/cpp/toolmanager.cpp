@@ -91,6 +91,18 @@ bool isSafeZipPath(const QString& path)
     return true;
 }
 
+//! Two tools can install at once, and on Windows a mkpath that races another one for the same
+//! parent fails, although the folder is there a moment later.
+bool mkpathWithRetries(const QString& path)
+{
+    for (int attempt = 0; attempt < RENAME_ATTEMPTS; ++attempt) {
+        if (QDir().mkpath(path))
+            return true;
+        std::this_thread::sleep_for(RENAME_PAUSE);
+    }
+    return false;
+}
+
 bool renameWithRetries(const QString& from, const QString& to)
 {
     for (int attempt = 0; attempt < RENAME_ATTEMPTS; ++attempt) {
@@ -481,7 +493,7 @@ bool ToolManager::install(const ToolEntry& entry, const QString& toolsRoot, Tool
                           std::atomic_bool& cancel, QString* error)
 {
     const QString parentDir = QFileInfo(toolsRoot).absolutePath();
-    if (!QDir().mkpath(parentDir)) {
+    if (!mkpathWithRetries(parentDir)) {
         *error = tr("The folder for the tools cannot be created.");
         return false;
     }
@@ -544,7 +556,7 @@ bool ToolManager::install(const ToolEntry& entry, const QString& toolsRoot, Tool
     }
 
     const QString stage = tmp.filePath(QStringLiteral("stage"));
-    if (!QDir().mkpath(stage)) {
+    if (!mkpathWithRetries(stage)) {
         *error = tr("The folder for the tool cannot be created.");
         return false;
     }
@@ -581,7 +593,7 @@ bool ToolManager::install(const ToolEntry& entry, const QString& toolsRoot, Tool
     // restored if the new one cannot be moved in, so there is never a moment without a directory
     // to fall back to
     const QString finalDir = installDir(toolsRoot, entry);
-    if (!QDir().mkpath(toolsRoot)) {
+    if (!mkpathWithRetries(toolsRoot)) {
         *error = tr("The folder for the tools cannot be created.");
         return false;
     }

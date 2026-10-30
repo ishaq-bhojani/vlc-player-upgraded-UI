@@ -607,7 +607,9 @@ private slots:
     void folderOf()
     {
         SubtitleAttacher attacher;
-        QCOMPARE(attacher.folderOf(QUrl::fromLocalFile("/v/My Show/b.mkv")), QString("/v/My Show"));
+        // an absolute path of this system: "/v" is not one on Windows
+        const QString folder = QDir(QDir::tempPath()).filePath("My Show");
+        QCOMPARE(attacher.folderOf(QUrl::fromLocalFile(folder + "/b.mkv")), folder);
         QCOMPARE(attacher.folderOf(QUrl("http://example.org/a.mkv")), QString());
         QCOMPARE(attacher.folderOf(QUrl()), QString());
     }

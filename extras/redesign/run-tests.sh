@@ -65,6 +65,11 @@ EXCLUDED=(
     "test_qt_dialog_model.exe|needs vlc_static_modules, unsupported by the core on Windows"
     "test_qt_ml_model.exe|needs vlc_static_modules, unsupported by the core on Windows"
     "test_qt_renderer_manager.exe|needs vlc_static_modules, unsupported by the core on Windows"
+    "test_qt_ml_recent_audio_model.exe|needs vlc_static_modules, unsupported by the core on Windows"
+    # A QApplication test, and the static win64 Qt has no "offscreen" platform plugin: Qt shows
+    # "no Qt platform plugin could be initialized" in a dialog nobody closes until the time out.
+    # Linux runs it (linux-tests.sh), the style code is the same.
+    "test_qt_redesign_widget_palette.exe|needs the offscreen Qt platform, missing from the static win64 Qt; covered by linux-tests.sh"
     # Meson only defines the qml_test target when Qt6QuickTest is found, and the
     # prebuilt win64 Qt contrib does not ship it (upstream runs QML tests on a
     # native Linux job only). Covers all qml_tests entries (tst_FSM, tst_MediaText, tst_ReplayLogic).

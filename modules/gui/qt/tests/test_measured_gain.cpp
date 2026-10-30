@@ -791,8 +791,8 @@ private:
             : t(test)
             , outFile(test->m_dir->filePath("out.raw"))
         {
-            setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 1);
-            setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 1);
+            setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 0);
+            setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 0);
             config = test->m_dir->filePath("vlcrc").toUtf8();
             const QByteArray configArg = "--config=" + config;
             const char* argv[] = {"--ignore-config", configArg.constData(), "--no-media-library"};

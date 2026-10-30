@@ -200,5 +200,7 @@ not patched):
 | Test | Reason |
 | --- | --- |
 | `test_qt_navigation_model` | Does not link: its meson entry has no `link_args`, so with the static win64 Qt the zlib/pcre2 symbols are missing. |
-| `test_qt_dialog_model`, `test_qt_ml_model`, `test_qt_renderer_manager` | They register fake modules through `vlc_static_modules`, which the core only loads on ELF targets (`src/modules/bank.c`), so the test environment cannot start on Windows. They are still compiled, which makes them a build check. |
+| `test_qt_dialog_model`, `test_qt_ml_model`, `test_qt_renderer_manager`, `test_qt_ml_recent_audio_model` | They register fake modules through `vlc_static_modules`, which the core only loads on ELF targets (`src/modules/bank.c`), so the test environment cannot start on Windows. They are still compiled, which makes them a build check. |
+| `test_qt_redesign_widget_palette` | A `QApplication` test: the static win64 Qt has no `offscreen` platform plugin, and Qt's error dialog would wait for the time out. `linux-tests.sh` runs it. |
+| `test_qt_update_channel` | Uses POSIX `mkdtemp`; `linux-tests.sh` runs it. |
 | `tst_FSM` (`qml_test`) | The win64 Qt contrib does not ship `Qt6QuickTest`, so meson never defines the `qml_test` target. |

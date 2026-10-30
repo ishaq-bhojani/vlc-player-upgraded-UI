@@ -1234,8 +1234,8 @@ private:
     public:
         VlcInstance()
         {
-            setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 1);
-            setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 1);
+            setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 0);
+            setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 0);
             m_config = m_dir.filePath("vlcrc").toUtf8();
             const QByteArray configArg = "--config=" + m_config;
             const char* argv[] = {"--ignore-config", configArg.constData(), "--no-media-library"};

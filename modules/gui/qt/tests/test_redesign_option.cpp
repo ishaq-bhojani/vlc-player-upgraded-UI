@@ -39,8 +39,8 @@ private slots:
     {
         // the qt-redesign option is declared by the qt plugin, which has to
         // be discoverable for libvlc to accept --[no-]qt-redesign
-        setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 1);
-        setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 1);
+        setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 0);
+        setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 0);
     }
 
     void defaultIsTrue()

@@ -838,7 +838,10 @@ private slots:
         QTest::newRow("symlink plus file") << QStringList{QStringLiteral("link:x/bin/tool.exe"), QStringLiteral("y/tool.exe")}
                                            << QStringLiteral("y/tool.exe");
         QTest::newRow("absolute path") << QStringList{QStringLiteral("/x/tool.exe")} << QString();
+#ifndef Q_OS_WIN
+        // on Windows the Qt zip classes turn the backslash into a slash: a plain bin/tool.exe
         QTest::newRow("backslash") << QStringList{QStringLiteral("bin\\tool.exe")} << QString();
+#endif
         QTest::newRow("drive with slash") << QStringList{QStringLiteral("c:/tool.exe")} << QString();
         QTest::newRow("drive without slash") << QStringList{QStringLiteral("C:tool.exe")} << QString();
         QTest::newRow("name that only ends like the exe") << QStringList{QStringLiteral("a/bin/mytool.exe")} << QString();
@@ -900,7 +903,10 @@ private slots:
 
         manager->ensure(QStringLiteral("tool"));
         manager->ensure(QStringLiteral("toolb"));
-        QTRY_VERIFY_WITH_TIMEOUT(state->fetches.load() == 2, 5000);
+        QTRY_VERIFY2_WITH_TIMEOUT(state->fetches.load() == 2,
+                                  failed.isEmpty() ? "no failure reported"
+                                                   : qPrintable(failed.first().at(0).toString() + ": " + failed.first().at(1).toString()),
+                                  5000);
 
         manager->cancel(QStringLiteral("tool"));
         QTRY_COMPARE_WITH_TIMEOUT(failed.count(), 1, 10000);

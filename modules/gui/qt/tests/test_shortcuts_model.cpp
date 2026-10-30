@@ -125,8 +125,8 @@ private slots:
     void initTestCase()
     {
         // the options are declared by the core, which libvlc has to find
-        setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 1);
-        setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 1);
+        setenv("VLC_PLUGIN_PATH", TOP_BUILDDIR"/modules", 0);
+        setenv("VLC_LIB_PATH", TOP_BUILDDIR"/modules", 0);
     }
 
     void init()
