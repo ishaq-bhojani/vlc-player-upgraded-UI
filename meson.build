@@ -1023,6 +1023,7 @@ assert(redesign_user_dir != '' and not redesign_user_dir.endswith('.') and not r
        and not redesign_user_dir.contains('\\') and not redesign_user_dir.contains('/'),
        'redesign_user_dir must be a folder name that is not empty, not "vlc", has no path separator and does not end with "." or a space')
 cdata.set_quoted('REDESIGN_USER_DIR_NAME', redesign_user_dir)
+cdata.set_quoted('REDESIGN_BRAND_NAME', get_option('redesign_product_name'))
 
 cdata.set('PACKAGE_VERSION_MAJOR',      vlc_version_major)
 cdata.set('PACKAGE_VERSION_MINOR',      vlc_version_minor)

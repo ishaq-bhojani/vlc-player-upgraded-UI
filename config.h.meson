@@ -527,6 +527,10 @@
 /* Vireo: build number N of the release 4.0.0.N (meson option redesign_build_number) */
 #mesondefine REDESIGN_BUILD_NUMBER
 
+/* Vireo: the product name in the messages of the core and the launcher (meson option
+   redesign_product_name); the Qt interface uses redesign::productName() */
+#mesondefine REDESIGN_BRAND_NAME
+
 /* Vireo: name of the per-user folder on Windows (meson option redesign_user_dir) */
 #mesondefine REDESIGN_USER_DIR_NAME
 

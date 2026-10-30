@@ -155,11 +155,11 @@ static void ShowDialog   ( intf_thread_t *, int, int, intf_dialog_args_t * );
 
 #define SYSTRAY_TEXT N_( "Systray icon" )
 #define SYSTRAY_LONGTEXT N_( "Show an icon in the systray " \
-                             "allowing you to control VLC media player " \
+                             "allowing you to control " REDESIGN_BRAND_NAME " " \
                              "for basic actions." )
 
-#define MINIMIZED_TEXT N_( "Start VLC with only a systray icon" )
-#define MINIMIZED_LONGTEXT N_( "VLC will start with just an icon in " \
+#define MINIMIZED_TEXT N_( "Start " REDESIGN_BRAND_NAME " with only a systray icon" )
+#define MINIMIZED_LONGTEXT N_( REDESIGN_BRAND_NAME " will start with just an icon in " \
                                "your taskbar." )
 
 #define KEEPSIZE_TEXT N_( "Resize interface to the native video size" )
@@ -212,7 +212,7 @@ static void ShowDialog   ( intf_thread_t *, int, int, intf_dialog_args_t * );
         "the recent items played in the player." )
 
 #define QT_MODE_TEXT N_( "Selection of the starting mode and look" )
-#define QT_MODE_LONGTEXT N_( "Start VLC with:\n" \
+#define QT_MODE_LONGTEXT N_( "Start " REDESIGN_BRAND_NAME " with:\n" \
                              " - normal mode\n"  \
                              " - a zone always present to show information " \
                                   "as lyrics, album arts...\n" \

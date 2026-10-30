@@ -1318,7 +1318,7 @@ static const char *const psz_recursive_list_text[] = {
  ****************************************************************************/
 
 // DEPRECATED
-#define HOTKEY_CAT_LONGTEXT N_( "These settings are the global VLC key " \
+#define HOTKEY_CAT_LONGTEXT N_( "These settings are the global " REDESIGN_BRAND_NAME " key " \
     "bindings, known as \"hotkeys\"." )
 
 static const int mouse_wheel_values[] = { -1, 0, 2, 3, };

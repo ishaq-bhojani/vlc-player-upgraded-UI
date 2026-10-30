@@ -383,7 +383,9 @@ void PrefsDialog::save()
         int restart = QMessageBox::question(
                           this,
                           qtr( "Restart Required" ),
-                          qtr( "VLC needs to be restarted for the reset to take full effect.\n\nRestart now?" ),
+                          redesign::isEnabled( VLC_OBJECT( p_intf ) )
+                              ? qtr( "%1 needs to be restarted for the reset to take full effect.\n\nRestart now?" ).arg( redesign::productName() )
+                              : qtr( "VLC needs to be restarted for the reset to take full effect.\n\nRestart now?" ),
                           QMessageBox::Yes | QMessageBox::No,
                           QMessageBox::Yes);
         
