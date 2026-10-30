@@ -44,6 +44,10 @@ jobs:
       # The image's default user ("videolan") cannot write to the runner-owned
       # workspace, so checkout and the build would fail with permission errors.
       options: --user root
+    env:
+      # The job runs as root but GitHub mounts HOME=/github/home, owned by the runner's user:
+      # wine (winepath in the meson files) refuses to create its folder there.
+      WINEPREFIX: /root/.wine
     steps:
       - name: Checkout
         uses: actions/checkout@v4

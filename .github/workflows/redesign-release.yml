@@ -53,6 +53,10 @@ jobs:
       # Same image as redesign-ci.yml and extras/redesign/dev-build.sh.
       image: registry.videolan.org/vlc-debian-win64-posix:20260611225331
       options: --user root
+    env:
+      # The job runs as root but GitHub mounts HOME=/github/home, owned by the runner's user:
+      # wine (winepath in the meson files) refuses to create its folder there.
+      WINEPREFIX: /root/.wine
     outputs:
       tag: ${{ steps.version.outputs.tag }}
       prerelease: ${{ steps.version.outputs.prerelease }}
