@@ -247,5 +247,9 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
         free (argv[i]);
 
     (void)hInstance; (void)hPrevInstance; (void)lpCmdLine; (void)nCmdShow;
+    /* Vireo: not a plain return, ExitProcess() would run the same DLL atexit handlers that
+     * module_EndBank() avoids. Everything is saved and released by now. */
+    fflush (NULL);
+    TerminateProcess (GetCurrentProcess (), 0);
     return 0;
 }

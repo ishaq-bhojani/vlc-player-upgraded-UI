@@ -680,8 +680,14 @@ static void vlc_plugin_Unmap(vlc_plugin_t *plugin)
 
     void *handle = (void *)atomic_exchange_explicit(&plugin->handle, 0,
                                                     memory_order_acquire);
+#ifndef _WIN32
     if (handle != NULL)
         vlc_dlclose(handle);
+#else
+    /* Vireo: the bank only ends with the process. FreeLibrary() here runs a plugin's atexit
+     * handlers, one of which blocks forever in pthread_key_delete(). */
+    (void) handle;
+#endif
 }
 
 void *vlc_plugin_Symbol(struct vlc_logger *log,
