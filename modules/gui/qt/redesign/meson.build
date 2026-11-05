@@ -82,6 +82,7 @@ qt_plugin_sources += files(
     'cpp/subtitleattacher.cpp',
     'cpp/subtitleattacher.hpp',
     'cpp/subtitleattachervlc.cpp',
+    'cpp/threadatexit_win32.cpp',
     'cpp/uivisibility.cpp',
     'cpp/uivisibility.hpp',
     'cpp/subtitleattachervlc.hpp',
