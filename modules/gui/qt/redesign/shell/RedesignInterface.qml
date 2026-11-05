@@ -173,6 +173,11 @@ Item {
     //   - browse: the current page
     //   - watch (panel docked or closed) and immersive: the Stage, whose keys are the hotkeys
     function _focusState() {
+        // a modal dialog keeps the keyboard: the page behind it would take it (the onboarding at
+        // the first start, opened before the start page asks for the focus)
+        if (dialogHost.active)
+            return
+
         if (root._panelFocusPending) {
             root._panelFocusPending = false
             if (rightPanel.shown) {
@@ -308,10 +313,7 @@ Item {
         else
             root._showBars()
 
-        if ((event.key === Qt.Key_Escape) && UiVisibility.hidden) {
-            // Hide UI ends first (before the overlay and the fullscreen)
-            UiVisibility.hidden = false
-        } else if ((event.key === Qt.Key_Escape) && root._panelIsOverlay) {
+        if ((event.key === Qt.Key_Escape) && root._panelIsOverlay) {
             // the overlay closes first
             root.watchPanelOpen = false
         } else if (KeyHelper.matchSearch(event)) {
@@ -377,6 +379,18 @@ Item {
         enabled: MainCtx.useGlobalShortcuts && (shellStates.state !== "browse")
 
         onActivated: UiVisibility.toggle()
+    }
+
+    // Esc ends Hide UI first (before the overlay and the fullscreen). A shortcut and not the keys of
+    // the root: a focused control (a button of the hidden bars) takes Esc as its cancel action
+    // (Navigation.defaultKeyAction), even without one, and the root would never see it. Not while a
+    // dialog is open: its Esc is its own.
+    Shortcut {
+        sequence: "Esc"
+        context: Qt.ApplicationShortcut
+        enabled: UiVisibility.hidden && !dialogHost.active
+
+        onActivated: UiVisibility.hidden = false
     }
 
     HoverHandler {

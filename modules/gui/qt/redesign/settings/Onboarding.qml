@@ -96,6 +96,11 @@ RedesignModalDialog {
         root.close()
     }
 
+    //! the keyboard on Next, or on Finish at the last step
+    function focusPrimary() {
+        (steps.canFinish ? finishButton : nextButton).forceActiveFocus(Qt.TabFocusReason)
+    }
+
     //! "Space\tMedia Play Pause" -> "Space, Media Play Pause"
     function keysText(hotkey) {
         const keys = String(hotkey).split("\t").filter(key => key.length > 0)
@@ -103,6 +108,23 @@ RedesignModalDialog {
     }
 
     // Events
+
+    // the keyboard starts in the dialog, not on the page behind it
+    onOpened: focusPrimary()
+
+    // A step hides the button that had the keyboard (Next at the last step, Back at the first):
+    // the keyboard goes to the primary button rather than to nowhere.
+    Connections {
+        target: root.steps
+
+        function onCurrentChanged() {
+            Qt.callLater(() => {
+                const focused = root.contentItem.Window.activeFocusItem
+                if (!focused || !focused.visible || !focused.activeFocusOnTab)
+                    root.focusPrimary()
+            })
+        }
+    }
 
     // the accent is live: the cards (their own palettes) read it again, like the shell does
     Connections {
@@ -339,6 +361,7 @@ RedesignModalDialog {
         }
     }
 
+    // Enter presses the focused button, as Space does (a Button only takes Space on Windows)
     footerItems: [
         Widgets.ButtonExt {
             visible: !root.steps.canFinish
@@ -346,6 +369,9 @@ RedesignModalDialog {
             text: qsTr("Skip")
 
             Accessible.name: qsTr("Skip the introduction")
+
+            Keys.onReturnPressed: clicked()
+            Keys.onEnterPressed: clicked()
 
             onClicked: root.finish()
         },
@@ -356,9 +382,14 @@ RedesignModalDialog {
 
             Accessible.name: qsTr("Previous step")
 
+            Keys.onReturnPressed: clicked()
+            Keys.onEnterPressed: clicked()
+
             onClicked: root.steps.back()
         },
         Widgets.ButtonExt {
+            id: nextButton
+
             visible: !root.steps.canFinish
 
             text: qsTr("Next")
@@ -368,9 +399,14 @@ RedesignModalDialog {
 
             Accessible.name: qsTr("Next step")
 
+            Keys.onReturnPressed: clicked()
+            Keys.onEnterPressed: clicked()
+
             onClicked: root.steps.next()
         },
         Widgets.ButtonExt {
+            id: finishButton
+
             visible: root.steps.canFinish
 
             text: qsTr("Finish")
@@ -379,6 +415,9 @@ RedesignModalDialog {
             colorContext.colorSet: ColorContext.ButtonAccent
 
             Accessible.name: qsTr("Finish the introduction")
+
+            Keys.onReturnPressed: clicked()
+            Keys.onEnterPressed: clicked()
 
             onClicked: root.finish()
         }
