@@ -26,6 +26,7 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QSettings>
 
 namespace redesign
 {
@@ -43,6 +44,26 @@ FirstRun firstRunFor(bool redesignEnabled)
 bool readsStockLayoutOptions(bool redesignEnabled)
 {
     return !redesignEnabled;
+}
+
+const std::vector<DefaultOverride>& defaultOverrides()
+{
+    static const std::vector<DefaultOverride> overrides {
+        { "qt-video-autoresize", 0 },
+    };
+    return overrides;
+}
+
+void seedDefaults(bool redesignEnabled, QSettings* settings,
+                  const std::function<void(const char*, int)>& put)
+{
+    constexpr QLatin1String seededKey {"redesign/DefaultsSeeded"};
+    if (!redesignEnabled || settings->value(seededKey, false).toBool())
+        return;
+
+    for (const DefaultOverride& entry : defaultOverrides())
+        put(entry.option, entry.value);
+    settings->setValue(seededKey, true);
 }
 
 QUrl rootQmlUrl(bool enabled)

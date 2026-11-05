@@ -249,9 +249,13 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
+                        // With nothing else filling the column (no results, no page), the extra
+                        // height would be shared out and the close button would leave the corner.
+                        Layout.fillHeight: true
 
                         visible: sidebar.searching && root.results.length === 0
 
+                        verticalAlignment: Text.AlignTop
                         text: qsTr("No setting found")
                         font.pixelSize: VLCStyle.fontSize_normal
                         color: theme.fg.secondary

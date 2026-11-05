@@ -89,6 +89,10 @@ Item {
         return MainCtx.productName
     }
 
+    // first crumb of the library header: the root of the page shown ("Home" on Rail > Recent,
+    // whose title is "Recent"), else the title
+    readonly property string libraryRootTitle: rail.model.rootLabel(History.viewPath) || root.pageTitle
+
     property bool _extendedFrameVisible: MainCtx.windowSuportExtendedFrame
                                       && MainCtx.clientSideDecoration
                                       && (MainCtx.intfMainWindow.visibility === Window.Windowed)
@@ -861,7 +865,7 @@ Item {
                             mode: (shellStates.panelMode === "hidden") ? "hidden"
                                                                        : (shellStates.state === "browse") ? "strip"
                                                                                                           : shellStates.panelMode
-                            title: root.pageTitle
+                            title: root.libraryRootTitle
                             page: libraryPages
 
                             onBrowseRequested: root.leaveToBrowse()
@@ -895,6 +899,11 @@ Item {
                                 anchors.fill: parent
 
                                 focus: !compactList.active
+
+                                // The page stays alive under the compact list, which covers it: hidden, so that
+                                // its tiles leave the accessibility tree (a screen reader would read each
+                                // item twice).
+                                visible: !compactList.active
 
                                 pageModel: root.pageModel
 
@@ -947,6 +956,31 @@ Item {
 
                         z: 5
 
+                        // the stage under an overlay panel is dimmed, a click outside of the panel closes
+                        // it (the scrim reaches from the stage to the slot, which has no width then)
+                        MouseArea {
+                            x: body.x + stage.x - rightPanelSlot.x
+                            width: -x
+                            height: parent.height
+
+                            visible: rightPanel.shown && rightPanel.overlay && (shellStates.state !== "immersive")
+
+                            onClicked: rightPanel.close()
+
+                            ColorContext {
+                                id: panelScrimTheme
+
+                                colorSet: ColorContext.Window
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+
+                                color: panelScrimTheme.bg.primary
+                                opacity: 0.6
+                            }
+                        }
+
                         RightPanel {
                             id: rightPanel
 
@@ -956,6 +990,9 @@ Item {
                                 bottom: parent.bottom
                             }
 
+                            // a page of the library keeps less room than the video
+                            stageMinWidth: RightPanelLogic.stageMin(shellStates.state, RedesignStyle.pageMinWidth,
+                                                                    MainCtx.dp(480, RedesignStyle.scale))
                             // the immersive stage is the whole window: the panel floats over the video
                             forceOverlay: shellStates.state === "immersive"
                             // what the rail and a docked library panel leave

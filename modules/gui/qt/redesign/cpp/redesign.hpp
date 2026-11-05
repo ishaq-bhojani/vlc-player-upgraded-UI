@@ -24,6 +24,11 @@
 #include <QUrl>
 #include <QStringList>
 
+#include <functional>
+#include <vector>
+
+class QSettings;
+
 namespace redesign
 {
 
@@ -78,6 +83,30 @@ bool installAppFont();
  * the failure path can be tested.
  */
 bool installAppFont(const QStringList& fontFiles, const QString& family);
+
+/**
+ * An option whose default differs in the redesign from the one declared upstream. An option
+ * declared in qt.cpp cannot have two defaults, so the redesign writes its value once.
+ */
+struct DefaultOverride
+{
+    const char* option;
+    int value;
+};
+
+/**
+ * The overrides applied when the redesign is on. "qt-video-autoresize" is off: the window keeps
+ * the size the user gave it instead of jumping to the size of each video.
+ */
+const std::vector<DefaultOverride>& defaultOverrides();
+
+/**
+ * Redesign enabled: calls `put(option, value)` for every override, once per profile (the flag
+ * `redesign/DefaultsSeeded` of `settings`), so a value the user chose afterwards is kept. Does
+ * nothing, and sets no flag, when the redesign is off.
+ */
+void seedDefaults(bool redesignEnabled, QSettings* settings,
+                  const std::function<void(const char* option, int value)>& put);
 
 } // namespace redesign
 

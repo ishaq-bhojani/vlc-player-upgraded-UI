@@ -445,7 +445,7 @@ FocusScope {
                 delegate: MediaCard {
                     showProgress: true
                     fallbackGlyph: VLCIcons.topbar_video
-                    subtitle: model.duration?.formatHMS() ?? ""
+                    subtitle: MediaText.durationText(model.duration)
                 }
 
                 Navigation.parentItem: sections
@@ -595,7 +595,7 @@ FocusScope {
                 }
 
                 Text {
-                    text: recentDelegate.model.duration?.formatHMS() ?? ""
+                    text: MediaText.durationText(recentDelegate.model.duration)
                     color: recentTheme.fg.secondary
                     font.pixelSize: VLCStyle.fontSize_small
                     textFormat: Text.PlainText

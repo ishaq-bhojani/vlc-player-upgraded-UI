@@ -287,8 +287,9 @@ QtObject {
         },
         {
             id: "library", title: qsTr("Library"), subcats: [702], // SUBCAT_PLAYLIST_SD
+            // "media-library" is not here: the launcher always passes --media-library, so the
+            // switch could not change anything (it stays in the Advanced preferences)
             rows: [
-                s("media-library"),
                 s("auto-preparse"),
                 special("libraryFolders", qsTr("Library folders"),
                         { description: qsTr("The folders the media library scans.") })

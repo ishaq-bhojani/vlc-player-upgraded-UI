@@ -79,4 +79,16 @@ TestCase {
         compare(rail.indexForPath(["mlsettings"]), -1)
         compare(rail.indexForPath([]), -1)
     }
+
+    function test_rootLabel() {
+        rail.hasMediaLibrary = true
+        // Rail > Recent and Rail > Playlists are sub pages of Home and of Videos
+        compare(rail.rootLabel(["home", "recent"]), "Home")
+        compare(rail.rootLabel(["video", "playlists", "all"]), "Videos")
+        compare(rail.rootLabel(["network", "browse"]), "Network")
+        compare(rail.rootLabel(["discover"]), "")
+        compare(rail.rootLabel([]), "")
+        rail.hasMediaLibrary = false
+        compare(rail.rootLabel(["home"]), "")
+    }
 }

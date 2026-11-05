@@ -19,9 +19,11 @@ import QtQuick
 import QtQuick.Layouts
 
 
+import VLC.MainInterface
 import VLC.Widgets as Widgets
 import VLC.Util
 import VLC.Style
+import VLC.Redesign
 
 Item {
     id: root
@@ -219,7 +221,11 @@ Item {
             anchors.centerIn: parent
 
             horizontalAlignment: Text.AlignHCenter
-            text: timeDel.rowModel?.[timeDel.colModel.criteria]?.formatShort() ?? ""
+            text: {
+                const tick = timeDel.rowModel?.[timeDel.colModel.criteria]
+                // redesign: truncated like every other view, nothing for an unknown duration
+                return MainCtx.redesign ? MediaText.durationShortText(tick) : (tick?.formatShort() ?? "")
+            }
             color: timeDel.selected
                 ? timeDel.colorContext.fg.highlight
                 : timeDel.colorContext.fg.primary

@@ -27,6 +27,7 @@ import VLC.Widgets as Widgets
 import VLC.Util
 import VLC.Playlist
 import VLC.Style
+import VLC.Redesign
 
 T.Pane {
     id: root
@@ -247,6 +248,13 @@ T.Pane {
                             duration.push(itemDuration)
                         }
                         duration = duration[0].sum(duration)
+                    }
+
+                    if (MainCtx.redesign) {
+                        // truncated like the other views, and singular for one element
+                        const total = MediaText.durationLongText(duration)
+                        const count = (listView.count === 1) ? qsTr("1 element") : qsTr("%1 elements").arg(listView.count)
+                        return total ? qsTr("%1, %2").arg(count).arg(total) : count
                     }
 
                     return qsTr("%1 elements, %2").arg(listView.count).arg(duration.formatLong())

@@ -37,6 +37,12 @@ QtObject {
         return (current === requested) ? "" : normalized(requested)
     }
 
+    // What the stage keeps at least beside a docked panel: `pageMin` in the browse state (a page of
+    // the library reflows to what the panel leaves), `videoMin` otherwise (the video keeps a useful size).
+    function stageMin(shellState: string, pageMin: real, videoMin: real): real {
+        return (shellState === "browse") ? pageMin : videoMin
+    }
+
     /**
      * Width and placement of the panel.
      *   requested:  the width the user chose (persisted), kept within [minWidth, maxWidth]

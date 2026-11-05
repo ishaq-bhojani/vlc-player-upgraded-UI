@@ -177,7 +177,7 @@ Types: `toggle` (bool), `choice`, `number`, `slider`, `path`, `text`, `color`, `
 | Subtitles | Auto-detect subtitle files | `sub-autodetect-file` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1817` |
 | Subtitles | Subtitle file matching | `sub-autodetect-fuzzy` | choice {0..4} | PROVISIONAL (upstream prefs). integer enumeration; label overrides in spec 11.4 (0 "Don't auto-detect" ... 4 "Exact video name"). `src/libvlc-module.c:1819` |
 | Subtitles | Subtitle search folders | `sub-autodetect-path` | text (comma list) | PROVISIONAL (upstream prefs). `src/libvlc-module.c:1826` |
-| Library | Enable media library | `media-library` | toggle | PROVISIONAL (upstream prefs). restart. `src/libvlc-module.c:2179` |
+| Library | Enable media library | `media-library` | toggle | NOT SHOWN: `bin/winvlc.c` always passes `--media-library`, so the switch changes nothing. Advanced preferences only. `src/libvlc-module.c:2179` |
 | Library | Scan new media automatically (preparse) | `auto-preparse` | toggle | PROVISIONAL (upstream prefs). `src/libvlc-module.c:2184` |
 | Library | Library folders | `MLFoldersModel` (existing media library folders model) | folder list | PROVISIONAL (upstream prefs). Not a config key; spec section 6 reuses the existing model |
 | Network | HTTP proxy | `http-proxy` | text | PROVISIONAL (upstream prefs). declared under `#ifdef _WIN32` (obsolete on other platforms), so valid for this fork. `src/libvlc-module.c:1961` |

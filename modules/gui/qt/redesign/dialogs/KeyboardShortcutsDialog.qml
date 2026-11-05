@@ -58,7 +58,11 @@ RedesignModalDialog {
     ShortcutsPage {
         id: page
 
+        // The body is a layout: it takes its width from its items and ignores `bodyWidth` when no
+        // item has a width of its own, and this page has none (the dialog would be 0 px wide, with
+        // only its footer painted).
         Layout.fillWidth: true
+        Layout.preferredWidth: root.bodyWidth
         Layout.preferredHeight: Math.min(VLCStyle.dp(520, VLCStyle.scale),
                                          Math.max(VLCStyle.dp(240, VLCStyle.scale),
                                                   root._windowHeight * 0.7 - VLCStyle.dp(120, VLCStyle.scale)))

@@ -114,6 +114,22 @@ T.Menu {
         interactive: contentHeight > height
         clip: true
 
+        // a menu taller than the window scrolls just enough to show the entry the keyboard moves
+        // to: the list does not follow the current index by itself
+        onCurrentIndexChanged: if (currentIndex >= 0) positionViewAtIndex(currentIndex, ListView.Contain)
+
+        // says that the entries go on below (or above)
+        T.ScrollIndicator.vertical: T.ScrollIndicator {
+            active: true
+
+            contentItem: Rectangle {
+                implicitWidth: MainCtx.dp(2, RedesignStyle.scale)
+                radius: width / 2
+                color: theme.fg.secondary
+                visible: parent.size < 1.0
+            }
+        }
+
         Accessible.role: Accessible.PopupMenu
         Accessible.name: control.accessibleName
     }

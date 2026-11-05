@@ -128,13 +128,8 @@ FocusScope {
             readonly property string title: model.title || model.name || ""
             readonly property string thumbnail: model.thumbnail || model.small_cover || model.cover
                                                 || model.artwork || ""
-            // none for a folder or a group, whose duration is not known (it reads "0 ms")
-            readonly property string durationText: {
-                const duration = model.duration
-                if (!duration || typeof duration.formatHMS !== "function")
-                    return ""
-                return (duration.valid() && duration.toSeconds() > 0) ? duration.formatHMS() : ""
-            }
+            // none for a folder or a group, whose duration is not known
+            readonly property string durationText: MediaText.durationText(model.duration)
 
             readonly property bool current: ListView.isCurrentItem
 

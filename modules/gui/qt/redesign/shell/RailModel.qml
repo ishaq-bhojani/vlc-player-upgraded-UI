@@ -92,6 +92,21 @@ QtObject {
         return index >= 0 ? items[index].id : ""
     }
 
+    // Label of the root of viewPath: the entry of the rail that is only its first segment ("Home"
+    // for ["home", "recent"], where selectedId is "recent"), "" if there is none. The first crumb
+    // of the library header, so that Rail > Recent reads "Home > Recent", not "Recent > Recent".
+    function rootLabel(viewPath: var): string {
+        if (!viewPath || viewPath.length === 0)
+            return ""
+        const visible = visibleItems()
+        for (let i = 0; i < visible.length; ++i) {
+            const path = visible[i].path
+            if (path.length === 1 && path[0] === viewPath[0])
+                return visible[i].label
+        }
+        return ""
+    }
+
     // path to show on startup
     function defaultPath(): var {
         return hasMediaLibrary ? ["home"] : ["network"]

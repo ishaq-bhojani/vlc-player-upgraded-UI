@@ -49,7 +49,7 @@ FocusScope {
 
     property string mode: "hidden"
 
-    // the name of the rail entry that is shown: the first crumb of the address
+    // the name of the root of the page that is shown: the first crumb of the address
     property string title
 
     // the PageLoader of the library, the page the header works on (library/ViewHeader.qml)

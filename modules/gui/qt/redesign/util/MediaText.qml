@@ -75,4 +75,48 @@ QtObject {
             return resolved
         return qsTr("%1 - %2").arg(resolved).arg(who)
     }
+
+    // Durations of a VLCTick (anything with valid() and toSeconds()). Whole seconds are truncated,
+    // like VLCTick.formatHMS, so that every view shows the same text for a file. A duration that
+    // is unknown or not positive (a folder, a group) gives "", never "0 ms" or "-1 ms".
+    function _seconds(tick): int {
+        if (!tick || typeof tick.valid !== "function" || !tick.valid())
+            return 0
+        return Math.max(0, tick.toSeconds())
+    }
+
+    function _pad(n: int): string {
+        return (n < 10 ? "0" : "") + n
+    }
+
+    // "mm:ss", "hh:mm:ss" from one hour
+    function durationText(tick): string {
+        const total = _seconds(tick)
+        if (total <= 0)
+            return ""
+        const h = Math.floor(total / 3600)
+        const m = Math.floor(total / 60) % 60
+        const s = total % 60
+        return (h > 0 ? _pad(h) + ":" : "") + _pad(m) + ":" + _pad(s)
+    }
+
+    // "mm:ss", "1h05" from one hour (the narrow column of the details view)
+    function durationShortText(tick): string {
+        const total = _seconds(tick)
+        if (total < 3600)
+            return durationText(tick)
+        return Math.floor(total / 3600) + "h" + _pad(Math.floor(total / 60) % 60)
+    }
+
+    // "20 sec", "1 min 5 sec", "1 h 2 min" (the total of the queue)
+    function durationLongText(tick): string {
+        const total = _seconds(tick)
+        if (total <= 0)
+            return ""
+        if (total >= 3600)
+            return qsTr("%1 h %2 min").arg(Math.floor(total / 3600)).arg(Math.floor(total / 60) % 60)
+        if (total >= 60)
+            return qsTr("%1 min %2 sec").arg(Math.floor(total / 60)).arg(total % 60)
+        return qsTr("%1 sec").arg(total)
+    }
 }

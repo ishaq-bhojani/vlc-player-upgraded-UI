@@ -156,9 +156,13 @@ RedesignModalDialog {
         Accessible.ignored: true
     }
 
+    // The steps share one width: a layout takes its width from its items, and a wrapped Text asks for
+    // the width of its text on one line (and a folder path for its full length), so without a
+    // preferred width the dialog changes width at every step.
     // theme
     ColumnLayout {
         Layout.fillWidth: true
+        Layout.preferredWidth: root.bodyWidth
 
         visible: root.steps.currentStep === "theme"
 
@@ -217,6 +221,7 @@ RedesignModalDialog {
     // shortcuts
     ColumnLayout {
         Layout.fillWidth: true
+        Layout.preferredWidth: root.bodyWidth
 
         visible: root.steps.currentStep === "shortcuts"
 
@@ -289,6 +294,7 @@ RedesignModalDialog {
     // privacy
     ColumnLayout {
         Layout.fillWidth: true
+        Layout.preferredWidth: root.bodyWidth
 
         visible: root.steps.currentStep === "privacy"
 
@@ -319,6 +325,7 @@ RedesignModalDialog {
     // folders: by name, not by type, as in LibraryFoldersRow (the types need a media library)
     ColumnLayout {
         Layout.fillWidth: true
+        Layout.preferredWidth: root.bodyWidth
 
         visible: root.steps.currentStep === "folders"
 
@@ -346,6 +353,7 @@ RedesignModalDialog {
     // done
     ColumnLayout {
         Layout.fillWidth: true
+        Layout.preferredWidth: root.bodyWidth
 
         visible: root.steps.currentStep === "done"
 

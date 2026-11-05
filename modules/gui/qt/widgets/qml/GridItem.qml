@@ -94,7 +94,16 @@ T.ItemDelegate {
     Accessible.role: Accessible.Cell
     Accessible.name: title
     Accessible.selected: root.selected
-    Accessible.onPressAction: root.playClicked()
+    Accessible.onPressAction: {
+        // the redesign presses a tile as Enter does (open a folder, group, artist or album, play
+        // a single media); upstream always plays
+        if (MainCtx.redesign) {
+            root.itemClicked(Qt.NoModifier, true)
+            root.itemDoubleClicked(Qt.NoModifier)
+        } else {
+            root.playClicked()
+        }
+    }
 
     Keys.onMenuPressed: root.contextMenuButtonClicked(picture, root.mapToGlobal(0, root.height))
 

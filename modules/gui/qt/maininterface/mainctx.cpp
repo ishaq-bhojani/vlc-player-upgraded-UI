@@ -143,6 +143,10 @@ MainCtx::MainCtx(qt_intf_t *_p_intf)
     , m_csdButtonModel {std::make_unique<CSDButtonModel>(this, this)}
 {
     m_redesign = redesign::isEnabled(VLC_OBJECT(p_intf));
+    redesign::seedDefaults(m_redesign, p_intf->mainSettings, [this](const char* option, int value) {
+        config_PutInt(option, value);
+        config_SaveConfigFile(VLC_OBJECT(p_intf));
+    });
 
     // If `playlist-autostart` is set, and there are initial files
     // we don't bother loading main display just to unload it

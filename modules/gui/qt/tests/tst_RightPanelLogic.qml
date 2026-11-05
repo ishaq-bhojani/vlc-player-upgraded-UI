@@ -41,6 +41,15 @@ TestCase {
         compare(RightPanelLogic.toggled("queue", "bogus"), "")
     }
 
+    function test_stageMin() {
+        compare(RightPanelLogic.stageMin("browse", 400, 480), 400)
+        compare(RightPanelLogic.stageMin("watch", 400, 480), 480)
+        compare(RightPanelLogic.stageMin("immersive", 400, 480), 480)
+        // a page keeps less than a video: the queue docks in a narrower window in browse
+        verify(!RightPanelLogic.layout(320, 240, 560, 760, RightPanelLogic.stageMin("browse", 400, 480), 0.75).overlay)
+        verify(RightPanelLogic.layout(320, 240, 560, 760, RightPanelLogic.stageMin("watch", 400, 480), 0.75).overlay)
+    }
+
     function test_layout_data() {
         // min 240, max 560, stage keeps 480, overlay at most 3/4 of the free width
         return [

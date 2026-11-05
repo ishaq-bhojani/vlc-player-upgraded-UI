@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 import QtQuick
+import QtQml
 import QtQuick.Templates as T
 
 import VLC.MainInterface
@@ -23,6 +24,7 @@ import VLC.Style
 import VLC.Player
 import VLC.PlayerControls
 import VLC.Util
+import VLC.Widgets as Widgets
 import VLC.Redesign
 
 /**
@@ -33,6 +35,10 @@ import VLC.Redesign
  * It hosts the upstream PlayerControlLayout, so the profile model, the Customize Player editor
  * and the item registry (PlayerControlbarControls) are the stock ones. The root window shows
  * it while ShellStates.bottomBarVisible.
+ *
+ * A window too narrow for every control hides the ones that do not fit (ControlRepeater). They
+ * are then the entries of the menu of the "More" button at the right end of the bar, which shows
+ * only while a control is hidden (see ControlOverflow).
  */
 T.Pane {
     id: root
@@ -41,6 +47,9 @@ T.Pane {
 
     property int identifier: Player.hasVideoOutput ? PlayerControlbarModel.Videoplayer
                                                    : PlayerControlbarModel.Audioplayer
+
+    // the files of the controls the layout hides (see _scan)
+    property var hiddenSources: []
 
     // Signals
 
@@ -57,7 +66,8 @@ T.Pane {
     topPadding: 0
     bottomPadding: 0
     leftPadding: RedesignStyle.spacingL
-    rightPadding: RedesignStyle.spacingL
+    // the room of the "More" button (it is not part of the layout, which would hide it too)
+    rightPadding: RedesignStyle.spacingL + (moreButton.visible ? moreButton.width + RedesignStyle.spacingM : 0)
 
     Accessible.name: qsTr("Player controls")
     AccessibleCompat.id: "playerControlBar"
@@ -132,5 +142,135 @@ T.Pane {
 
         parent: root
         z: 1
+    }
+
+    // Finds the controls the layout hides: its Loaders that hold a control (they have a source; the
+    // ones of the layout itself have a component) and that are not visible. It is done once the
+    // layout has settled (its visibility bindings are delayed), and again when the bar, the profile
+    // or the room of the controls changes.
+    function _scan() {
+        if (!root.visible || !root.contentItem)
+            return
+
+        const hidden = []
+        const walk = (item) => {
+            for (const child of item.children) {
+                if (child.sourceComponent !== undefined && String(child.source) !== "") {
+                    if (!child.visible)
+                        hidden.push(String(child.source))
+                } else if (child.sourceComponent !== undefined) {
+                    if (child.item)
+                        walk(child.item)
+                } else {
+                    walk(child)
+                }
+            }
+        }
+        walk(root.contentItem)
+
+        // the same entries: the menu is not rebuilt
+        if (JSON.stringify(ControlOverflow.kinds(hidden)) !== JSON.stringify(ControlOverflow.kinds(root.hiddenSources)))
+            root.hiddenSources = hidden
+    }
+
+    function _openMoreMenu() {
+        // see RedesignMenu.anchorTop: set before popup(). The menu opens above the button, it may
+        // use the height of the window.
+        moreMenu.anchorTop = 0
+        moreMenu.popup(moreButton, moreButton.width - moreMenu.implicitWidth, -moreMenu.height - RedesignStyle.spacingXS)
+    }
+
+    function _kindText(kind: string): string {
+        switch (kind) {
+        case "mute": return Player.muted ? qsTr("Unmute") : qsTr("Mute")
+        case "subtitles": return qsTr("Subtitles")
+        case "audio": return qsTr("Audio")
+        case "settings": return qsTr("Settings")
+        case "queue": return qsTr("Queue")
+        case "fullscreen": return Player.fullscreen ? qsTr("Exit fullscreen") : qsTr("Fullscreen")
+        }
+        return ""
+    }
+
+    function _kindAction(kind: string) {
+        switch (kind) {
+        case "mute": Player.muted = !Player.muted; break
+        // the track popup opens above the button: the button of the bar
+        case "subtitles": ShellActions.trackPopupRequested("subtitles", moreButton); break
+        case "audio": ShellActions.trackPopupRequested("audio", moreButton); break
+        case "settings": ShellActions.sidebarRequested(); break
+        case "queue": ShellActions.queueRequested(); break
+        case "fullscreen": Player.fullscreen = !Player.fullscreen; break
+        }
+    }
+
+    Timer {
+        id: scanTimer
+
+        interval: 100
+
+        onTriggered: root._scan()
+    }
+
+    Connections {
+        target: root
+
+        function onWidthChanged() { scanTimer.restart() }
+        function onVisibleChanged() { scanTimer.restart() }
+    }
+
+    Connections {
+        target: root.contentItem
+
+        function onWidthChanged() { scanTimer.restart() }
+        function onModelChanged() { scanTimer.restart() }
+    }
+
+    // The menu of the hidden controls, one entry for each (ControlOverflow.kinds). As in MainMenu,
+    // the entries of an Instantiator are put into the menu by hand.
+    RedesignMenu {
+        id: moreMenu
+
+        parent: moreButton
+
+        accessibleName: qsTr("More controls")
+    }
+
+    Instantiator {
+        model: ControlOverflow.kinds(root.hiddenSources)
+
+        delegate: RedesignMenuItem {
+            required property string modelData
+
+            text: root._kindText(modelData)
+
+            // the fullscreen of the player needs a video
+            enabled: modelData !== "fullscreen" || Player.hasVideoOutput
+
+            onTriggered: root._kindAction(modelData)
+        }
+
+        onObjectAdded: (index, object) => moreMenu.insertItem(index, object)
+        onObjectRemoved: (index, object) => moreMenu.removeItem(object)
+    }
+
+    Widgets.IconToolButton {
+        id: moreButton
+
+        parent: root
+
+        anchors.right: parent.right
+        anchors.rightMargin: RedesignStyle.spacingL
+        anchors.verticalCenter: parent.verticalCenter
+
+        visible: ControlOverflow.kinds(root.hiddenSources).length > 0
+        activeFocusOnTab: true
+
+        text: VLCIcons.ellipsis
+        description: qsTr("More")
+
+        onClicked: root._openMoreMenu()
+
+        AccessibleCompat.id: "moreControlsButton"
     }
 }

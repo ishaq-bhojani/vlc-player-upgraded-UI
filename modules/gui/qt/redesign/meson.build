@@ -230,6 +230,7 @@ qml_modules += {
         'theme/RedesignStyle.qml',
         'util/MediaText.qml',
         'util/ReplayLogic.qml',
+        'util/ControlOverflow.qml',
         'util/PlayKeyLogic.qml',
         'util/CardCorner.qml',
         'util/ConeMath.qml',
@@ -254,6 +255,7 @@ qml_modules += {
 qml_tests += {
     'tst_MediaText': files('../tests/tst_MediaText.qml'),
     'tst_ReplayLogic': files('../tests/tst_ReplayLogic.qml'),
+    'tst_ControlOverflow': files('../tests/tst_ControlOverflow.qml'),
     'tst_PlayKeyLogic': files('../tests/tst_PlayKeyLogic.qml'),
     'tst_FocusKeeper': files('../tests/tst_FocusKeeper.qml'),
     'tst_RailModel': files('../tests/tst_RailModel.qml'),

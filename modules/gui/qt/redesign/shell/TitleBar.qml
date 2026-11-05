@@ -29,8 +29,9 @@ import VLC.Redesign
 
 /**
  * @brief The title bar of the redesign window, left to right: the menu button, the title
- * (the folder of the playing media, else the title of the current page; clicking the folder
- * requests the library on it), the library panel toggle, the fullscreen button and the
+ * (in the player states the folder of the playing media, a shortcut to it in the library;
+ * else the title of the current page, so in the browse state it names the page shown, never
+ * the folder of what plays), the library panel toggle, the fullscreen button and the
  * window buttons.
  *
  * With client side decorations the bar is the drag area of the window (double click
@@ -43,7 +44,7 @@ FocusScope {
 
     // Properties
 
-    // title shown when no media with a folder is playing
+    // title shown when no media with a folder is playing, and in the browse state
     property string pageTitle: MainCtx.productName
 
     // whether the library is shown in the whole window, the browse state (checked state of the library button)
@@ -146,8 +147,10 @@ FocusScope {
         T.AbstractButton {
             id: titleButton
 
-            // the title is a button only while it names the folder of the playing media
-            readonly property bool isFolder: root.folderName !== ""
+            // The title is a button only while it names the folder of the playing media. In the
+            // browse state the library is shown: the title is the page then, as the folder of
+            // what plays would read like the title of a page that is not it.
+            readonly property bool isFolder: root.folderName !== "" && !root.libraryActive
 
             Layout.fillHeight: true
             Layout.maximumWidth: root.width / 3

@@ -111,6 +111,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
+                Layout.preferredHeight: contentHeight
 
                 text: root.title
                 font.pixelSize: VLCStyle.fontSize_normal
@@ -124,6 +125,10 @@ Item {
 
             Text {
                 Layout.fillWidth: true
+                // A layout asks for the height of the text at its natural (one line) width, before
+                // the row is given its width: the lines that wrap are then clipped by the next row.
+                // The height of the wrapped text (contentHeight) makes the row grow to it.
+                Layout.preferredHeight: contentHeight
 
                 visible: root.description.length > 0
 
@@ -131,8 +136,6 @@ Item {
                 font.pixelSize: VLCStyle.fontSize_small
                 color: theme.fg.secondary
                 wrapMode: Text.WordWrap
-                maximumLineCount: 2
-                elide: Text.ElideRight
 
                 Accessible.ignored: true
             }

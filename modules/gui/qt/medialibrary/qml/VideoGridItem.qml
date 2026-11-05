@@ -23,6 +23,7 @@ import VLC.MediaLibrary
 import VLC.Widgets as Widgets
 import VLC.Util
 import VLC.Style
+import VLC.Redesign
 
 Widgets.GridItem {
     id: root
@@ -43,7 +44,8 @@ Widgets.GridItem {
     fillMode: Image.Stretch
 
     title: model.title || qsTr("Unknown title")
-    subtitle: model?.duration?.formatHMS() ?? ""
+    subtitle: MainCtx.redesign ? MediaText.durationText(model?.duration)
+                                : (model?.duration?.formatHMS() ?? "")
     pictureWidth: VLCStyle.gridCover_video_width
     pictureHeight: VLCStyle.gridCover_video_height
 

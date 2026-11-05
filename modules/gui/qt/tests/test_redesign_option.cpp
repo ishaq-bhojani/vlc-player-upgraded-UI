@@ -22,6 +22,11 @@
 #include <cstdlib>
 
 #include <QTest>
+#include <QSettings>
+#include <QTemporaryDir>
+
+#include <map>
+#include <string>
 
 #include <vlc/vlc.h>
 #include <vlc_common.h>
@@ -88,6 +93,29 @@ private slots:
                  QUrl("qrc:/qt/qml/VLC/Redesign/RedesignInterface.qml"));
         QCOMPARE(redesign::rootQmlUrl(false),
                  QUrl("qrc:/qt/qml/VLC/MainInterface/MainInterface.qml"));
+    }
+
+    void defaultOverridesSeededOnce()
+    {
+        // the window keeps the user's size in the redesign; stock keeps the upstream default
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QSettings settings(dir.filePath("s.ini"), QSettings::IniFormat);
+        std::map<std::string, int> written;
+        const auto put = [&](const char* option, int value) { written[option] = value; };
+
+        redesign::seedDefaults(false, &settings, put);
+        QVERIFY(written.empty());
+        QVERIFY(!settings.contains("redesign/DefaultsSeeded"));
+
+        redesign::seedDefaults(true, &settings, put);
+        QCOMPARE(written.size(), redesign::defaultOverrides().size());
+        QCOMPARE(written["qt-video-autoresize"], 0);
+
+        // a later start must not undo a value the user chose
+        written.clear();
+        redesign::seedDefaults(true, &settings, put);
+        QVERIFY(written.empty());
     }
 };
 

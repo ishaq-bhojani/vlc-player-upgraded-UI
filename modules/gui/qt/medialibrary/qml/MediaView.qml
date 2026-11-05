@@ -25,6 +25,7 @@ import VLC.MainInterface
 import VLC.Widgets as Widgets
 import VLC.Util
 import VLC.Style
+import VLC.Redesign
 
 // NOTE: This is a customizable view that can be used with
 //       the `MLMediaModel` and its drivatives.
@@ -164,7 +165,8 @@ MainViewLoader {
                 fallbackImage: model.isVideo ? VLCStyle.noArtVideoCover : VLCStyle.noArtAlbumCover
 
                 title: model.title || qsTr("Unknown Title")
-                subtitle: model.duration?.formatHMS() ?? "--:--"
+                subtitle: MainCtx.redesign ? MediaText.durationText(model.duration)
+                                            : (model.duration?.formatHMS() ?? "--:--")
 
                 opacity: gridView.expandIndex !== -1 && gridView.expandIndex !== index ? 0.7 : 1
 

@@ -64,4 +64,41 @@ TestCase {
         compare(MediaText.captionText("Dance Mix", "", "", "Dan"), "Dance Mix - Dan")
         compare(MediaText.captionText("Mr Dan - Song", "", "", "Dan"), "Mr Dan - Song - Dan")
     }
+
+    // a stand-in for VLCTick / VLCDuration
+    function tick(seconds, valid) {
+        return { valid: function () { return valid !== false }, toSeconds: function () { return seconds } }
+    }
+
+    function test_durationTextTruncates() {
+        compare(MediaText.durationText(tick(0)), "")
+        compare(MediaText.durationText(tick(6)), "00:06")
+        compare(MediaText.durationText(tick(19)), "00:19")
+        compare(MediaText.durationText(tick(125)), "02:05")
+        compare(MediaText.durationText(tick(3725)), "01:02:05")
+    }
+
+    function test_durationTextUnknownIsEmpty() {
+        compare(MediaText.durationText(tick(-1)), "")
+        compare(MediaText.durationText(tick(30, false)), "")
+        compare(MediaText.durationText(null), "")
+        compare(MediaText.durationText(undefined), "")
+        compare(MediaText.durationText({}), "")
+        compare(MediaText.durationShortText(tick(0)), "")
+        compare(MediaText.durationLongText(tick(-1)), "")
+        compare(MediaText.durationLongText(null), "")
+    }
+
+    function test_durationShortText() {
+        compare(MediaText.durationShortText(tick(19)), "00:19")
+        compare(MediaText.durationShortText(tick(3599)), "59:59")
+        compare(MediaText.durationShortText(tick(3725)), "1h02")
+        compare(MediaText.durationShortText(tick(36000 + 59 * 60 + 59)), "10h59")
+    }
+
+    function test_durationLongText() {
+        compare(MediaText.durationLongText(tick(19)), "19 sec")
+        compare(MediaText.durationLongText(tick(65)), "1 min 5 sec")
+        compare(MediaText.durationLongText(tick(3725)), "1 h 2 min")
+    }
 }

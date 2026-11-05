@@ -49,4 +49,5 @@ QtObject {
     readonly property int panelWidthMax: MainCtx.dp(560, scale) // PROVISIONAL: replace from tokens.md Table D
     readonly property int miniPlayerWidth: MainCtx.dp(320, scale) // PROVISIONAL: replace from tokens.md Table D
     readonly property int miniPlayerHeight: MainCtx.dp(180, scale) // PROVISIONAL: replace from tokens.md Table D
+    readonly property int pageMinWidth: MainCtx.dp(400, scale) // PROVISIONAL: what a page of the library keeps beside a docked right panel
 }
