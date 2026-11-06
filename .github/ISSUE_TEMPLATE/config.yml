@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Download Vireo
+    url: https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/releases
+    about: The installer and the portable version are on the Releases page.
+  - name: Privacy policy
+    url: https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/blob/redesign/main/PRIVACY.md
+    about: When and why Vireo connects to the internet.

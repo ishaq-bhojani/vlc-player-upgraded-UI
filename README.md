@@ -16,6 +16,7 @@ A completely new interface.
 
 [**Download for Windows**](https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/releases) ·
 [Screenshots](#a-closer-look) ·
+[45-second tour (video)](docs/screenshots/vireo-demo.mp4) ·
 [Report a problem](https://github.com/ishaq-bhojani/vlc-player-upgraded-UI/issues)
 
 <br>
@@ -94,7 +95,8 @@ years. Vireo keeps the engine you trust and redesigns everything you see and tou
    code-signed yet. Click **More info**, then **Run anyway**.
 
 You can also check the download against `SHA256SUMS` from the same release. The installer
-is GPG-signed (`.asc`) with [this public key](docs/redesign/reborn-update-public.asc).
+is GPG-signed (`.asc`) with [this public key](docs/redesign/reborn-update-public.asc). See the
+[code signing policy](CODE_SIGNING.md).
 
 > [!NOTE]
 > Vireo is in **early testing**. The builds are release candidates: they work well
@@ -114,6 +116,7 @@ own update channel. You can keep both players installed.
 
 **Is it really free?**
 Yes, with no ads, no accounts and no tracking. Vireo is open source under the GPL, like VLC.
+See the [privacy policy](PRIVACY.md) for the few times Vireo connects to the internet.
 
 **Is Vireo made by VideoLAN?**
 No. Vireo is an independent project built on VLC's open-source code. It is **not
