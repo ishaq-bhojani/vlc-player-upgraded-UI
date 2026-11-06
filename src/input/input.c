@@ -1372,7 +1372,15 @@ static int Init( input_thread_t * p_input )
                  priv->b_out_pace_control ? "a" : "" );
     }
 
-    if (!input_item_IsPreparsed(input_priv(p_input)->p_item))
+    /* Vireo: an item preparsed out of process can keep an "attachment://" art URL (or none)
+     * without the attachment itself, so the embedded cover is read again here. */
+    char *psz_preparsed_art = input_item_GetArtURL( input_priv(p_input)->p_item );
+    const bool b_art_missing = psz_preparsed_art == NULL
+        || !strncmp( psz_preparsed_art, "attachment://", 13 );
+    free( psz_preparsed_art );
+
+    if (!input_item_IsPreparsed(input_priv(p_input)->p_item)
+     || (priv->type == INPUT_TYPE_PLAYBACK && b_art_missing))
     {
         vlc_meta_t *p_meta = vlc_meta_New();
         if( p_meta != NULL )

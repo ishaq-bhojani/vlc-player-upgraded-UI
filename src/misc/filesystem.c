@@ -14,6 +14,8 @@
 #include <vlc_common.h>
 #include <vlc_fs.h>
 
+#include <sys/stat.h>
+
 /**
  * Create all directories in the given path if missing.
  */
@@ -39,7 +41,15 @@ int vlc_mkdir_parent(const char *dirname, mode_t mode)
         }
         *ptr = '\0';
         if (vlc_mkdir(path, mode) != 0) {
-            if (errno != EEXIST) {
+            /* Vireo: a drive ("C:") cannot be created and does not report EEXIST,
+             * and stat() does not accept it without a trailing separator */
+            bool is_drive = false;
+#ifdef _WIN32
+            is_drive = ptr - path == 2 && path[1] == ':';
+#endif
+            struct stat st;
+            if (errno != EEXIST && !is_drive
+             && (vlc_stat(path, &st) != 0 || !S_ISDIR(st.st_mode))) {
                 free(path);
                 return -1;
             }
